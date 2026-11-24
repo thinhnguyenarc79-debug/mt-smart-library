@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "plugin_id": "mtdesign.smart_library_pro",
+  "name": "MT SMART LIBRARY PRO",
+  "version": "1.0.1",
+  "released_at": "2026-11-24",
+  "min_sketchup": 22,
+  "min_ruby": "2.7.0",
+  "changelog": [
+    "Sửa lỗi: gõ vào ô tìm kiếm không thấy chữ (chữ trắng trên nền trắng) trên SketchUp 2022.",
+    "Mọi ô nhập liệu có màu chữ, con trỏ và placeholder riêng, không còn kế thừa màu của thanh tiêu đề.",
+    "Ô tìm kiếm hỗ trợ bộ gõ ghép dấu (UniKey/IME): không tìm giữa chừng khi đang gõ dấu; Enter/Escape ổn định; bấm vào thanh tìm kiếm là nhận focus.",
+    "Trình cập nhật: thông báo khi chưa cấu hình nguồn online hướng dẫn đúng vị trí cài đặt.",
+    "Giữ nguyên toàn bộ chức năng V1.0.0 và MT SMART UPDATE SYSTEM."
+  ],
+  "download_url": "https://raw.githubusercontent.com/thinhnguyenarc79-debug/mt-smart-library/main/releases/MT_SMART_LIBRARY_PRO_v1.0.1.rbz",
+  "sha256": "4c3db1331f9b4c229bb6a679a941d27f16d6399afc2eb74c58746351f552f9bd",
+  "size": 95177
+}

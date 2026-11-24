@@ -11,6 +11,9 @@ module MTDesign
       core/util core/paths core/logger core/settings core/synonyms core/search_index core/indexer
       core/thumbs core/inserter core/secret_store
       net/http_client online/link_sources online/sketchfab ai/vision
+      search/query_normalizer search/categories search/result_cache search/result_ranker
+      search/providers/base_provider search/providers/local_provider search/providers/sketchfab_provider
+      search/search_manager
       updater/zip_reader updater/backup_manager updater/updater
       ui/app
     ].each { |f| require File.join(CODE_DIR, f) }

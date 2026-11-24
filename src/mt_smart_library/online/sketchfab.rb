@@ -37,10 +37,10 @@ module MTDesign
         nil
       end
 
-      def pick_thumb(images)
+      def pick_thumb(images, target = 480)
         imgs = Array(images).select { |i| i.is_a?(Hash) && safe_https(i['url'], THUMB_HOSTS) }
         return nil if imgs.empty?
-        best = imgs.min_by { |i| (i['width'].to_i - 360).abs }
+        best = imgs.min_by { |i| (i['width'].to_i - target).abs }
         safe_https(best['url'], THUMB_HOSTS)
       end
 
@@ -59,6 +59,12 @@ module MTDesign
             'author_url' => safe_https(user['profileUrl'], SAFE_LINK_HOSTS),
             'license' => Util.utf8(lic['label']).strip[0, 120],
             'thumb' => pick_thumb(r.dig('thumbnails', 'images')),
+            'thumb_large' => pick_thumb(r.dig('thumbnails', 'images'), 1024),
+            'tags' => Array(r['tags']).map { |t| t.is_a?(Hash) ? (t['name'] || t['slug']).to_s : t.to_s }.reject(&:empty?).first(30),
+            'cats' => Array(r['categories']).flat_map { |c| c.is_a?(Hash) ? [c['slug'], c['name']] : [c] }.compact.map { |c| c.to_s.downcase }.uniq,
+            'likes' => r['likeCount'].to_i,
+            'views' => r['viewCount'].to_i,
+            'age_restricted' => r['isAgeRestricted'] == true,
             'viewer_url' => safe_https(r['viewerUrl'], SAFE_LINK_HOSTS) || "https://sketchfab.com/3d-models/#{r['uid']}",
             'downloadable' => r['isDownloadable'] == true,
             'faces' => r['faceCount'].to_i,

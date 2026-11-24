@@ -14,12 +14,14 @@ function check(name, ok, detail) { results.push({ name, ok: !!ok, detail }); }
   await page.addInitScript(() => { window.__calls = []; window.MT_DEV_BRIDGE = (n, a) => window.__calls.push([n, a]); });
   await page.goto('file://' + SRC + '/ui/index.html');
   await page.waitForFunction(() => window.MT && window.__calls.some(c => c[0] === 'ready'));
-  const settings = { roots: ['D:/Thư viện'], favorites: [], history: [], quick_scan: true, scan_on_open: true,
-    ui: { page_size: 48, sort: 'relevance', size_max_mb: 0, tab: 'offline' }, ai: { model: 'gpt-6-luna', base_url: 'https://api.openai.com/v1', detail: 'low', remember_key: false },
+  const settings = { roots: ['D:/Thư viện'], favorites: [], history: [], quick_scan: true, scan_on_open: true, auto_save_downloads: true,
+    sources: { sketchfab: true }, categories_custom: [], online_favorites: [],
+    ui: { page_size: 48, sort: 'relevance', size_max_mb: 0, tab: 'offline', thumb_size: 200, filter: 'all', category: 'all' }, ai: { model: 'gpt-6-luna', base_url: 'https://api.openai.com/v1', detail: 'low', remember_key: false },
     sketchfab: { downloadable_only: true, token_type: 'token', remember_token: false }, net: { timeout: 30 }, update: { source: 'none', manifest_url: '', github_repo: '', check_on_start: false } };
   await page.evaluate((s) => MT.receive('init', { version: '1.0.1', plugin_id: 'x', build: 'b', su: '22.0.354', settings: s,
-    secrets: { openai: {}, sketchfab: {} }, sources: [], data_root: 'C:/x', secret_store: true, roots_state: {}, loaded: true, library_size: 0, scan: { running: false } }), settings);
-  const searches = () => page.evaluate(() => window.__calls.filter(c => c[0] === 'search').map(c => JSON.parse(c[1][0])));
+    secrets: { openai: {}, sketchfab: {} }, data_root: 'C:/x', secret_store: true, roots_state: {}, loaded: true, library_size: 0, scan: { running: false },
+    categories: [{ id: 'all', name: 'Tất cả' }], sources_status: [] }), settings);
+  const searches = () => page.evaluate(() => window.__calls.filter(c => c[0] === 'sr_start').map(c => JSON.parse(c[1][0])));
 
   // 1. Màu chữ / con trỏ / nền
   const st = await page.evaluate(() => { const cs = getComputedStyle(document.getElementById('q')); return { color: cs.color, fill: cs.webkitTextFillColor, caret: cs.caretColor, bg: cs.backgroundColor, sel: cs.userSelect }; });
@@ -30,20 +32,19 @@ function check(name, ok, detail) { results.push({ name, ok: !!ok, detail }); }
   check('Placeholder màu xám rõ', ph === 'rgb(132, 146, 166)', ph);
 
   // 2. Focus khi click (cả khi click vào ô và vùng đệm của thanh tìm kiếm)
-  await page.click('#btnAi'); await page.keyboard.press('Escape');
   await page.click('#q');
   check('Nhận focus khi click vào ô', await page.evaluate(() => document.activeElement.id === 'q'));
-  await page.click('#tabs [data-tab="offline"]');
+  await page.mouse.click(700, 500); await page.evaluate(() => document.activeElement.blur()); // bỏ focus
   const box = await page.locator('.search').boundingBox();
   const qb = await page.locator('#q').boundingBox();
-  await page.mouse.click(qb.x + qb.width + 3, box.y + box.height / 2); // khe giữa ô và nút AI
+  await page.mouse.click(qb.x + qb.width - 3, box.y + 3); // mép trên thanh tìm kiếm
   check('Click vùng thanh tìm kiếm cũng focus ô', await page.evaluate(() => document.activeElement.id === 'q'));
 
   // 3. Gõ tiếng Anh + debounce
   const before = (await searches()).length;
   await page.click('#q');
   await page.keyboard.type('modern sofa', { delay: 20 });
-  await page.waitForTimeout(450);
+  await page.waitForTimeout(600);
   const s1 = await searches();
   check('Gõ tiếng Anh: giá trị đúng', (await page.inputValue('#q')) === 'modern sofa');
   check('Debounce: gõ 11 ký tự chỉ gửi 1 lần tìm', s1.length - before === 1, s1.length - before);
@@ -78,7 +79,7 @@ function check(name, ok, detail) { results.push({ name, ok: !!ok, detail }); }
     await page.keyboard.insertText(step);
   }
   await page.keyboard.insertText(' sofa');
-  await page.waitForTimeout(400);
+  await page.waitForTimeout(600);
   check('UniKey (backspace + gõ lại): ra “ghế sofa”', (await page.inputValue('#q')) === 'ghế sofa');
   const b3 = (await searches()).length;
   // Mô phỏng IME/TSF: trong lúc composition KHÔNG được gửi tìm kiếm
@@ -88,13 +89,13 @@ function check(name, ok, detail) { results.push({ name, ok: !!ok, detail }); }
     q.value = 'ghế sofa v'; q.dispatchEvent(new InputEvent('input', { isComposing: true, data: 'v' }));
     q.value = 'ghế sofa vả'; q.dispatchEvent(new InputEvent('input', { isComposing: true, data: 'vả' }));
   });
-  await page.waitForTimeout(400);
+  await page.waitForTimeout(600);
   const midComp = (await searches()).length - b3;
   await page.evaluate(() => {
     const q = document.getElementById('q'); q.value = 'ghế sofa vải';
     q.dispatchEvent(new CompositionEvent('compositionend', { data: 'vải' }));
   });
-  await page.waitForTimeout(400);
+  await page.waitForTimeout(600);
   const s4 = await searches();
   check('IME ghép dấu: không tìm giữa chừng', midComp === 0, midComp);
   check('IME ghép dấu: tìm sau khi ghép xong', s4[s4.length - 1].q === 'ghế sofa vải');
@@ -102,8 +103,9 @@ function check(name, ok, detail) { results.push({ name, ok: !!ok, detail }); }
   // 7. Dữ liệu từ Ruby không làm mất từ khóa / focus
   await page.click('#q');
   await page.evaluate((s) => {
-    const seq = Math.max(...window.__calls.filter(c => c[0] === 'search').map(c => JSON.parse(c[1][0]).seq));
-    MT.receive('results', { seq, total: 1, page: 0, pages: 1, per_page: 48, library_size: 1, items: [{ id: 'a'.repeat(64), name: 'Ghế sofa vải', path: 'D:/x.skp', folder: 'x', size: 1, mtime: 1 }] });
+    const sid = Math.max(...window.__calls.filter(c => c[0] === 'sr_start').map(c => JSON.parse(c[1][0]).sid));
+    MT.receive('sr_begin', { sid, expansions: ['sofa', 'couch'] });
+    MT.receive('sr_update', { sid, items: [{ key: 'local:' + 'a'.repeat(64), id: 'a'.repeat(64), source: 'local', title: 'Ghế sofa vải', insertable: true }], counts: { all: 1 }, filter: 'all', loading: false, has_more: false, sources: [], hidden: 0 });
     MT.receive('settings', s); MT.receive('status', { msg: 'ok', kind: 'ok' }); MT.receive('scan_progress', { running: true, dirs: 1, files: 1, errors: 0, current: 'D:/' });
     MT.receive('scan_done', { models: 1, errors: 0, seconds: 0.1, listed: 1, reused: 0, roots_state: {} }); MT.receive('refresh');
     MT.receive('library', { size: 1 }); MT.receive('secrets', { openai: {}, sketchfab: {} }); MT.receive('thumb', { id: 'a'.repeat(64), src: null });
@@ -114,20 +116,26 @@ function check(name, ok, detail) { results.push({ name, ok: !!ok, detail }); }
   check('Escape xóa từ khóa', (await page.inputValue('#q')) === '');
 
   // 8. Mọi ô nhập khác: màu chữ khác màu nền, gõ được
-  await page.click('[data-tab="settings"]');
+  await page.click('#btnSettings');
   const others = await page.evaluate(() => Array.from(document.querySelectorAll('input:not([type=checkbox]),select,textarea')).map(e => {
     const cs = getComputedStyle(e); return { id: e.id, color: cs.webkitTextFillColor || cs.color, bg: cs.backgroundColor };
   }));
   const bad = others.filter(o => o.color === o.bg || o.color === 'rgb(255, 255, 255)');
   check('Mọi ô nhập/select/textarea: chữ không trùng màu nền (' + others.length + ' ô)', bad.length === 0, bad);
+  const tabOf = { sKey: 'ai', sModel: 'ai', sBase: 'ai', sTimeout: 'sys', sSfToken: 'sf' };
   for (const id of ['sKey', 'sModel', 'sBase', 'sTimeout', 'sSfToken']) {
+    await page.click('#stabs [data-s="' + tabOf[id] + '"]');
     await page.fill('#' + id, '');
     await page.click('#' + id); await page.keyboard.type(id === 'sTimeout' ? '45' : 'abc');
     const v = await page.inputValue('#' + id);
     check('Gõ được vào #' + id, v === (id === 'sTimeout' ? '45' : 'abc'), v);
   }
   await page.screenshot({ path: OUT + '/v101_settings_inputs.png' });
-  // Hộp AI
+  await page.click('#stabs [data-s="lib"]'); await page.click('#settingsModal .x');
+  // Danh mục tùy chỉnh + hộp AI
+  await page.click('#btnAddCat'); await page.click('#catName'); await page.keyboard.type('Bàn trang điểm');
+  check('Gõ được tên danh mục tiếng Việt', (await page.inputValue('#catName')) === 'Bàn trang điểm');
+  await page.click('#catModal .x');
   await page.evaluate(() => { document.getElementById('aiModal').hidden = false; document.getElementById('aiResult').hidden = false; });
   await page.click('#rType'); await page.keyboard.type('sofa góc');
   check('Gõ được vào ô kết quả AI', (await page.inputValue('#rType')) === 'sofa góc');

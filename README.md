@@ -1,4 +1,4 @@
-# MT SMART LIBRARY PRO — V1.0.1
+# MT SMART LIBRARY PRO — V1.0.2
 
 Plugin SketchUp quản lý thư viện model 3D cho MT Design (Kiến trúc & Nội thất Mạnh Trường).
 Tương thích **SketchUp 2022 (Ruby 2.7.2) trên Windows**. Mã định danh plugin: `mtdesign.smart_library_pro`.
@@ -6,7 +6,7 @@ Tương thích **SketchUp 2022 (Ruby 2.7.2) trên Windows**. Mã định danh pl
 ## 1. Cài đặt
 
 1. Mở SketchUp 2022 → **Extensions › Extension Manager › Install Extension**.
-2. Chọn file `MT_SMART_LIBRARY_PRO_v1.0.1.rbz` → **Yes** để cài.
+2. Chọn file `MT_SMART_LIBRARY_PRO_v1.0.2.rbz` → **Yes** để cài.
 3. Khởi động lại SketchUp (khuyến nghị).
 4. Mở bằng toolbar **MT SMART LIBRARY PRO** (2 nút: *Mở thư viện* và *Cập nhật*) hoặc menu
    **Extensions › MT SMART LIBRARY PRO**.
@@ -16,7 +16,15 @@ yêu thích và lịch sử của bản cũ được tự chuyển sang bản m�
 
 Từ V1.0.0 trở đi, cập nhật bằng nút **⟳ CẬP NHẬT** trong plugin, không cần gỡ bản cũ (xem mục 4).
 
-## 2. Sử dụng nhanh
+## 2. Sử dụng nhanh (giao diện V1.0.2)
+
+- Gõ từ khóa một lần (có dấu/không dấu, Việt/Anh) → kết quả từ máy tính và online hiện chung trong một lưới, đến đâu hiện đến đó.
+- Chọn danh mục bên trái để thu hẹp; thêm danh mục riêng bằng **+ Thêm danh mục**.
+- Lọc nhanh: Tất cả / Máy tính / Online / Chèn được ngay / Miễn phí. Kéo thanh trượt để đổi kích thước ảnh.
+- **CHÈN**: chèn ngay file SKP trên máy; model online được phép tải sẽ được tải và chèn nếu SketchUp đọc được, nếu không plugin báo cần chuyển đổi.
+- Bấm vào ảnh để xem chi tiết (nguồn, tác giả, giấy phép, ghi công).
+
+### Bảng thao tác chi tiết (tham khảo)
 
 | Việc | Thao tác |
 |------|----------|
@@ -82,6 +90,8 @@ mt_smart_library/
   core/   util, paths, logger, settings, synonyms, search_index, indexer, thumbs, inserter, secret_store
   net/    http_client.rb            Net::HTTP trong luồng nền + fallback Sketchup::Http khi lỗi SSL
   online/ link_sources.rb, sketchfab.rb
+  search/ search_manager, query_normalizer, result_ranker, result_cache, categories
+          providers/ base_provider, local_provider, sketchfab_provider (+ nguồn chưa tích hợp)
   ai/     vision.rb                 OpenAI Chat Completions + vision + structured outputs
   ui/     app.rb (bộ điều khiển, dialog, timer), index.html, app.css, app.js
   updater/ updater.rb, backup_manager.rb, version.rb, update_manifest.json,

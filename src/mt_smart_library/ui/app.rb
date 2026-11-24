@@ -49,7 +49,23 @@ module MTDesign
         @update_available = nil
         @startup_msg = @updater.startup_report
         @log.info(@startup_msg) if @startup_msg
+        @result_cache = ResultCache.new(max: 80, ttl: 600)
+        @providers = [
+          Providers::LocalProvider.new(@index),
+          Providers::SketchfabProvider.new(@http, @result_cache, @log),
+          Providers::UnavailableProvider.new('warehouse', '3D Warehouse',
+                                             'Chưa hiển thị kết quả trực tiếp: Trimble chưa công bố API tìm kiếm công khai cho plugin bên thứ ba. ' \
+                                             'Có thể dùng cửa sổ 3D Warehouse có sẵn của SketchUp.'),
+          Providers::UnavailableProvider.new('cgtrader', 'CGTrader',
+                                             'Chưa tích hợp: API CGTrader yêu cầu OAuth client ID/secret do CGTrader cấp cho ứng dụng. ' \
+                                             'Sẽ tích hợp khi MT Design được cấp khóa và tài liệu API.'),
+          Providers::UnavailableProvider.new('3dsky', '3dsky',
+                                             'Chưa tích hợp: 3dsky không công bố API tìm kiếm công khai; không thu thập dữ liệu trái điều khoản.')
+        ]
+        @search = SearchManager.new(providers: @providers, settings: @settings, emit: ->(t, pl) { emit(t, pl) }, logger: @log)
       end
+
+      attr_reader :search
 
       # ================================================================ Dialog chính
       def show
@@ -87,6 +103,14 @@ module MTDesign
       def register_main_callbacks(d)
         cb(d, 'ready') { |*| @ready = true; send_init }
         cb(d, 'search') { |json| do_search(parse(json)) }
+        cb(d, 'sr_start') { |json| @search.start(parse(json)); ensure_timer }
+        cb(d, 'sr_more') { |sid| @search.more(sid); ensure_timer }
+        cb(d, 'sr_filter') { |sid, f| @search.set_filter(sid, f.to_s); save_settings('ui' => { 'filter' => f.to_s }) }
+        cb(d, 'insert_item') { |key| insert_any(key.to_s) }
+        cb(d, 'fav_item') { |key| fav_any(key.to_s) }
+        cb(d, 'open_source') { |key| open_source(key.to_s) }
+        cb(d, 'cat_save') { |json| category_save(parse(json)) }
+        cb(d, 'cat_delete') { |id| category_delete(id.to_s) }
         cb(d, 'thumbs') { |json| request_thumbs(parse(json)) }
         cb(d, 'add_root') { |*| add_root }
         cb(d, 'remove_root') { |path| remove_root(path.to_s) }
@@ -145,8 +169,95 @@ module MTDesign
                'roots_state' => @roots_state, 'loaded' => @library_loaded, 'library_size' => @index.size,
                'scan' => @indexer.progress, 'summary' => @scan_summary, 'startup' => @startup_msg,
                'settings_warning' => @settings.load_warning, 'update_available' => @update_available,
-               'pending_restart' => @updater.pending_restart_version
+               'pending_restart' => @updater.pending_restart_version,
+               'categories' => Categories.all(@settings['categories_custom']),
+               'sources_status' => @providers.map { |p| p.status_info(@settings) }
              })
+      end
+
+      # ================================================================ Tìm kiếm tổng hợp & chèn
+      def find_item(key)
+        @search.item(key) || Array(@settings['online_favorites']).find { |f| f['key'] == key }
+      end
+
+      def insert_any(key)
+        if key.start_with?('local:')
+          it = find_item(key)
+          id = it ? it['id'] : nil
+          return status('Không tìm thấy model. Hãy tìm lại.', 'warn') unless id
+          return insert_item(id)
+        end
+        it = find_item(key)
+        return status('Không còn thông tin model — hãy tìm lại.', 'warn') unless it
+        return insert_sketchfab(it) if it['source'] == 'sketchfab'
+        status('Nguồn này chưa hỗ trợ chèn trực tiếp.', 'warn')
+      end
+
+      def insert_sketchfab(it)
+        unless it['downloadable']
+          open_safe_url(it['url'].to_s)
+          return status('Tác giả không cho phép tải model này — đã mở trang nguồn để xem.', 'warn')
+        end
+        unless secret('sketchfab')
+          emit('need_token', { 'key' => it['key'] })
+          return status('Cần Sketchfab API token để tải model (Cài đặt › Tài khoản Sketchfab).', 'warn')
+        end
+        d = @downloads[it['uid']]
+        if d && d['state'] == 'done' && (f = Array(d['files']).find { |x| %w[skp import].include?(x['kind']) })
+          return insert_path(f['path'])
+        end
+        types = Array(it['formats']).map { |f| f['type'] }
+        fmt = types.include?('source') ? 'source' : (types.include?('gltf') || types.empty? ? 'gltf' : types.first)
+        @sf_items[it['uid']] = { 'name' => it['title'], 'author' => it['author'], 'author_url' => it['author_url'],
+                                 'license' => it['license'], 'viewer_url' => it['url'], 'downloadable' => true, 'key' => it['key'] }
+        sketchfab_download('uid' => it['uid'], 'format' => fmt, 'auto_insert' => true)
+      end
+
+      def fav_any(key)
+        if key.start_with?('local:')
+          it = find_item(key)
+          return status('Không tìm thấy model.', 'warn') unless it
+          on = @settings.toggle_favorite(it['id'])
+        else
+          it = find_item(key)
+          return status('Không còn thông tin model — hãy tìm lại.', 'warn') unless it
+          on = @settings.toggle_online_favorite(it)
+        end
+        @settings.save
+        @index.bump
+        emit('fav', { 'key' => key, 'on' => on })
+      end
+
+      def open_source(key)
+        it = find_item(key)
+        return unless it
+        if it['source'] == 'local'
+          UI.openURL(Util.file_url(File.dirname(it['path'].to_s)))
+        else
+          open_safe_url(it['url'].to_s)
+        end
+      end
+
+      def category_save(o)
+        name = Util.utf8(o['name']).strip
+        kws = o['keywords'].is_a?(Array) ? o['keywords'] : o['keywords'].to_s.split(/[,;\n]/)
+        kws = kws.map(&:strip).reject(&:empty?)
+        return status('Nhập tên danh mục.', 'warn') if name.empty?
+        return status('Nhập ít nhất 1 từ khóa cho danh mục.', 'warn') if kws.empty?
+        if o['id'].to_s.empty? && @settings['categories_custom'].size >= Categories::MAX_CUSTOM
+          return status("Tối đa #{Categories::MAX_CUSTOM} danh mục tùy chỉnh.", 'warn')
+        end
+        c = @settings.save_category('id' => o['id'].to_s, 'name' => name, 'keywords' => kws)
+        @settings.save
+        emit('categories', { 'list' => Categories.all(@settings['categories_custom']), 'select' => c && c['id'] })
+        status("Đã lưu danh mục “#{name}”.", 'ok')
+      end
+
+      def category_delete(id)
+        return unless @settings.delete_category(id)
+        @settings.save
+        emit('categories', { 'list' => Categories.all(@settings['categories_custom']), 'select' => 'all' })
+        status('Đã xóa danh mục.', 'ok')
       end
 
       # ================================================================ Thư viện offline
@@ -514,7 +625,7 @@ module MTDesign
         end
         return status('Model này đang được tải.', 'warn') if @downloads[uid] && @downloads[uid]['state'] == 'downloading'
         fmt = Sketchfab::FORMATS.include?(o['format']) ? o['format'] : 'gltf'
-        @downloads[uid] = { 'state' => 'requesting', 'progress' => { 'bytes' => 0, 'total' => 0 } }
+        @downloads[uid] = { 'state' => 'requesting', 'progress' => { 'bytes' => 0, 'total' => 0 }, 'auto_insert' => o['auto_insert'] == true }
         emit('dl_state', { 'uid' => uid, 'state' => 'requesting' })
         hdr = { 'Authorization' => Sketchfab.auth_header(token, @settings['sketchfab']['token_type']), 'Accept' => 'application/json' }
         @http.request(url: Sketchfab.download_url(uid), headers: hdr, timeout: net_timeout) do |res|
@@ -556,11 +667,34 @@ module MTDesign
                      'Đã tải. Có file SketchUp nhập được bên dưới; kiểm tra tỉ lệ và vật liệu sau khi chèn.'
                    end
             @downloads[uid]['state'] = 'done'
-            emit('dl_state', { 'uid' => uid, 'state' => 'done', 'folder' => folder, 'files' => files.first(40), 'note' => note })
+            @downloads[uid]['files'] = files
+            emit('dl_state', { 'uid' => uid, 'state' => 'done', 'folder' => folder, 'files' => files.first(40), 'note' => note,
+                               'key' => item['key'] })
+            after_download(uid, files, importable, note)
           else
             @downloads[uid]['state'] = 'error'
             emit('dl_state', { 'uid' => uid, 'state' => 'error', 'msg' => HttpClient.friendly(res) })
           end
+        end
+      end
+
+      # Sau khi tải: tự chèn nếu có SKP/định dạng SketchUp nhập được; lưu vào thư viện cá nhân nếu bật.
+      def after_download(uid, files, importable, note)
+        if importable.any? { |f| f['kind'] == 'skp' } && @settings['auto_save_downloads']
+          dl_root = Paths.sub('downloads')
+          if @settings.roots.none? { |r| Util.path_key(r) == Util.path_key(dl_root) }
+            @settings.add_root(dl_root)
+            @settings.save
+            emit('settings', @settings.public_hash)
+          end
+          start_scan(false)
+        end
+        return unless @downloads[uid] && @downloads[uid]['auto_insert']
+        first = importable.first
+        if first
+          insert_path(first['path'])
+        else
+          status(note, 'warn', 'Mở chi tiết model › “Mở thư mục tải về” để chuyển đổi bằng phần mềm khác.')
         end
       end
 

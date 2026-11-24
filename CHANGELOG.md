@@ -1,5 +1,34 @@
 # CHANGELOG — MT SMART LIBRARY PRO
 
+## V1.0.2 — 24/11/2026 (Unified Search & UI Redesign)
+
+### Giao diện mới
+- Thanh trên: logo, ô tìm kiếm lớn + nút Tìm, Tìm bằng ảnh (AI), Cập nhật, Cài đặt.
+- Thanh danh mục bên trái: Tất cả, Sofa, Ghế, Bàn, Tủ kệ, Giường, Đèn, Cây xanh, Đồ bếp, Thiết bị vệ sinh, Rèm cửa, Trang trí, Ngoại thất,
+  Thư viện cá nhân, Yêu thích, Lịch sử. Thêm/sửa/xóa danh mục tùy chỉnh (tên + từ khóa Việt/Anh).
+- Lưới ảnh vuông thống nhất, kích thước chỉnh bằng thanh trượt, số cột tự động theo độ rộng cửa sổ; thẻ chỉ có ảnh, tên ngắn, ♡ và CHÈN.
+- Không còn tên website, số mặt, định dạng, đoạn hướng dẫn trên thẻ. Bấm ảnh → cửa sổ chi tiết: ảnh lớn, nguồn, tác giả, giấy phép, định dạng,
+  dung lượng/đường dẫn, nút sao chép ghi công.
+- Cài đặt gom vào một cửa sổ có tab: Thư viện, Nguồn tìm kiếm, AI, Tài khoản Sketchfab, Mạng & dữ liệu.
+
+### Unified Search Engine (`search/`)
+- `query_normalizer.rb`: có dấu/không dấu, tách cụm theo từ điển, dịch Việt→Anh, mở rộng từ khóa (ghế sofa → sofa, couch, modern sofa, living room sofa) — không gọi AI.
+- `search_manager.rb`: gửi đồng thời tới mọi nguồn, nhận kết quả theo đợt và cập nhật lưới ngay, hủy truy vấn cũ, timeout riêng từng nguồn,
+  một nguồn lỗi không ảnh hưởng nguồn khác, tải thêm khi cuộn.
+- `result_ranker.rb`: chuẩn hóa, loại kết quả không liên quan (chỉ chấp nhận khớp tên/tag; loại nhân vật, động vật, nội dung giới hạn tuổi), loại trùng,
+  xếp hạng theo liên quan, danh mục, ảnh, quyền tải, SKP, chèn ngay, chất lượng, dung lượng — không ưu tiên website.
+- `result_cache.rb`: cache kết quả online (LRU, 10 phút). `providers/`: `base_provider`, `local_provider`, `sketchfab_provider`.
+- Bộ lọc: Tất cả / Máy tính / Online / Chèn được ngay / Miễn phí (lọc tại chỗ, không tìm lại).
+- 3D Warehouse, CGTrader, 3dsky: chưa có phương thức truy cập hợp lệ → ghi rõ giới hạn trong Cài đặt › Nguồn tìm kiếm, không giả lập.
+
+### Chèn model một nút
+- File SKP trên máy: chèn ngay. Model online được phép tải: tự chọn định dạng (ưu tiên bản gốc, sau đó glTF), tải, tự chèn/nhập nếu SketchUp đọc được,
+  báo rõ khi cần chuyển đổi; model chỉ xem: mở trang nguồn. Tùy chọn tự lưu model tải về vào Thư viện cá nhân.
+- Yêu thích cả model online (lưu ảnh chụp thông tin, xem lại khi offline).
+
+### Giữ nguyên
+- MT SMART UPDATE SYSTEM, dữ liệu thư viện, chỉ mục, thumbnail, yêu thích, lịch sử, API key, cài đặt. Sửa lỗi chữ trắng của V1.0.1 được giữ.
+
 ## V1.0.1 — 24/11/2026 (bản sửa lỗi)
 
 - **Sửa lỗi**: gõ vào ô tìm kiếm không thấy chữ trên SketchUp 2022. Nguyên nhân: `input` dùng `color: inherit` nằm trong thanh `.top` có `color: #fff` → chữ trắng trên nền trắng (chỉ ô `#q` bị; 17 ô nhập khác không bị).

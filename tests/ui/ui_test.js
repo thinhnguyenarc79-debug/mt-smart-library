@@ -1,106 +1,188 @@
-// Kiểm thử giao diện trên Chrome headless với cầu nối sketchup giả lập.
+// V1.0.2 — Kiểm thử giao diện tìm kiếm tổng hợp trên Chrome headless (file://, CSP thật, cầu nối sketchup giả lập).
 const { chromium } = require('/opt/npm-tools/node_modules/playwright');
 const path = require('path');
 const SRC = path.resolve(__dirname, '../../src/mt_smart_library');
 const OUT = process.argv[2] || '/tmp';
+const R = [];
+const check = (n, ok, d) => R.push({ n, ok: !!ok, d });
+const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+const SETTINGS = { roots: ['D:/Thư viện 3D'], favorites: [], history: [], quick_scan: true, scan_on_open: true, auto_save_downloads: true,
+  ui: { page_size: 48, sort: 'relevance', size_max_mb: 0, tab: 'offline', thumb_size: 200, filter: 'all', category: 'all' },
+  ai: { model: 'gpt-6-luna', base_url: 'https://api.openai.com/v1', detail: 'low', remember_key: false },
+  sketchfab: { downloadable_only: true, token_type: 'token', remember_token: false }, net: { timeout: 30 }, sources: { sketchfab: true },
+  update: { source: 'manifest', manifest_url: '', github_repo: '', check_on_start: false }, categories_custom: [], online_favorites: [] };
+const CATS = [['all', 'Tất cả', '▦'], ['sofa', 'Sofa', '🛋'], ['chair', 'Ghế', '🪑'], ['table', 'Bàn', '◧'], ['storage', 'Tủ kệ', '▤'], ['bed', 'Giường', '🛏'],
+  ['lighting', 'Đèn', '💡'], ['plant', 'Cây xanh', '🌿'], ['kitchen', 'Đồ bếp', '🍳'], ['bath', 'Thiết bị vệ sinh', '🚿'], ['curtain', 'Rèm cửa', '🪟'],
+  ['decor', 'Trang trí', '🖼'], ['exterior', 'Ngoại thất', '🏡']].map(([id, name, icon]) => ({ id, name, icon }))
+  .concat([{ id: 'c_abcd1234', name: 'Bàn trang điểm', custom: true, keywords: ['vanity'], icon: '◆' },
+    { id: 'personal', name: 'Thư viện cá nhân', kind: 'local', icon: '💻' }, { id: 'favorites', name: 'Yêu thích', kind: 'favorites', icon: '♥' }, { id: 'history', name: 'Lịch sử', kind: 'history', icon: '🕘' }]);
+function items() {
+  const L = (i, name) => ({ key: 'local:' + String(i).repeat(64).slice(0, 64), source: 'local', source_label: 'Máy tính', id: String(i).repeat(64).slice(0, 64),
+    title: name, path: 'D:/Thư viện 3D/Sofa/' + name + '.skp', folder: 'Sofa', size: 2345678, mtime: 1732400000, insertable: true, downloadable: true, free: true, format: 'skp', fav: i === 1, score: 90 - i });
+  const O = (i, name, dl) => ({ key: 'sketchfab:' + String(i).repeat(32), source: 'sketchfab', source_label: 'Sketchfab', uid: String(i).repeat(32), title: name,
+    thumb: i === 7 ? 'https://evil.example/x.jpg' : 'https://media.sketchfab.com/m/' + i + '.jpg', thumb_large: 'https://media.sketchfab.com/m/' + i + 'L.jpg',
+    author: 'Studio ' + i, license: 'CC Attribution', url: 'https://sketchfab.com/3d-models/x-' + i, downloadable: dl, free: dl, insertable: false,
+    format: 'gltf', formats: [{ type: 'gltf', size: 3000000 }], faces: 45000, fav: false, score: 60 - i });
+  return [L(1, '<img src=x onerror="window.pwned=1"> Ghế sofa vải xám'), L(2, 'Sofa góc chữ L gỗ óc chó rất dài tên model để kiểm tra cắt ngắn hiển thị trên thẻ'),
+    O(5, 'Modern Sofa', true), O(6, 'Velvet couch <b>x</b>', false), O(7, 'Evil thumb sofa', true), L(3, 'Sofa đơn')];
+}
 (async () => {
   const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--allow-file-access-from-files'] });
-  const page = await browser.newPage({ viewport: { width: 1180, height: 780 } });
+  const page = await browser.newPage({ viewport: { width: 1280, height: 820 } });
   const errors = [];
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));
-  page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
-  await page.addInitScript(() => {
-    window.__calls = [];
-    window.MT_DEV_BRIDGE = (n, a) => window.__calls.push([n, a]);
-  });
+  page.on('console', m => { if (m.type() === 'error' && !/media\.sketchfab|evil\.example|ERR_/.test(m.text())) errors.push('console: ' + m.text()); });
+  await page.route('https://media.sketchfab.com/**', r => r.fulfill({ status: 200, contentType: 'image/png', body: Buffer.from(PNG.split(',')[1], 'base64') }));
+  await page.addInitScript(() => { window.__calls = []; window.MT_DEV_BRIDGE = (n, a) => window.__calls.push([n, a]); });
   await page.goto('file://' + SRC + '/ui/index.html');
   await page.waitForFunction(() => window.MT && window.__calls.some(c => c[0] === 'ready'));
-  const settings = { roots: ['D:/Thư viện 3D', '//nas/share/SKP'], favorites: [], history: [], quick_scan: true, scan_on_open: true,
-    ui: { page_size: 48, sort: 'relevance', size_max_mb: 0, tab: 'offline' }, ai: { model: 'gpt-6-luna', base_url: 'https://api.openai.com/v1', detail: 'low', remember_key: false },
-    sketchfab: { downloadable_only: true, token_type: 'token', remember_token: false }, net: { timeout: 30 }, update: { source: 'none', manifest_url: '', github_repo: '', check_on_start: false } };
-  // Ảnh PNG nhỏ hợp lệ để mô phỏng thumbnail
-  const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-  await page.evaluate(([settings]) => {
-    MT.receive('init', { version: '1.0.0', plugin_id: 'mtdesign.smart_library_pro', build: '2026-11-24', su: '22.0.354', settings,
-      secrets: { openai: { session: false, env: false, stored: false }, sketchfab: { session: true, env: false, stored: false } },
-      sources: [{ id: 'warehouse', name: '3D Warehouse', note: '' }, { id: '3dsky', name: '3dsky', note: '' }],
-      data_root: 'C:/Users/Thinh/AppData/Local/MT_Smart_Library', secret_store: true, roots_state: { 'D:/Thư viện 3D': 'ok', '//nas/share/SKP': 'offline' },
-      loaded: true, library_size: 2, scan: { running: false }, summary: null });
-  }, [settings]);
-  const items = [
-    { id: 'a'.repeat(64), name: '<img src=x onerror="window.pwned=1"> Ghế sofa vải xám', path: 'D:/Thư viện 3D/Ghế/x.skp', folder: 'Ghế', size: 2345678, mtime: 1732400000, fav: true },
-    { id: 'b'.repeat(64), name: 'Bàn ăn gỗ óc chó 6 chỗ', path: 'D:/Thư viện 3D/Bàn/y.skp', folder: 'Bàn', size: 812345, mtime: 1732000000, fav: false },
-    { id: 'c'.repeat(64), name: 'Đèn thả pendant brass', path: '//nas/share/SKP/Đèn/z.skp', folder: 'Đèn', size: 45678, mtime: 1731000000, fav: false }];
-  await page.evaluate(([items, png]) => {
-    const seq = Math.max(...window.__calls.filter(c => c[0] === 'search').map(c => JSON.parse(c[1][0]).seq));
-    MT.receive('results', { seq, total: 3, page: 0, pages: 1, per_page: 48, items, library_size: 3 });
-    MT.receive('thumb', { id: 'a'.repeat(64), src: png });
-    MT.receive('thumb', { id: 'b'.repeat(64), src: 'javascript:alert(1)' });
-    MT.receive('scan_progress', { running: true, dirs: 120, files: 3456, errors: 2, current: 'D:/Thư viện 3D/Nội thất' });
-    MT.receive('status', { msg: 'Đã lập chỉ mục 3 model trong 0.4 giây.', kind: 'ok' });
-    MT.receive('net', { state: 'online', ms: 120 });
-  }, [items, png]);
-  await page.waitForTimeout(300);
+  await page.evaluate(([s, cats]) => MT.receive('init', { version: '1.0.2', plugin_id: 'mtdesign.smart_library_pro', build: '2026-11-24', su: '22.0.354', settings: s,
+    secrets: { openai: { session: true }, sketchfab: {} }, data_root: 'C:/Users/Thinh/AppData/Local/MT_Smart_Library', secret_store: true, roots_state: { 'D:/Thư viện 3D': 'ok' },
+    loaded: true, library_size: 3, scan: { running: false }, categories: cats,
+    sources_status: [{ id: 'local', name: 'Máy tính', integrated: true, enabled: true, note: '1 thư mục' }, { id: 'sketchfab', name: 'Sketchfab', integrated: true, enabled: true, note: 'API chính thức' },
+      { id: 'warehouse', name: '3D Warehouse', integrated: false, enabled: false, note: 'Chưa có API công khai' }] }), [SETTINGS, CATS]);
+  const starts = () => page.evaluate(() => window.__calls.filter(c => c[0] === 'sr_start').map(c => JSON.parse(c[1][0])));
+  check('Khởi động tự tìm (1 lần)', (await starts()).length === 1);
+  check('Thanh danh mục đủ 13 mặc định + tùy chỉnh + 3 mục cá nhân', (await page.locator('#cats .cat').count()) === 17);
+
+  // Gõ từ khóa -> 1 lần tìm sau debounce
+  await page.click('#q'); await page.keyboard.type('ghế sofa', { delay: 15 });
+  await page.waitForTimeout(500);
+  let st = await starts();
+  check('Gõ từ khóa: chỉ 1 lần tìm sau debounce', st.length === 2 && st[1].q === 'ghế sofa' && st[1].category === 'all', st.map(x => x.q));
+  const sid = st[1].sid;
+  // Đợt 1: chỉ máy tính, còn đang tải online
+  const all = items();
+  await page.evaluate(([sid, it]) => {
+    MT.receive('sr_begin', { sid, expansions: ['sofa', 'couch', 'modern sofa', 'living room sofa'] });
+    MT.receive('sr_update', { sid, items: it.filter(x => x.source === 'local'), counts: { all: 3, local: 3, online: 0, insertable: 3, free: 3 }, filter: 'all', loading: true, has_more: false,
+      sources: [{ id: 'local', label: 'Máy tính', state: 'done', count: 3 }, { id: 'sketchfab', label: 'Sketchfab', state: 'loading', count: 0 }], hidden: 0 });
+    MT.receive('thumb', { id: '1'.repeat(64), src: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==' });
+  }, [sid, all]);
+  const firstCard = await page.evaluate(() => document.querySelector('#grid .card'));
+  check('Đợt 1 hiển thị ngay kết quả máy tính', (await page.locator('#grid .card').count()) === 3);
+  check('Đang tải online hiển thị trạng thái', await page.isVisible('#loading'));
+  await page.evaluate(() => { window.__firstCard = document.querySelector('#grid .card'); });
+  // Đợt 2: thêm online, xếp lại
+  await page.evaluate(([sid, it]) => MT.receive('sr_update', { sid, items: it, counts: { all: 6, local: 3, online: 3, insertable: 3, free: 5 }, filter: 'all', loading: false, has_more: false,
+    sources: [{ id: 'local', label: 'Máy tính', state: 'done', count: 3 }, { id: 'sketchfab', label: 'Sketchfab', state: 'done', count: 3 }], hidden: 4 }), [sid, all]);
+  await page.waitForTimeout(250);
   const r = await page.evaluate(() => ({
-    pwned: window.pwned, cards: document.querySelectorAll('#grid .card').length,
-    firstName: document.querySelector('#grid .card .name').textContent,
-    imgInName: document.querySelectorAll('#grid .name img').length,
-    badThumb: document.querySelectorAll('.pic[data-id="' + 'b'.repeat(64) + '"] img').length,
-    goodThumb: document.querySelectorAll('.pic[data-id="' + 'a'.repeat(64) + '"] img').length,
-    thumbsRequested: window.__calls.filter(c => c[0] === 'thumbs').length
+    cards: document.querySelectorAll('#grid .card').length,
+    reused: window.__firstCard === document.querySelector('#grid .card'),
+    pwned: window.pwned, imgInTitle: document.querySelectorAll('#grid .title img, #grid .title b').length,
+    evilImg: [...document.querySelectorAll('#grid img')].filter(i => /evil/.test(i.src)).length,
+    longTitle: document.querySelectorAll('#grid .title')[1].textContent,
+    siteNames: [...document.querySelectorAll('#grid .card')].filter(c => /sketchfab|warehouse|cgtrader/i.test(c.textContent)).length,
+    faces: [...document.querySelectorAll('#grid .card')].filter(c => /mặt|faces|GLTF|gltf|\d MB|\d KB/.test(c.textContent)).length,
+    insLabels: [...document.querySelectorAll('#grid .ins')].map(b => b.textContent),
+    counts: [...document.querySelectorAll('#filters i')].map(i => i.textContent).join(','),
+    info: document.getElementById('resInfo').textContent
   }));
-  await page.screenshot({ path: OUT + '/ui_offline.png' });
-  // Tab Online + kết quả Sketchfab
-  await page.click('[data-tab="online"]');
-  await page.fill('#q', 'ghế sofa');
-  await page.click('#btnSfSearch');
-  const sfseq = await page.evaluate(() => JSON.parse(window.__calls.filter(c => c[0] === 'sf_search').pop()[1][0]).seq);
-  await page.evaluate((seq) => {
-    MT.receive('sf_results', { seq, q: 'ghế sofa', next: '24', items: [
-      { uid: '9aea3b516d3e4e169710049b32282670', name: 'Modern Sofa', author: 'Studio', author_url: 'https://sketchfab.com/studio', license: 'CC Attribution', thumb: 'https://evil.example/x.jpg', viewer_url: 'https://sketchfab.com/3d-models/x', downloadable: true, faces: 12000, formats: [{ type: 'gltf', size: 2000000 }, { type: 'glb', size: 1500000 }] },
-      { uid: '1aea3b516d3e4e169710049b32282671', name: 'Armchair <b>bold</b>', author: 'A', author_url: null, license: 'CC0', thumb: null, viewer_url: 'https://sketchfab.com/3d-models/y', downloadable: false, faces: 0, formats: [] }] });
-    MT.receive('dl_state', { uid: '9aea3b516d3e4e169710049b32282670', state: 'done', note: 'Đã tải GLTF. SketchUp 2022 KHÔNG nhập trực tiếp glTF/GLB/USDZ.', files: [] });
-  }, sfseq);
-  await page.waitForTimeout(200);
-  const r2 = await page.evaluate(() => ({ sfCards: document.querySelectorAll('#sfGrid .card').length, evilImg: document.querySelectorAll('#sfGrid img').length, bold: document.querySelectorAll('#sfGrid b').length }));
-  await page.screenshot({ path: OUT + '/ui_online.png' });
-  // AI modal
-  await page.click('#btnAi');
-  await page.evaluate((png) => {
-    MT.receive('ai_preview', { src: png, name: 'anh-mau.png', size: 123456, mime: 'image/png', model: 'gpt-6-luna', endpoint: 'https://api.openai.com/v1' });
-    MT.receive('ai_result', { object_type: 'sofa', style: 'hiện đại', material: 'vải', color: 'xám', queries_vi: ['ghế sofa vải xám', 'sofa văng hiện đại'], queries_en: ['gray fabric sofa', 'modern sofa'], usage: { total_tokens: 812 } });
-  }, png);
-  await page.waitForTimeout(200);
-  await page.screenshot({ path: OUT + '/ui_ai.png' });
-  await page.click('#rOffline');
-  const anyOf = await page.evaluate(() => JSON.parse(window.__calls.filter(c => c[0] === 'search').pop()[1][0]).any_of);
-  // Cài đặt
-  await page.click('[data-tab="settings"]');
+  check('Đợt 2 gộp vào cùng lưới (6 model)', r.cards === 6, r.cards);
+  check('Giữ nguyên thẻ cũ (không vẽ lại ảnh)', r.reused);
+  check('Tên file độc hại hiển thị dạng chữ', !r.pwned && r.imgInTitle === 0);
+  check('Chặn ảnh từ host lạ', r.evilImg === 0);
+  check('Tên dài được rút gọn', r.longTitle.endsWith('…') && r.longTitle.length <= 60, r.longTitle);
+  check('Thẻ không hiện tên website / số mặt / định dạng / dung lượng', r.siteNames === 0 && r.faces === 0, r);
+  check('Nút CHÈN / XEM đúng theo khả năng chèn', JSON.stringify(r.insLabels) === JSON.stringify(['CHÈN', 'CHÈN', 'CHÈN', 'XEM', 'CHÈN', 'CHÈN']), r.insLabels);
+  check('Số lượng trên bộ lọc', r.counts === '6,3,3,3,5', r.counts);
+  check('Thông tin mở rộng từ khóa', /couch/.test(r.info), r.info);
+  await page.screenshot({ path: OUT + '/v102_grid.png' });
+
+  // Kết quả cũ (sid khác) bị bỏ qua
+  await page.evaluate(([sid]) => MT.receive('sr_update', { sid: sid - 1, items: [], counts: { all: 0 }, filter: 'all', loading: false, has_more: false, sources: [], hidden: 0 }), [sid]);
+  check('Bỏ qua kết quả truy vấn cũ', (await page.locator('#grid .card').count()) === 6);
+
+  // Bộ lọc
+  await page.click('#filters [data-f="insertable"]');
+  const fcall = await page.evaluate(() => window.__calls.filter(c => c[0] === 'sr_filter').pop()[1]);
+  check('Bấm bộ lọc gửi sr_filter (không tìm lại)', fcall[1] === 'insertable' && (await starts()).length === 2, fcall);
+
+  // Kích thước ảnh
+  await page.evaluate(() => { const r = document.getElementById('thumbSize'); r.value = 300; r.dispatchEvent(new Event('input')); r.dispatchEvent(new Event('change')); });
+  const w = await page.evaluate(() => document.querySelector('#grid .card').getBoundingClientRect().width);
+  check('Thanh trượt đổi kích thước thumbnail', w >= 295, w);
+  await page.screenshot({ path: OUT + '/v102_grid_large.png' });
+  await page.evaluate(() => { const r = document.getElementById('thumbSize'); r.value = 200; r.dispatchEvent(new Event('input')); });
+
+  // Chi tiết: click ảnh -> mở chi tiết, có thông tin nguồn/tác giả/giấy phép
+  await page.click('#grid .card:nth-child(3) .thumb img');
+  const det = await page.evaluate(() => ({ open: !document.getElementById('detailModal').hidden, title: document.getElementById('dTitle').textContent,
+    meta: document.getElementById('dMeta').textContent, attr: document.getElementById('dAttrText').textContent, btn: document.getElementById('dInsert').textContent,
+    img: document.querySelector('#dImg img') && document.querySelector('#dImg img').src }));
+  check('Click ảnh mở chi tiết', det.open && det.title === 'Modern Sofa');
+  check('Chi tiết có nguồn, tác giả, giấy phép, định dạng', /Sketchfab/.test(det.meta) && /Studio 5/.test(det.meta) && /CC Attribution/.test(det.meta) && /GLTF/.test(det.meta), det.meta);
+  check('Ghi công theo giấy phép', /Studio 5/.test(det.attr) && /CC Attribution/.test(det.attr));
+  check('Ảnh lớn trong chi tiết', /5L\.jpg/.test(det.img || ''), det.img);
+  await page.screenshot({ path: OUT + '/v102_detail.png' });
+  await page.click('#dInsert');
+  check('CHÈN trong chi tiết gửi insert_item', await page.evaluate(() => window.__calls.some(c => c[0] === 'insert_item' && c[1][0] === 'sketchfab:' + '5'.repeat(32))));
+  await page.evaluate(() => MT.receive('dl_state', { uid: '5'.repeat(32), state: 'downloading', bytes: 500000, total: 1000000 }));
+  check('Tiến độ tải hiện trong chi tiết', /50%/.test(await page.textContent('#dDl')));
+  await page.evaluate(() => MT.receive('dl_state', { uid: '5'.repeat(32), state: 'done', note: 'Đã tải GLTF. SketchUp 2022 không nhập trực tiếp glTF — cần chuyển đổi.', files: [] }));
+  check('Báo cần chuyển đổi định dạng', /chuyển đổi/.test(await page.textContent('#dDl')));
+  await page.keyboard.press('Escape');
+  check('Esc đóng chi tiết', await page.isHidden('#detailModal'));
+
+  // Yêu thích trên thẻ
+  await page.hover('#grid .card:nth-child(3)');
+  await page.click('#grid .card:nth-child(3) .heart');
+  check('♡ gửi fav_item', await page.evaluate(() => window.__calls.some(c => c[0] === 'fav_item')));
+  await page.evaluate(() => MT.receive('fav', { key: 'sketchfab:' + '5'.repeat(32), on: true }));
+  check('♥ cập nhật trên thẻ', (await page.textContent('#grid .card:nth-child(3) .heart')) === '♥');
+
+  // Danh mục
+  await page.click('#cats [data-cat="lighting"]');
+  st = await starts();
+  check('Chọn danh mục -> tìm lại với danh mục', st[st.length - 1].category === 'lighting');
+  await page.click('#btnAddCat');
+  await page.fill('#catName', 'Bàn trang điểm'); await page.fill('#catKw', 'bàn trang điểm, vanity');
+  await page.click('#catSave');
+  const cs = await page.evaluate(() => JSON.parse(window.__calls.filter(c => c[0] === 'cat_save').pop()[1][0]));
+  check('Thêm danh mục tùy chỉnh', cs.name === 'Bàn trang điểm' && /vanity/.test(cs.keywords));
+  await page.evaluate((cats) => MT.receive('categories', { list: cats, select: 'c_abcd1234' }), CATS);
+  check('Lưu xong: đóng form, chọn danh mục mới, tìm lại', await page.isHidden('#catModal') && (await starts()).pop().category === 'c_abcd1234');
+  await page.hover('#cats [data-cat="c_abcd1234"]'); await page.click('#cats [data-cat="c_abcd1234"] .ed');
+  check('Sửa danh mục: mở form có sẵn dữ liệu', (await page.inputValue('#catName')) === 'Bàn trang điểm' && await page.isVisible('#catDelete'));
+  await page.click('#catModal [data-close]');
+
+  // Trống + thêm thư mục
+  await page.evaluate(([sid]) => MT.receive('sr_update', { sid: sid + 99, items: [], counts: {}, filter: 'all', loading: false, has_more: false, sources: [], hidden: 0 }), [sid]);
+  const sidNow = (await starts()).pop().sid;
+  await page.evaluate(([s]) => MT.receive('sr_update', { sid: s, items: [], counts: { all: 0 }, filter: 'all', loading: false, has_more: false, sources: [{ id: 'sketchfab', label: 'Sketchfab', state: 'error', offline: true, count: 0 }], hidden: 0 }), [sidNow]);
+  check('Trạng thái rỗng thân thiện + báo nguồn lỗi', await page.isVisible('#empty') && /Sketchfab không kết nối/.test(await page.textContent('#resInfo')));
+
+  // Cuộn tải thêm
+  const many = Array.from({ length: 60 }, (_, i) => ({ key: 'local:' + String(i).padStart(64, 'a'), source: 'local', id: String(i).padStart(64, 'a'), title: 'Model ' + i, insertable: true, downloadable: true, free: true }));
+  await page.evaluate(([s, m]) => MT.receive('sr_update', { sid: s, items: m, counts: { all: 60 }, filter: 'all', loading: false, has_more: true, sources: [], hidden: 0 }), [sidNow, many]);
+  await page.evaluate(() => { document.getElementById('content').scrollTop = 1e6; document.getElementById('content').dispatchEvent(new Event('scroll')); });
   await page.waitForTimeout(150);
-  await page.screenshot({ path: OUT + '/ui_settings.png', fullPage: true });
-  // Trình cập nhật
-  const up = await browser.newPage({ viewport: { width: 820, height: 980 } });
-  up.on('pageerror', e => errors.push('update pageerror: ' + e.message));
+  check('Cuộn tới cuối -> sr_more', await page.evaluate(() => window.__calls.some(c => c[0] === 'sr_more')));
+
+  // Cài đặt: mục Nguồn tìm kiếm ghi rõ giới hạn
+  await page.click('#btnSettings'); await page.click('#stabs [data-s="src"]');
+  const srcTxt = await page.textContent('#srcList');
+  check('Cài đặt › Nguồn ghi rõ nguồn chưa tích hợp', /3D Warehouse/.test(srcTxt) && /Chưa tích hợp/.test(srcTxt));
+  await page.screenshot({ path: OUT + '/v102_settings.png' });
+  await page.keyboard.press('Escape');
+
+  // Màu chữ ô tìm kiếm (không tái phát lỗi V1.0.0)
+  const col = await page.evaluate(() => getComputedStyle(document.getElementById('q')).webkitTextFillColor);
+  check('Ô tìm kiếm chữ tối', col === 'rgb(29, 41, 57)', col);
+
+  // Trình cập nhật vẫn hoạt động
+  const up = await browser.newPage({ viewport: { width: 820, height: 900 } });
+  up.on('pageerror', e => errors.push('update: ' + e.message));
   await up.addInitScript(() => { window.__calls = []; window.MT_DEV_BRIDGE = (n, a) => window.__calls.push([n, a]); });
   await up.goto('file://' + SRC + '/updater/update_dialog.html');
   await up.waitForFunction(() => window.UP && window.__calls.some(c => c[0] === 'up_ready'));
-  await up.evaluate(() => {
-    UP.receive('init', { version: '1.0.0', plugin_id: 'mtdesign.smart_library_pro', su: '22.0.354', ruby: '2.7.2', plugins_root: 'C:/Users/Thinh/AppData/Roaming/SketchUp/SketchUp 2022/SketchUp/Plugins', data_root: 'C:/Users/Thinh/AppData/Local/MT_Smart_Library', source: { source: 'github', manifest_url: '', github_repo: 'mt-design/mt-smart-library', check_on_start: false },
-      backups: [{ id: '1.0.0_20261124_101500', version: '1.0.0', created_at: '2026-11-24 10:15:00', reason: 'Trước khi Cập nhật từ file lên 1.0.1' }], history: [{ at: '2026-11-24 10:15:03', status: 'ok', reason: 'Cập nhật từ file', from: '1.0.0', to: '1.0.1' }], pending_restart: null, busy: false });
-    UP.receive('up_package', { version: '1.0.1', relation: 'newer', compatible: true, compat_message: 'Tương thích SketchUp 2022, Ruby 2.7.2.', plugin_id: 'mtdesign.smart_library_pro', files: 31, bytes: 214000, sha256: 'ab'.repeat(32), changelog: ['Sửa lỗi quét ổ mạng', '<script>alert(1)</script> hiển thị dạng chữ'] });
-    UP.receive('up_started', { version: '1.0.1' });
-    UP.receive('up_progress', { progress: { step: 3, status: 'running', steps: ['Kiểm tra gói', 'Sao lưu bản hiện tại', 'Giải nén', 'Cài đặt', 'Kiểm tra sau cài', 'Hoàn tất'] } });
-  });
-  await up.waitForTimeout(150);
-  await up.screenshot({ path: OUT + '/ui_update_progress.png', fullPage: true });
-  await up.evaluate(() => UP.receive('up_done', { version: '1.0.1', backup: '1.0.0_20261124_101500', model_modified: true, progress: { step: 5, status: 'done', steps: ['Kiểm tra gói', 'Sao lưu bản hiện tại', 'Giải nén', 'Cài đặt', 'Kiểm tra sau cài', 'Hoàn tất'] }, backups: [], history: [] }));
-  await up.waitForTimeout(100);
-  await up.screenshot({ path: OUT + '/ui_update_done.png', fullPage: true });
-  const r3 = await up.evaluate(() => ({ scripts: document.querySelectorAll('#pLog script').length, done: document.querySelector('#result').textContent.includes('CHƯA LƯU') }));
-  console.log(JSON.stringify({ r, r2, anyOf, r3, errors }, null, 1));
+  check('Trình cập nhật mở và gửi up_ready', true);
+
+  check('Không lỗi JavaScript', errors.length === 0, errors);
   await browser.close();
-  const ok = !r.pwned && r.cards === 3 && r.imgInName === 0 && r.badThumb === 0 && r.goodThumb === 1 && r.thumbsRequested >= 1 &&
-    r2.sfCards === 2 && r2.evilImg === 0 && r2.bold === 0 && anyOf.length >= 4 && r3.scripts === 0 && r3.done && errors.length === 0;
-  console.log(ok ? 'UI_TEST_PASS' : 'UI_TEST_FAIL');
+  R.forEach(x => console.log((x.ok ? '✓ ' : '✗ ') + x.n + (x.ok ? '' : '  → ' + JSON.stringify(x.d))));
+  const ok = R.every(x => x.ok);
+  console.log(ok ? `UI_TEST_PASS (${R.length} kiểm tra)` : 'UI_TEST_FAIL');
   process.exit(ok ? 0 : 1);
 })().catch(e => { console.error(e); process.exit(2); });

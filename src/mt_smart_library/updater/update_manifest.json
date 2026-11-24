@@ -2,15 +2,17 @@
   "schema": 1,
   "plugin_id": "mtdesign.smart_library_pro",
   "name": "MT SMART LIBRARY PRO",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "released_at": "2026-11-24",
   "min_sketchup": 22,
   "min_ruby": "2.7.0",
   "changelog": [
-    "Sửa lỗi: gõ vào ô tìm kiếm không thấy chữ (chữ trắng trên nền trắng) trên SketchUp 2022.",
-    "Mọi ô nhập liệu có màu chữ, con trỏ và placeholder riêng, không còn kế thừa màu của thanh tiêu đề.",
-    "Ô tìm kiếm hỗ trợ bộ gõ ghép dấu (UniKey/IME): không tìm giữa chừng khi đang gõ dấu; Enter/Escape ổn định; bấm vào thanh tìm kiếm là nhận focus.",
-    "Trình cập nhật: thông báo khi chưa cấu hình nguồn online hướng dẫn đúng vị trí cài đặt.",
-    "Giữ nguyên toàn bộ chức năng V1.0.0 và MT SMART UPDATE SYSTEM."
+    "Thiết kế lại giao diện: ô tìm kiếm lớn, danh mục bên trái (thêm/sửa/xóa danh mục riêng), lưới ảnh lớn chỉnh được kích thước, thông tin kỹ thuật chỉ hiện khi mở chi tiết.",
+    "Tìm kiếm tổng hợp: một lần gõ tìm đồng thời thư viện máy tính và Sketchfab, kết quả hiện dần theo đợt, loại trùng, xếp hạng chung, lọc Tất cả / Máy tính / Online / Chèn được ngay / Miễn phí.",
+    "Tự mở rộng từ khóa Việt-Anh bằng từ điển nội bộ (ví dụ ghế sofa → sofa, couch, modern sofa); loại kết quả online không liên quan (nhân vật, động vật, chỉ khớp mô tả).",
+    "Nút CHÈN thống nhất: chèn ngay file SKP trên máy; tải và chèn model online khi được phép; báo rõ khi cần chuyển đổi; mở trang nguồn khi không được tải.",
+    "Yêu thích được cả model online; thông tin tác giả, giấy phép, nguồn hiển thị trong chi tiết kèm nút sao chép ghi công.",
+    "Cài đặt gom vào một cửa sổ; mục Nguồn tìm kiếm ghi rõ giới hạn của 3D Warehouse, CGTrader, 3dsky.",
+    "Giữ nguyên MT SMART UPDATE SYSTEM, dữ liệu thư viện, yêu thích, lịch sử, API key và cài đặt."
   ]
 }

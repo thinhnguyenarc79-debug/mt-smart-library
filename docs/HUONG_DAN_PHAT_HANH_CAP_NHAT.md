@@ -19,11 +19,6 @@ Kết quả: `dist/MT_SMART_LIBRARY_PRO_vX.Y.Z.rbz` và `dist/update_manifest.js
 ## 3. Phân phối
 **Cách A — gửi file**: gửi file `.rbz` (hoặc `.zip`) cho người dùng → ⟳ CẬP NHẬT › *Chọn file cập nhật…*.
 
-**Cách A2 — thư mục `releases/` trong repo (đang dùng)**
-Repo: https://github.com/thinhnguyenarc79-debug/mt-smart-library. Chép RBZ vào `releases/`, cập nhật `releases/update_manifest.json`
-(download_url dạng `https://raw.githubusercontent.com/thinhnguyenarc79-debug/mt-smart-library/main/releases/<file>.rbz`), commit lên `main`.
-Trong plugin: Nguồn = *URL manifest JSON* = `https://raw.githubusercontent.com/thinhnguyenarc79-debug/mt-smart-library/main/releases/update_manifest.json`.
-
 **Cách B — GitHub Releases**
 1. Tạo release tag `vX.Y.Z` trong repo.
 2. Tải lên file `.rbz` → copy link tải trực tiếp của asset (dạng `https://github.com/<owner>/<repo>/releases/download/vX.Y.Z/MT_SMART_LIBRARY_PRO_vX.Y.Z.rbz`).

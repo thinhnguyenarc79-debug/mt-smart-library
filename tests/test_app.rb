@@ -208,4 +208,54 @@ class TestApp < Minitest::Test
     assert_equal 'mt-design/mt-smart-library', @app.settings['update']['github_repo']
     UI.panel = nil
   end
+
+  def test_unified_search_insert_fav_categories
+    UI.dir = @lib
+    @app.settings.data['sources']['sketchfab'] = false # test không gọi mạng thật
+    @app.show
+    d = dlg
+    d.fire('ready')
+    pump { @app.instance_variable_get(:@library_loaded) }
+    d.fire('add_root')
+    pump { d.messages('scan_done').any? }
+    d.fire('sr_start', JSON.generate('sid' => 7, 'q' => 'ghe sofa', 'category' => 'all'))
+    u = d.messages('sr_update').last[1]
+    assert_equal 7, u['sid']
+    assert_equal 'Ghế sofa vải', u['items'][0]['title']
+    key = u['items'][0]['key']
+    assert_match(/\Alocal:[0-9a-f]{64}\z/, key)
+    d.fire('insert_item', key)
+    pump { Sketchup.model.placed.any? }
+    d.fire('fav_item', key)
+    assert_equal({ 'key' => key, 'on' => true }, d.messages('fav').last[1])
+    # Model online: không cho tải -> mở trang nguồn; cho tải nhưng chưa có token -> yêu cầu token
+    s = @app.search.session
+    view_only = { 'key' => "sketchfab:#{'d' * 32}", 'source' => 'sketchfab', 'uid' => 'd' * 32, 'title' => 'View only sofa',
+                  'downloadable' => false, 'url' => "https://sketchfab.com/3d-models/x-#{'d' * 32}" }
+    dl_ok = view_only.merge('key' => "sketchfab:#{'e' * 32}", 'uid' => 'e' * 32, 'title' => 'Free sofa', 'downloadable' => true,
+                            'formats' => [{ 'type' => 'gltf' }], 'thumb' => 'https://media.sketchfab.com/a.jpg', 'author' => 'X', 'license' => 'CC0')
+    s.store[view_only['key']] = view_only
+    s.store[dl_ok['key']] = dl_ok
+    d.fire('insert_item', view_only['key'])
+    assert_equal view_only['url'], UI.opened.last
+    d.fire('insert_item', dl_ok['key'])
+    assert d.messages('need_token').any?
+    d.fire('fav_item', dl_ok['key'])
+    assert_equal dl_ok['key'], @app.settings['online_favorites'][0]['key']
+    raw = File.read(File.join(@data, 'settings.json'))
+    assert_includes raw, 'Free sofa'
+    d.fire('sr_start', JSON.generate('sid' => 8, 'q' => '', 'category' => 'favorites'))
+    assert_equal ['Free sofa', 'Ghế sofa vải'].sort, d.messages('sr_update').last[1]['items'].map { |i| i['title'] }.sort
+    # Danh mục tùy chỉnh
+    d.fire('cat_save', JSON.generate('name' => 'Ghế đặc biệt', 'keywords' => 'sofa vải, chair'))
+    cats = d.messages('categories').last[1]
+    c = cats['list'].find { |x| x['custom'] }
+    assert_equal 'Ghế đặc biệt', c['name']
+    d.fire('sr_start', JSON.generate('sid' => 9, 'q' => '', 'category' => c['id']))
+    assert_includes d.messages('sr_update').last[1]['items'].map { |i| i['title'] }, 'Ghế sofa vải'
+    d.fire('cat_delete', c['id'])
+    refute(d.messages('categories').last[1]['list'].any? { |x| x['custom'] })
+    init_src = d.messages('init').last[1]['sources_status'].map { |x| [x['id'], x['integrated']] }.to_h
+    assert_equal({ 'local' => true, 'sketchfab' => true, 'warehouse' => false, 'cgtrader' => false, '3dsky' => false }, init_src)
+  end
 end

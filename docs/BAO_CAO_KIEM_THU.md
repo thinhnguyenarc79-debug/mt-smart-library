@@ -1,5 +1,23 @@
 # Báo cáo kiểm thử — MT SMART LIBRARY PRO
 
+## V1.0.2 (24/11/2026) — Unified Search & UI Redesign
+
+| Bộ test | Nội dung | Kết quả |
+|---|---|---|
+| `test_search_engine.rb` (14) | Mở rộng “ghế sofa / ghe sofa / GHẾ SOFA” → sofa, couch, modern sofa, living room sofa; “bàn ăn gỗ” → dining table wood; lọc liên quan: giữ khớp tên/tag, loại nhân vật/động vật/chỉ khớp mô tả/giới hạn tuổi, bắt buộc khớp đồ vật chính; điểm: SKP chèn ngay > online tải được > chỉ xem; gộp trùng; 5 bộ lọc; danh mục tùy chỉnh; cache LRU/TTL; **kết quả theo đợt** (máy tính hiện ngay, online đến sau), **nguồn lỗi không ảnh hưởng nguồn khác**, **bỏ kết quả truy vấn cũ + hủy request**, tải thêm, danh mục không có từ khóa, yêu thích online; Sketchfab provider: chuẩn hóa, ảnh lớn, ưu tiên định dạng gốc, cache | ✅ |
+| `test_app.rb` (+1) | Luồng thật qua dialog: thêm thư mục → quét → `sr_start` → CHÈN (start/commit_operation) → ♡; online không cho tải → mở trang nguồn; cho tải chưa có token → yêu cầu token; yêu thích online lưu vào settings và hiện ở mục Yêu thích; thêm/xóa danh mục; trạng thái 5 nguồn | ✅ |
+| `ui/ui_test.js` (37) | Khởi động, 17 danh mục, debounce, đợt 1 (máy tính) rồi đợt 2 (online) cùng lưới và **giữ nguyên thẻ cũ**, XSS tên file, chặn ảnh host lạ, rút gọn tên, **thẻ không có tên website/số mặt/định dạng/dung lượng**, CHÈN/XEM, số đếm bộ lọc, bỏ kết quả cũ, bộ lọc không tìm lại, thanh trượt kích thước, chi tiết (nguồn/tác giả/giấy phép/ảnh lớn/ghi công), tiến độ tải, báo cần chuyển đổi, ♡, danh mục (chọn/thêm/sửa), trạng thái rỗng + nguồn lỗi, cuộn tải thêm, Cài đặt › Nguồn, chữ ô tìm kiếm tối, trình cập nhật | ✅ |
+| `ui/input_test.js` (28) | Toàn bộ kiểm tra bàn phím của V1.0.1 trên giao diện mới + gõ tên danh mục tiếng Việt | ✅ |
+| Hiệu năng 100.000 model | Lượt tìm đầu 0,16–0,6 giây; tải thêm ~3 ms | ✅ |
+| `tools/verify_upgrade.rb` 1.0.1 → 1.0.2 | Cài bằng updater của V1.0.1, dữ liệu người dùng giữ nguyên, khôi phục ngược được | ✅ (xem dưới) |
+
+Chưa kiểm thử: gọi Sketchfab thật từ máy test (proxy chặn; cấu trúc JSON đã đối chiếu phản hồi thật), tải + chèn model Sketchfab thật (cần token),
+giao diện mới trong CEF của SketchUp 2022 thật. Bộ lọc danh mục phía Sketchfab dùng lọc theo tên/tag kết quả thay vì tham số `categories` của API
+(chưa xác minh được slug danh mục chính thức trong phiên này).
+
+---
+
+
 ## V1.0.1 (24/11/2026) — sửa lỗi ô tìm kiếm
 
 Lỗi thực tế báo từ SketchUp 2022: gõ vào ô tìm kiếm không thấy chữ.

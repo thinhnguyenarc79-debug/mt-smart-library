@@ -64,8 +64,12 @@ module MTDesign
         pages = [(total + per - 1) / per, 1].max
         page = [[opts[:page].to_i, 0].max, pages - 1].min
         slice = ids[page * per, per] || []
-        { 'total' => total, 'page' => page, 'pages' => pages, 'per_page' => per,
-          'items' => slice.map { |id| to_public(@by_id[id]) }, 'library_size' => @entries.size }
+        items = slice.map do |id|
+          h = to_public(@by_id[id])
+          h['score'] = @cache_scores[id] if opts[:with_score] && @cache_scores
+          h
+        end
+        { 'total' => total, 'page' => page, 'pages' => pages, 'per_page' => per, 'items' => items, 'library_size' => @entries.size }
       end
 
       def to_public(e)
@@ -78,8 +82,9 @@ module MTDesign
         tab = opts[:tab].to_s
         favs = Array(opts[:favorites])
         hist = Array(opts[:history])
+        must = Array(opts[:must_any]).map(&:to_s).reject(&:empty?)
         key = [@generation, opts[:query].to_s, Array(opts[:any_of]), tab, opts[:size_max_mb].to_i, opts[:root].to_s,
-               opts[:sort].to_s, tab == 'favorites' ? favs.hash : 0, tab == 'history' ? hist.hash : 0]
+               opts[:sort].to_s, tab == 'favorites' ? favs.hash : 0, tab == 'history' ? hist.hash : 0, must]
         return @cache_ids if key == @cache_key && @cache_ids
 
         queries = Array(opts[:any_of]).map(&:to_s).reject { |q| q.strip.empty? }
@@ -92,6 +97,7 @@ module MTDesign
         base.each do |e|
           next if limit > 0 && e.size > limit
           next if root_k && Util.path_key(e.root) != root_k
+          next if !must.empty? && must.none? { |a| hit?(e.hay, a) }
           if compiled.empty?
             scored << [e, 0]
             next
@@ -105,6 +111,8 @@ module MTDesign
         end
         sort!(scored, opts[:sort].to_s, tab, hist, compiled.empty?)
         @cache_key = key
+        @cache_scores = {}
+        scored.each { |e, sc| @cache_scores[e.id] = sc }
         @cache_ids = scored.map { |x| x[0].id }
       end
 

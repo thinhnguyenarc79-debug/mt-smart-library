@@ -16,7 +16,12 @@ module MTDesign
         'history' => [],
         'quick_scan' => true,
         'scan_on_open' => true,
-        'ui' => { 'page_size' => 48, 'sort' => 'relevance', 'size_max_mb' => 0, 'tab' => 'offline' },
+        'ui' => { 'page_size' => 48, 'sort' => 'relevance', 'size_max_mb' => 0, 'tab' => 'offline',
+                  'thumb_size' => 200, 'filter' => 'all', 'category' => 'all' },
+        'categories_custom' => [],
+        'online_favorites' => [],
+        'sources' => { 'sketchfab' => true },
+        'auto_save_downloads' => true,
         'ai' => { 'model' => DEFAULT_MODEL, 'base_url' => 'https://api.openai.com/v1', 'detail' => 'low', 'remember_key' => false },
         'sketchfab' => { 'downloadable_only' => true, 'token_type' => 'token', 'remember_token' => false },
         'net' => { 'timeout' => 30 },
@@ -102,12 +107,44 @@ module MTDesign
       def apply_ui(patch)
         return unless patch.is_a?(Hash)
         merged = deep_dup(@data)
-        %w[quick_scan scan_on_open].each { |k| merged[k] = patch[k] if patch.key?(k) }
-        %w[ui ai sketchfab net update].each do |sec|
+        %w[quick_scan scan_on_open auto_save_downloads].each { |k| merged[k] = patch[k] if patch.key?(k) }
+        %w[ui ai sketchfab net update sources].each do |sec|
           next unless patch[sec].is_a?(Hash)
           patch[sec].each { |k, v| merged[sec][k] = v if DEFAULTS[sec].key?(k) }
         end
         @data = sanitize(merged)
+      end
+
+      ONLINE_FAV_KEYS = %w[key source source_label uid title thumb thumb_large author author_url license url downloadable free
+                           format formats faces likes].freeze
+      ONLINE_FAV_MAX = 500
+
+      # Yêu thích kết quả online: lưu ảnh chụp thông tin (không có bí mật) để xem lại khi offline.
+      def toggle_online_favorite(item)
+        list = @data['online_favorites']
+        key = item['key'].to_s
+        if list.any? { |f| f['key'] == key }
+          list.reject! { |f| f['key'] == key }
+          false
+        else
+          list.unshift(item.select { |k, _| ONLINE_FAV_KEYS.include?(k) })
+          @data['online_favorites'] = sanitize_online_favs(list)
+          true
+        end
+      end
+
+      def save_category(cat)
+        list = @data['categories_custom'].reject { |c| c['id'] == cat['id'] }
+        list << cat
+        @data['categories_custom'] = Categories.sanitize_custom(list)
+        @data['categories_custom'].find { |c| c['name'] == Util.utf8(cat['name']).strip[0, 40] }
+      end
+
+      def delete_category(id)
+        before = @data['categories_custom'].size
+        @data['categories_custom'].reject! { |c| c['id'] == id.to_s }
+        @data['ui']['category'] = 'all' if @data['ui']['category'] == id.to_s
+        before != @data['categories_custom'].size
       end
 
       def public_hash
@@ -143,6 +180,15 @@ module MTDesign
         out['ui']['sort'] = SORTS.include?(ui['sort']) ? ui['sort'] : 'relevance'
         out['ui']['size_max_mb'] = [0, 5, 10, 20, 50, 100].include?(ui['size_max_mb'].to_i) ? ui['size_max_mb'].to_i : 0
         out['ui']['tab'] = %w[offline online favorites history settings].include?(ui['tab']) ? ui['tab'] : 'offline'
+        ts = ui['thumb_size'].to_i
+        out['ui']['thumb_size'] = ts.between?(120, 360) ? ts : 200
+        out['ui']['filter'] = %w[all local online insertable free].include?(ui['filter']) ? ui['filter'] : 'all'
+        out['ui']['category'] = ui['category'].to_s =~ /\A[a-z_0-9]{2,20}\z/ ? ui['category'].to_s : 'all'
+        out['categories_custom'] = Categories.sanitize_custom(raw['categories_custom'])
+        out['online_favorites'] = sanitize_online_favs(raw['online_favorites'])
+        src = raw['sources'].is_a?(Hash) ? raw['sources'] : {}
+        out['sources']['sketchfab'] = bool(src['sketchfab'], true)
+        out['auto_save_downloads'] = bool(raw['auto_save_downloads'], true)
         ai = raw['ai'].is_a?(Hash) ? raw['ai'] : {}
         m = ai['model'].to_s.strip
         out['ai']['model'] = m =~ /\A[A-Za-z0-9._:\-\/]{2,80}\z/ ? m : DEFAULT_MODEL
@@ -165,6 +211,16 @@ module MTDesign
         out['update']['github_repo'] = gr =~ %r{\A[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+\z} ? gr : ''
         out['update']['check_on_start'] = bool(up['check_on_start'], false)
         out
+      end
+
+      def sanitize_online_favs(list)
+        Array(list).select { |f| f.is_a?(Hash) && f['key'].to_s =~ /\A[a-z]+:[A-Za-z0-9_\-]{4,64}\z/ }.map do |f|
+          h = f.select { |k, _| ONLINE_FAV_KEYS.include?(k) }
+          %w[thumb thumb_large].each { |k| h[k] = nil unless h[k].to_s.start_with?('https://media.sketchfab.com/') }
+          %w[url author_url].each { |k| h[k] = nil unless h[k].to_s =~ %r{\Ahttps://(www\.)?sketchfab\.com/} }
+          %w[title author license source_label].each { |k| h[k] = Util.utf8(h[k]).strip[0, 200] if h[k] }
+          h
+        end.uniq { |f| f['key'] }.first(ONLINE_FAV_MAX)
       end
 
       def quarantine(exc)

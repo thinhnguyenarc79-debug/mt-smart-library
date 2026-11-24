@@ -15,7 +15,7 @@
     "Cài đặt gom vào một cửa sổ; mục Nguồn tìm kiếm ghi rõ giới hạn của 3D Warehouse, CGTrader, 3dsky.",
     "Giữ nguyên MT SMART UPDATE SYSTEM, dữ liệu thư viện, yêu thích, lịch sử, API key và cài đặt."
   ],
-  "download_url": "https://raw.githubusercontent.com/thinhnguyenarc79-debug/mt-smart-library/main/releases/MT_SMART_LIBRARY_PRO_v1.0.2.rbz",
+  "download_url": "https://raw.githubusercontent.com/thinhnguyenarc79-debug/mt-smart-library/5b15d7726753106a09765cdc7d9c197d949a2e27/releases/MT_SMART_LIBRARY_PRO_v1.0.2.rbz",
   "sha256": "a5e88849efbd8f7ff2a1b5b36e4089f16ce4fafcc750cc04bf1cb4c4bf706f38",
   "size": 113237
 }

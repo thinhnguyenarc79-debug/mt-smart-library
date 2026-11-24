@@ -1,5 +1,12 @@
 # CHANGELOG — MT SMART LIBRARY PRO
 
+## V1.0.3 — 24/11/2026
+- Bộ nhập glTF 2.0 tích hợp (`importers/gltf_importer.rb`): đọc GLB/glTF (node lồng nhau, ma trận/TRS, dữ liệu xen kẽ, dải/quạt tam giác,
+  chỉ số uint8/16/32, vật liệu màu + texture PNG/JPG nhúng hoặc file rời), đổi mét→inch và trục Y-up→Z-up; đọc file ở luồng nền, dựng hình bằng
+  PolygonMesh ở main thread, 1 bước Undo, đặt bằng chuột. Không hỗ trợ glTF nén Draco/meshopt (báo rõ).
+- CHÈN model Sketchfab: ưu tiên tải GLB → tự chèn. Chưa có token: hộp dán token 1 bước rồi tự tải và chèn.
+- Nhập file 3D thủ công nhận GLB/glTF.
+
 ## V1.0.2 — 24/11/2026 (Unified Search & UI Redesign)
 
 ### Giao diện mới

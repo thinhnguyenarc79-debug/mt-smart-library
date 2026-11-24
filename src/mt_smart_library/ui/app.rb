@@ -200,14 +200,15 @@ module MTDesign
         end
         unless secret('sketchfab')
           emit('need_token', { 'key' => it['key'] })
-          return status('Cần Sketchfab API token để tải model (Cài đặt › Tài khoản Sketchfab).', 'warn')
+          return status('Dán Sketchfab token để tải model.', 'warn')
         end
         d = @downloads[it['uid']]
-        if d && d['state'] == 'done' && (f = Array(d['files']).find { |x| %w[skp import].include?(x['kind']) })
+        if d && d['state'] == 'done' && (f = Array(d['files']).find { |x| %w[skp gltf import].include?(x['kind']) })
           return insert_path(f['path'])
         end
         types = Array(it['formats']).map { |f| f['type'] }
-        fmt = types.include?('source') ? 'source' : (types.include?('gltf') || types.empty? ? 'gltf' : types.first)
+        # GLB/glTF: plugin tự đọc và chèn được (từ V1.0.3); bản gốc (source) có thể là định dạng phần mềm khác.
+        fmt = %w[glb gltf source usdz].find { |f| types.include?(f) } || 'glb'
         @sf_items[it['uid']] = { 'name' => it['title'], 'author' => it['author'], 'author_url' => it['author_url'],
                                  'license' => it['license'], 'viewer_url' => it['url'], 'downloadable' => true, 'key' => it['key'] }
         sketchfab_download('uid' => it['uid'], 'format' => fmt, 'auto_insert' => true)
@@ -417,6 +418,8 @@ module MTDesign
         return status('Đường dẫn không hợp lệ.', 'error') unless allowed
         if p =~ /\.skp\z/i
           defer { place_any_skp(p) }
+        elsif p =~ /\.(glb|gltf)\z/i
+          insert_gltf(p)
         else
           defer do
             begin
@@ -425,6 +428,48 @@ module MTDesign
             rescue StandardError => ex
               status("Không nhập được: #{ex.message}", 'error')
             end
+          end
+        end
+      end
+
+      # glTF/GLB: đọc file trong luồng nền (thuần Ruby), dựng hình ở main thread rồi cho người dùng đặt bằng chuột.
+      def insert_gltf(path)
+        return status('Đang chèn một model khác, vui lòng đợi.', 'warn') if @gltf_job
+        status("Đang đọc model “#{File.basename(path)}”…")
+        tex_dir = File.join(File.dirname(path), 'textures_su')
+        t = Thread.new do
+          Thread.current.report_on_exception = false
+          begin
+            Thread.current[:model] = Gltf.parse(path, tex_dir)
+          rescue StandardError => e
+            Thread.current[:error] = e.message
+          end
+        end
+        @gltf_job = { thread: t, path: path }
+        ensure_timer
+      end
+
+      def poll_gltf
+        job = @gltf_job
+        return unless job && !job[:thread].alive?
+        @gltf_job = nil
+        t = job[:thread]
+        if t[:error]
+          @log.warn("glTF lỗi #{job[:path]}: #{t[:error]}")
+          return status("Không chèn được model: #{t[:error]}", 'error')
+        end
+        data = t[:model]
+        status("Đang dựng model (#{data.triangles} tam giác)…")
+        defer do
+          begin
+            definition = Gltf::Builder.build(data, Sketchup.active_model)
+            Sketchup.active_model.place_component(definition, false)
+            msg = "Đã chèn “#{data.name}”. Bấm vào công trình để đặt (Esc để hủy)."
+            msg += " Lưu ý: #{data.warnings.uniq.first(2).join(' ')}" unless data.warnings.empty?
+            status(msg, 'ok')
+          rescue StandardError => e
+            @log.error('Dựng glTF lỗi', e)
+            status("Không dựng được model: #{e.message}", 'error')
           end
         end
       end
@@ -449,8 +494,9 @@ module MTDesign
       end
 
       def import_3d_dialog
-        path = UI.openpanel('Nhập file 3D (DAE/3DS/KMZ/DWG/STL…)', '', 'Mô hình 3D|*.dae;*.3ds;*.kmz;*.dwg;*.dxf;*.stl;*.ifc;*.obj;*.fbx||')
+        path = UI.openpanel('Nhập file 3D (GLB/glTF/DAE/3DS/KMZ/STL…)', '', 'Mô hình 3D|*.glb;*.gltf;*.dae;*.3ds;*.kmz;*.dwg;*.dxf;*.stl;*.ifc;*.obj;*.fbx||')
         return unless path
+        return insert_gltf(Util.utf8(path)) if path =~ /\.(glb|gltf)\z/i
         defer do
           begin
             Inserter.import_3d(Util.utf8(path))
@@ -660,11 +706,11 @@ module MTDesign
           if res.ok
             File.write(File.join(folder, 'ATTRIBUTION.txt'), Sketchfab.attribution(item, fmt), mode: 'w:UTF-8')
             files = post_process_download(dest, folder)
-            importable = files.select { |f| %w[skp import].include?(f['kind']) }
+            importable = files.select { |f| %w[skp gltf import].include?(f['kind']) }
             note = if importable.empty?
-                     "Đã tải #{fmt.upcase}. SketchUp 2022 KHÔNG nhập trực tiếp glTF/GLB/USDZ — cần chuyển đổi (ví dụ Blender xuất DAE) rồi dùng \"Nhập file 3D\"."
+                     "Đã tải #{fmt.upcase} nhưng không có file chèn được vào SketchUp (định dạng #{fmt.upcase})."
                    else
-                     'Đã tải. Có file SketchUp nhập được bên dưới; kiểm tra tỉ lệ và vật liệu sau khi chèn.'
+                     'Đã tải xong.'
                    end
             @downloads[uid]['state'] = 'done'
             @downloads[uid]['files'] = files
@@ -718,12 +764,13 @@ module MTDesign
         else
           out << classify(path)
         end
-        out.sort_by { |f| { 'skp' => 0, 'import' => 1, 'other' => 2 }[f['kind']] }
+        out.sort_by { |f| { 'skp' => 0, 'gltf' => 1, 'import' => 2, 'other' => 3 }[f['kind']] }
       end
 
       def classify(f)
         ext = File.extname(f).downcase
         kind = if ext == '.skp' then 'skp'
+               elsif %w[.glb .gltf].include?(ext) then 'gltf'
                elsif %w[.dae .3ds .kmz .stl .dwg .dxf].include?(ext) then 'import'
                else 'other'
                end
@@ -1006,7 +1053,7 @@ module MTDesign
       end
 
       def busy?
-        !@cache_thread.nil? || @indexer.running? || @http.busy? ||
+        !@cache_thread.nil? || !@gltf_job.nil? || @indexer.running? || @http.busy? ||
           @updater.busy? || @thumbs.pending?
       end
 
@@ -1016,6 +1063,7 @@ module MTDesign
         begin
           give_threads_time
           poll_cache_load
+          poll_gltf
           poll_indexer
           @http.poll
           poll_updater
@@ -1031,7 +1079,7 @@ module MTDesign
 
       # Nhường GVL cho luồng nền (SketchUp chỉ chạy Ruby khi có sự kiện).
       def give_threads_time
-        ts = [@cache_thread, @indexer.thread, @updater.thread].compact + @http.threads
+        ts = [@cache_thread, @indexer.thread, @updater.thread, @gltf_job && @gltf_job[:thread]].compact + @http.threads
         ts = ts.select(&:alive?)
         return if ts.empty?
         slice = 0.03 / ts.size

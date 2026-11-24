@@ -174,7 +174,7 @@
       row('Định dạng', 'SketchUp (.skp) — chèn trực tiếp'); row('Đường dẫn', it.path);
     } else {
       row('Nguồn', it.source_label); row('Tác giả', it.author); row('Giấy phép', it.license || 'Không rõ');
-      row('Tải về', it.downloadable ? 'Được phép (cần tài khoản Sketchfab)' : 'Tác giả không cho phép tải');
+      row('Tải về', it.downloadable ? 'Được phép' : 'Tác giả không cho phép tải');
       row('Định dạng', (it.formats || []).map(function (f) { return f.type.toUpperCase() + (f.size ? ' ' + fmtSize(f.size) : ''); }).join(', '));
       if (it.faces) row('Số mặt', Number(it.faces).toLocaleString('vi-VN'));
     }
@@ -186,7 +186,7 @@
     $('dInsert').textContent = it.source === 'local' ? 'CHÈN MODEL' : (it.downloadable ? 'TẢI & CHÈN MODEL' : 'XEM TRÊN TRANG NGUỒN');
     $('dFav').textContent = it.fav ? '♥ Đã yêu thích' : '♡ Yêu thích';
     $('dOpen').textContent = it.source === 'local' ? 'Mở thư mục' : 'Xem trang nguồn';
-    $('dNote').textContent = it.source === 'local' ? '' : (it.downloadable ? 'Plugin tự chọn định dạng phù hợp. Nếu nguồn chỉ có glTF/GLB (SketchUp 2022 không nhập trực tiếp), plugin lưu file vào thư mục tải về và báo cần chuyển đổi.' : '');
+    $('dNote').textContent = '';
     renderDl(it.uid);
   }
   function renderDl(uid) {
@@ -203,7 +203,7 @@
       box.appendChild(el('div', st.note || 'Đã tải.'));
       (st.files || []).filter(function (f) { return f.kind !== 'other'; }).forEach(function (f) {
         var r = el('div', null, 'file'); r.appendChild(el('span', f.name));
-        r.appendChild(btn(f.kind === 'skp' ? 'Chèn' : 'Nhập', function () { call('insert_path', f.path); }, 'primary')); box.appendChild(r);
+        r.appendChild(btn('Chèn', function () { call('insert_path', f.path); }, 'primary')); box.appendChild(r);
       });
       box.appendChild(btn('Mở thư mục tải về', function () { call('dl_open', uid); }, 'link'));
     }
@@ -380,7 +380,7 @@
     scan_done: function (d) { $('scanMini').hidden = true; renderSummary(d); },
     inserted: function () { if (S.category === 'history') startSearch(); },
     confirm_newer: function (d) { S.newerId = d.id; $('newerText').textContent = '“' + d.name + '”: ' + d.msg; show('newerModal'); },
-    need_token: function () { openSettings('sf'); $('sSfToken').focus(); },
+    need_token: function (d) { S.tokenKey = d && d.key; $('tkInput').value = ''; show('tokenModal'); $('tkInput').focus(); },
     net: function (d) { $('netText').textContent = d.state === 'online' ? '✓ Đang trực tuyến' + (d.ms ? ' (' + d.ms + ' ms)' : '') : d.state === 'checking' ? 'Đang kiểm tra…' : '✗ ' + (d.msg || 'Mất kết nối'); },
     dl_state: function (d) {
       S.dl.set(d.uid, Object.assign(S.dl.get(d.uid) || {}, d));
@@ -433,8 +433,16 @@
     document.querySelectorAll('.modal').forEach(function (m) { m.addEventListener('mousedown', function (e) { if (e.target === m) { m.hidden = true; if (m.id === 'detailModal') S.detailKey = null; } }); });
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape' || e.target === q) return;
-      ['detailModal', 'catModal', 'aiModal', 'newerModal', 'settingsModal'].forEach(function (id) { if (!$(id).hidden) { hide(id); if (id === 'detailModal') S.detailKey = null; } });
+      ['detailModal', 'catModal', 'aiModal', 'newerModal', 'settingsModal', 'tokenModal'].forEach(function (id) { if (!$(id).hidden) { hide(id); if (id === 'detailModal') S.detailKey = null; } });
     });
+    $('tkOpen').onclick = function () { call('open_url', 'https://sketchfab.com/settings/password'); };
+    function tkSave() {
+      var v = $('tkInput').value.trim(); if (!v) { $('tkInput').focus(); return; }
+      callJ('set_secret', { kind: 'sketchfab', value: v, remember: true }); $('tkInput').value = ''; hide('tokenModal');
+      if (S.tokenKey) doInsert(S.tokenKey);
+    }
+    $('tkSave').onclick = tkSave;
+    $('tkInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') tkSave(); });
     $('newerYes').onclick = function () { hide('newerModal'); if (S.newerId) call('insert', S.newerId, true); };
     $('aiPick').onclick = function () { call('ai_pick'); };
     $('aiSend').onclick = aiSend;

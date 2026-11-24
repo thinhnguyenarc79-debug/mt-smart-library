@@ -1,5 +1,17 @@
 # Báo cáo kiểm thử — MT SMART LIBRARY PRO
 
+## V1.0.3 (24/11/2026) — chèn thẳng model Sketchfab
+
+| Bộ test | Nội dung | Kết quả |
+|---|---|---|
+| `test_gltf.rb` (6) | File GLB và glTF+bin+texture rời do `fixtures/make_gltf.py` tạo: node lồng nhau (scale, xoay quaternion, tịnh tiến), dữ liệu xen kẽ (byteStride), chỉ số uint8/uint16, dải tam giác, bỏ primitive dạng đường; đổi mét→inch và Y-up→Z-up đúng tọa độ; lật UV; texture PNG tách ra file; màu + độ trong suốt; chặn Draco, đường dẫn `../`, file hỏng/cắt cụt; dựng component (PolygonMesh, UV, soften, vật liệu, 1 Undo); App: GLB tải về → đọc nền → dựng → đặt; CHÈN Sketchfab ưu tiên GLB | ✅ |
+| Toàn bộ test cũ + giao diện | 77 test Ruby, 37 kiểm tra giao diện, 28 kiểm tra bàn phím | ✅ |
+
+Chưa kiểm thử: dựng hình bằng SketchUp API thật (PolygonMesh/UV/texture) trên SketchUp 2022; model Sketchfab thật (phiên này không truy cập được Sketchfab); hiệu năng model rất nặng (> 1 triệu tam giác).
+
+---
+
+
 ## V1.0.2 (24/11/2026) — Unified Search & UI Redesign
 
 | Bộ test | Nội dung | Kết quả |

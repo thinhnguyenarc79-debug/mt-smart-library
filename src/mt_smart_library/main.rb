@@ -13,7 +13,7 @@ module MTDesign
       net/http_client online/link_sources online/sketchfab ai/vision
       search/query_normalizer search/categories search/result_cache search/result_ranker
       search/providers/base_provider search/providers/local_provider search/providers/sketchfab_provider
-      search/search_manager
+      search/search_manager importers/gltf_importer
       updater/zip_reader updater/backup_manager updater/updater
       ui/app
     ].each { |f| require File.join(CODE_DIR, f) }

@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file: 'unsafe-eval'; style-src 'self' file: 'unsafe-inline'; img-src data: https://media.sketchfab.com; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MT SMART LIBRARY PRO</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <div class="logo" aria-hidden="true">◇</div>
+    <div><b>MT SMART LIBRARY PRO</b><small id="verLabel">Đang tải…</small></div>
+  </div>
+  <div class="search">
+    <input id="q" type="search" placeholder="Tìm model: ghế sofa vải, bàn ăn gỗ, pendant lamp…" autocomplete="off" spellcheck="false">
+    <button id="btnAi" class="accent" title="AI gợi ý từ khóa từ ảnh mẫu">✦ Tìm bằng ảnh AI</button>
+  </div>
+  <div class="tools">
+    <span id="netDot" class="dot" title="Trạng thái mạng: chưa kiểm tra"></span>
+    <button id="btnUpdate" class="update" title="Cập nhật / khôi phục phiên bản">⟳ CẬP NHẬT</button>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button data-tab="offline" class="active">Thư viện Offline</button>
+  <button data-tab="online">Online</button>
+  <button data-tab="favorites">★ Yêu thích</button>
+  <button data-tab="history">Lịch sử</button>
+  <button data-tab="settings">⚙ Cài đặt</button>
+  <span class="grow"></span>
+  <span id="aiFilter" class="chip-filter" hidden><span id="aiFilterText"></span><button id="aiFilterClear" title="Bỏ lọc từ khóa AI">×</button></span>
+</nav>
+
+<div id="scanBar" class="scanbar" hidden>
+  <div class="spinner"></div><span id="scanText">Đang quét…</span>
+  <button id="btnCancelScan" class="small">Hủy quét</button>
+</div>
+
+<main>
+  <!-- Offline / Yêu thích / Lịch sử -->
+  <section id="viewLibrary" class="view">
+    <div class="toolbar">
+      <select id="fRoot" title="Thư mục gốc"><option value="">Tất cả thư mục</option></select>
+      <select id="fSize" title="Lọc dung lượng">
+        <option value="0">Mọi dung lượng</option><option value="5">≤ 5 MB</option><option value="10">≤ 10 MB</option>
+        <option value="20">≤ 20 MB</option><option value="50">≤ 50 MB</option><option value="100">≤ 100 MB</option>
+      </select>
+      <select id="fSort" title="Sắp xếp">
+        <option value="relevance">Liên quan nhất</option><option value="name">Tên A→Z</option><option value="name_desc">Tên Z→A</option>
+        <option value="new">Mới sửa nhất</option><option value="old">Cũ nhất</option><option value="small">Nhẹ nhất</option><option value="large">Nặng nhất</option>
+      </select>
+      <span id="count" class="muted"></span>
+      <span class="grow"></span>
+      <button id="btnAddRoot">+ Thêm thư mục</button>
+      <button id="btnScan" title="Quét nhanh: chỉ đọc lại thư mục có thay đổi">Quét lại</button>
+      <button id="btnImportSkp" title="Chèn file SKP bất kỳ (ví dụ vừa tải từ web)">Chèn file SKP…</button>
+    </div>
+    <div id="empty" class="empty" hidden></div>
+    <div id="grid" class="grid"></div>
+    <div class="pager" id="pager">
+      <button id="pFirst" title="Trang đầu">«</button><button id="pPrev">‹ Trước</button>
+      <span id="pInfo"></span>
+      <button id="pNext">Sau ›</button><button id="pLast" title="Trang cuối">»</button>
+    </div>
+  </section>
+
+  <!-- Online -->
+  <section id="viewOnline" class="view" hidden>
+    <div class="panel">
+      <h3>Mở trang tìm kiếm chính thức</h3>
+      <p class="muted">Mở trình duyệt với từ khóa ở ô tìm kiếm. Tải model theo điều khoản từng trang, sau đó dùng <b>Chèn file SKP…</b> hoặc <b>Nhập file 3D…</b>.</p>
+      <div class="row" id="linkSources"></div>
+    </div>
+    <div class="panel">
+      <div class="row">
+        <h3 class="grow">Sketchfab — kết quả trong plugin</h3>
+        <label class="check"><input id="sfDownloadable" type="checkbox" checked> Chỉ model cho phép tải</label>
+        <button id="btnSfSearch" class="primary">Tìm trên Sketchfab</button>
+      </div>
+      <p class="muted small">Dữ liệu từ Sketchfab Data API chính thức. Tải về cần Sketchfab API token (Cài đặt) và chỉ có định dạng glTF/GLB/USDZ — <b>không phải SKP</b>. Models provided by Sketchfab.</p>
+      <div id="sfMsg" class="msg" hidden></div>
+      <div id="sfGrid" class="grid"></div>
+      <div class="pager" id="sfPager" hidden>
+        <button id="sfPrev">‹ Trước</button><span id="sfInfo"></span><button id="sfNext">Sau ›</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Nhập file đã tải</h3>
+      <div class="row">
+        <button id="btnImportSkp2">Chèn file SKP…</button>
+        <button id="btnImport3d">Nhập file 3D (DAE/3DS/KMZ/STL…)…</button>
+      </div>
+      <p class="muted small">Sau khi nhập, kiểm tra lại tỉ lệ bằng Tape Measure và vật liệu. SketchUp 2022 không nhập trực tiếp glTF/GLB.</p>
+    </div>
+  </section>
+
+  <!-- Cài đặt -->
+  <section id="viewSettings" class="view" hidden>
+    <div class="panel">
+      <h3>Thư mục thư viện SKP</h3>
+      <div id="rootList" class="list"></div>
+      <div class="row">
+        <button id="btnAddRoot2" class="primary">+ Thêm thư mục</button>
+        <button id="btnScanQuick">Quét nhanh</button>
+        <button id="btnScanFull" title="Đọc lại toàn bộ file, bỏ qua cache">Quét lại toàn bộ</button>
+      </div>
+      <div class="row">
+        <label class="check"><input id="sQuick" type="checkbox"> Quét nhanh (dùng cache thư mục không đổi)</label>
+        <label class="check"><input id="sScanOpen" type="checkbox"> Tự quét khi mở thư viện</label>
+      </div>
+      <div id="scanSummary" class="muted small"></div>
+      <details id="scanErrors" hidden><summary>Các mục lỗi khi quét</summary><div id="scanErrList" class="errlist"></div></details>
+    </div>
+
+    <div class="panel">
+      <h3>Hiển thị</h3>
+      <div class="row">
+        <label>Số model mỗi trang <select id="sPage"><option>24</option><option>48</option><option>96</option><option>150</option></select></label>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>AI — OpenAI (gợi ý từ khóa từ ảnh)</h3>
+      <p id="keyState" class="small"></p>
+      <div class="row">
+        <input id="sKey" type="password" placeholder="Dán OpenAI API key (sk-…)" autocomplete="off" spellcheck="false" class="grow">
+        <label class="check" id="rememberKeyWrap"><input id="sRememberKey" type="checkbox"> Ghi nhớ trên máy này (mã hóa DPAPI)</label>
+        <button id="btnSaveKey" class="primary">Lưu key</button>
+        <button id="btnClearKey">Xóa key</button>
+      </div>
+      <div class="row">
+        <label>Model <input id="sModel" list="modelList" spellcheck="false"></label>
+        <datalist id="modelList"><option value="gpt-6-luna"><option value="gpt-6-sol"><option value="gpt-5.4-mini"></datalist>
+        <label>Độ chi tiết ảnh <select id="sDetail"><option value="low">Thấp (rẻ)</option><option value="auto">Tự động</option><option value="high">Cao</option></select></label>
+        <label class="grow">Endpoint <input id="sBase" spellcheck="false"></label>
+        <button id="btnCheckAi">Kiểm tra API</button>
+      </div>
+      <p id="aiCheck" class="small"></p>
+      <p class="muted small">Key chỉ giữ trong phiên SketchUp (mặc định), hoặc lấy từ biến môi trường OPENAI_API_KEY, hoặc lưu mã hóa Windows DPAPI nếu bạn chọn. Key không bao giờ được ghi vào settings.json hay log. Ảnh chỉ được gửi khi bạn bấm xác nhận; phí API tính theo tài khoản OpenAI của bạn.</p>
+    </div>
+
+    <div class="panel">
+      <h3>Sketchfab</h3>
+      <p id="sfState" class="small"></p>
+      <div class="row">
+        <input id="sSfToken" type="password" placeholder="Sketchfab API token" autocomplete="off" spellcheck="false" class="grow">
+        <select id="sSfType"><option value="token">API token</option><option value="bearer">OAuth access token</option></select>
+        <label class="check" id="rememberSfWrap"><input id="sRememberSf" type="checkbox"> Ghi nhớ (DPAPI)</label>
+        <button id="btnSaveSf" class="primary">Lưu token</button>
+        <button id="btnClearSf">Xóa token</button>
+      </div>
+      <p class="muted small">Lấy API token tại trang cài đặt tài khoản Sketchfab <button id="btnSfTokenPage" class="link">(mở trang)</button>. Token chỉ dùng để tải model được phép tải và phải tuân thủ giấy phép của tác giả.</p>
+    </div>
+
+    <div class="panel">
+      <h3>Mạng</h3>
+      <div class="row">
+        <label>Timeout (giây) <input id="sTimeout" type="number" min="5" max="180" step="5"></label>
+        <button id="btnCheckNet">Kiểm tra kết nối</button>
+        <span id="netText" class="small"></span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Cập nhật & dữ liệu</h3>
+      <div class="row">
+        <span id="verInfo" class="grow small"></span>
+        <button id="btnUpdate2" class="primary">⟳ Mở trình cập nhật</button>
+      </div>
+      <p class="small">Dữ liệu người dùng (thư mục thư viện, chỉ mục, thumbnail, yêu thích, lịch sử, cài đặt) lưu riêng tại: <code id="dataRoot"></code> — không bị ảnh hưởng khi cập nhật/khôi phục plugin.</p>
+      <div class="row">
+        <button id="btnOpenData">Mở thư mục dữ liệu</button>
+        <button id="btnOpenLog">Mở thư mục log</button>
+        <button id="btnClearThumbs">Xóa cache thumbnail</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="status" id="statusBar">
+  <span id="statusMsg">Đang khởi động…</span>
+  <span id="statusHint" class="hint"></span>
+</footer>
+
+<!-- AI -->
+<div id="aiModal" class="modal" hidden>
+  <div class="dialog">
+    <div class="dhead"><b>✦ AI gợi ý từ khóa từ ảnh</b><button id="aiClose" class="x" title="Đóng">×</button></div>
+    <p class="muted small">AI nhận diện loại đồ vật, phong cách, vật liệu, màu sắc rồi tạo từ khóa tìm kiếm Việt/Anh. Đây là tìm kiếm bằng <b>từ khóa do AI gợi ý</b>, chưa phải tìm ảnh tương đồng.</p>
+    <div class="aibody">
+      <div class="aiimg"><img id="aiImg" alt=""><div id="aiNoImg" class="muted">Chưa chọn ảnh</div></div>
+      <div class="aiinfo">
+        <p id="aiFileInfo" class="small"></p>
+        <div id="aiConsent" class="consent" hidden>
+          Ảnh trên sẽ được <b>gửi tới <span id="aiEndpoint"></span></b> (model <span id="aiModelName"></span>) để phân tích. Có thể phát sinh phí API.
+          Ảnh được thu nhỏ tối đa 1280 px trước khi gửi. Không ảnh nào trong thư viện của bạn được tải lên.
+        </div>
+        <div class="row">
+          <button id="aiPick">Chọn ảnh…</button>
+          <button id="aiSend" class="primary" disabled>Đồng ý gửi & phân tích</button>
+          <button id="aiCancel" hidden>Hủy</button>
+        </div>
+        <div id="aiState" class="small"></div>
+      </div>
+    </div>
+    <div id="aiResult" hidden>
+      <div class="fields">
+        <label>Loại đồ vật <input id="rType"></label>
+        <label>Phong cách <input id="rStyle"></label>
+        <label>Vật liệu <input id="rMat"></label>
+        <label>Màu sắc <input id="rColor"></label>
+      </div>
+      <div class="fields two">
+        <label>Từ khóa tiếng Việt (mỗi dòng 1 cụm) <textarea id="rVi" rows="4"></textarea></label>
+        <label>Từ khóa tiếng Anh (mỗi dòng 1 cụm) <textarea id="rEn" rows="4"></textarea></label>
+      </div>
+      <div id="rChips" class="chips"></div>
+      <div class="row">
+        <button id="rOffline" class="primary">Tìm Offline (tất cả từ khóa)</button>
+        <button id="rSketchfab">Tìm trên Sketchfab</button>
+        <button id="rWarehouse">Mở 3D Warehouse</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Xác nhận nạp file phiên bản mới hơn -->
+<div id="newerModal" class="modal" hidden>
+  <div class="dialog narrow">
+    <div class="dhead"><b>File SKP phiên bản mới hơn</b><button class="x" data-close="newerModal">×</button></div>
+    <p id="newerText"></p>
+    <p class="muted small">SketchUp có thể nạp với chế độ “cho phép phiên bản mới hơn”, một số dữ liệu có thể bị mất. Nên lưu file bằng phiên bản tương thích (Save As 2022) nếu có thể.</p>
+    <div class="row"><button id="newerYes" class="primary">Vẫn thử nạp</button><button data-close="newerModal">Hủy</button></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

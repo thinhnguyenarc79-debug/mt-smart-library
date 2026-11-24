@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file: 'unsafe-eval'; style-src 'self' file: 'unsafe-inline'; img-src data: 'self' file:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Cập nhật MT SMART LIBRARY PRO</title>
+<link rel="stylesheet" href="../ui/app.css">
+<style>
+body{overflow:auto}
+.uhead{background:var(--navy);color:#fff;padding:14px 18px;display:flex;align-items:center;gap:14px}
+.uhead b{font-size:16px}.uhead small{color:#a9c7df;display:block}
+.ver{margin-left:auto;text-align:right}.ver .big{font-size:22px;font-weight:700;color:var(--gold)}
+.wrap{padding:14px 18px}
+.steps{list-style:none;padding:0;margin:8px 0;display:flex;flex-direction:column;gap:5px}
+.steps li{padding:6px 10px;border-radius:6px;background:#f3f6f9;color:var(--muted)}
+.steps li.done{background:#e4f4ea;color:var(--ok)}.steps li.cur{background:#fff4dc;color:#7a5a12;font-weight:600}.steps li.fail{background:#fde7e4;color:var(--err);font-weight:600}
+.kv{display:grid;grid-template-columns:150px 1fr;gap:4px 10px;margin:6px 0}
+.kv span:nth-child(odd){color:var(--muted)}
+ul.cl{margin:6px 0 6px 18px;padding:0;line-height:1.55}
+.result{padding:10px 12px;border-radius:8px;margin:8px 0;line-height:1.55}
+.result.ok{background:#e4f4ea}.result.err{background:#fde7e4}.result.warn{background:#fff4dc}
+table{width:100%;border-collapse:collapse;font-size:12px}td,th{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600}
+</style>
+</head>
+<body>
+<div class="uhead">
+  <div><b>⟳ MT SMART UPDATE SYSTEM</b><small>Cập nhật, sao lưu và khôi phục MT SMART LIBRARY PRO</small></div>
+  <div class="ver"><small>Phiên bản đang dùng</small><div class="big" id="curVer">…</div><small id="envInfo"></small></div>
+</div>
+<div class="wrap">
+  <div id="banner" class="result warn" hidden></div>
+
+  <div class="panel">
+    <h3>1. Cập nhật từ file RBZ / ZIP</h3>
+    <p class="muted small">Chọn gói cập nhật do MT Design/Claude cung cấp. Plugin kiểm tra cấu trúc, mã định danh, phiên bản, tương thích và đường dẫn an toàn trước khi cài. Không cần gỡ bản cũ.</p>
+    <div class="row"><button id="pick" class="primary">Chọn file cập nhật…</button></div>
+    <div id="pkgErr" class="result err" hidden></div>
+    <div id="pkg" hidden>
+      <div class="kv">
+        <span>Phiên bản trong gói</span><b id="pVer"></b>
+        <span>So với hiện tại</span><span id="pRel"></span>
+        <span>Tương thích</span><span id="pCompat"></span>
+        <span>Mã định danh</span><span id="pId"></span>
+        <span>Số file / dung lượng</span><span id="pFiles"></span>
+        <span>SHA256</span><code id="pSha"></code>
+      </div>
+      <div><b>Nội dung thay đổi:</b><ul class="cl" id="pLog"></ul></div>
+      <div class="row"><button id="install" class="primary">Sao lưu & cài đặt phiên bản này</button></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>2. Cập nhật online</h3>
+    <div class="row">
+      <label>Nguồn <select id="src"><option value="none">Chưa cấu hình</option><option value="manifest">URL manifest JSON</option><option value="github">GitHub Releases</option></select></label>
+      <input id="srcUrl" class="grow" placeholder="https://…/update_manifest.json" spellcheck="false">
+      <input id="srcRepo" class="grow" placeholder="chu-so-huu/ten-repo" spellcheck="false">
+      <label class="check"><input id="srcAuto" type="checkbox"> Tự kiểm tra khi mở SketchUp (không tự cài)</label>
+      <button id="saveSrc">Lưu nguồn</button>
+    </div>
+    <div class="row"><button id="check">Kiểm tra cập nhật online</button><span id="onState" class="small"></span></div>
+    <div id="online" hidden>
+      <div class="kv">
+        <span>Phiên bản mới nhất</span><b id="oVer"></b>
+        <span>Ngày phát hành</span><span id="oDate"></span>
+        <span>Tương thích</span><span id="oCompat"></span>
+        <span>Dung lượng</span><span id="oSize"></span>
+      </div>
+      <div><b>Nội dung thay đổi:</b><ul class="cl" id="oLog"></ul></div>
+      <div class="row"><button id="installOnline" class="primary">Tải, kiểm tra SHA256 & cài đặt</button></div>
+    </div>
+    <p class="muted small">Manifest JSON gồm: plugin_id, version, download_url (https), sha256, size, min_sketchup, min_ruby, changelog. Gói tải về luôn được kiểm tra SHA256 trước khi cài. Không bao giờ tự cài khi chưa có sự đồng ý của bạn.</p>
+  </div>
+
+  <div class="panel" id="progressPanel" hidden>
+    <h3>Tiến trình</h3>
+    <ul class="steps" id="steps"></ul>
+    <div id="dlBar" hidden><div class="bar"><i id="dlFill"></i></div><span id="dlText" class="small"></span></div>
+    <div id="result" class="result" hidden></div>
+  </div>
+
+  <div class="panel">
+    <h3>3. Khôi phục phiên bản trước</h3>
+    <p class="muted small">Mỗi lần cập nhật đều sao lưu bản đang chạy (giữ 5 bản gần nhất). Dữ liệu người dùng không nằm trong bản sao lưu mã nguồn và không bị thay đổi.</p>
+    <table><thead><tr><th>Phiên bản</th><th>Thời điểm sao lưu</th><th>Lý do</th><th></th></tr></thead><tbody id="backups"></tbody></table>
+    <div class="row" style="margin-top:8px"><button id="openBackups">Mở thư mục sao lưu</button></div>
+  </div>
+
+  <div class="panel">
+    <h3>Nhật ký cập nhật</h3>
+    <table><thead><tr><th>Thời điểm</th><th>Thao tác</th><th>Từ → Đến</th><th>Kết quả</th></tr></thead><tbody id="history"></tbody></table>
+    <div class="row" style="margin-top:8px"><button id="openLog">Mở thư mục log</button></div>
+    <p class="small">Thư mục plugin: <code id="plugRoot"></code><br>Dữ liệu người dùng (không bị ghi đè khi cập nhật): <code id="dataRoot"></code></p>
+  </div>
+</div>
+
+<div id="confirmModal" class="modal" hidden>
+  <div class="dialog narrow">
+    <div class="dhead"><b id="cTitle">Xác nhận</b></div>
+    <p id="cText"></p>
+    <div class="row"><button id="cYes" class="primary">Tiếp tục</button><button id="cNo">Hủy</button></div>
+  </div>
+</div>
+<script src="update_dialog.js"></script>
+</body>
+</html>

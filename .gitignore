@@ -1,0 +1,4 @@
+dist/
+*.part
+.verify/
+*.tmp*

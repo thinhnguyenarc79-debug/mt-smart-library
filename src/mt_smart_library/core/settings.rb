@@ -1,0 +1,206 @@
+# frozen_string_literal: true
+require 'json'
+
+module MTDesign
+  module SmartLibrary
+    # settings.json có schema; KHÔNG BAO GIỜ chứa API key/token (chỉ lưu theo whitelist).
+    class Settings
+      SCHEMA = 2
+      DEFAULT_MODEL = 'gpt-6-luna'
+      LEGACY_DEFAULT_MODELS = %w[gpt-4.1-mini].freeze
+      SORTS = %w[relevance name name_desc small large new old].freeze
+      DEFAULTS = {
+        'schema' => SCHEMA,
+        'roots' => [],
+        'favorites' => [],
+        'history' => [],
+        'quick_scan' => true,
+        'scan_on_open' => true,
+        'ui' => { 'page_size' => 48, 'sort' => 'relevance', 'size_max_mb' => 0, 'tab' => 'offline' },
+        'ai' => { 'model' => DEFAULT_MODEL, 'base_url' => 'https://api.openai.com/v1', 'detail' => 'low', 'remember_key' => false },
+        'sketchfab' => { 'downloadable_only' => true, 'token_type' => 'token', 'remember_token' => false },
+        'net' => { 'timeout' => 30 },
+        'update' => { 'source' => 'none', 'manifest_url' => '', 'github_repo' => '', 'check_on_start' => false }
+      }.freeze
+      HISTORY_MAX = 300
+      FAVORITES_MAX = 20_000
+
+      attr_reader :path, :data, :load_warning
+
+      def initialize(path, logger = nil)
+        @path = path
+        @logger = logger
+        @data = deep_dup(DEFAULTS)
+        @load_warning = nil
+        load
+      end
+
+      def [](key)
+        @data[key]
+      end
+
+      def load
+        raw = begin
+          Util.read_json(@path)
+        rescue StandardError => e
+          quarantine(e)
+          begin
+            Util.read_json(@path)
+          rescue StandardError
+            nil
+          end
+        end
+        @data = sanitize(raw.is_a?(Hash) ? migrate(raw) : {})
+      end
+
+      def save
+        Util.atomic_write(@path, JSON.pretty_generate(@data))
+      rescue StandardError => e
+        @logger&.error('Không ghi được settings.json', e)
+        false
+      end
+
+      def roots
+        @data['roots']
+      end
+
+      def add_root(path)
+        p = Util.norm_path(path)
+        return false if p.empty?
+        return false if roots.any? { |r| Util.path_key(r) == Util.path_key(p) }
+        roots << p
+        true
+      end
+
+      def remove_root(path)
+        k = Util.path_key(path)
+        before = roots.size
+        roots.reject! { |r| Util.path_key(r) == k }
+        before != roots.size
+      end
+
+      def toggle_favorite(id)
+        f = @data['favorites']
+        if f.include?(id)
+          f.delete(id)
+          false
+        else
+          f.unshift(id)
+          f.pop while f.size > FAVORITES_MAX
+          true
+        end
+      end
+
+      def push_history(id)
+        h = @data['history']
+        h.delete(id)
+        h.unshift(id)
+        h.pop while h.size > HISTORY_MAX
+      end
+
+      # Cập nhật từ UI: chỉ nhận khóa hợp lệ.
+      def apply_ui(patch)
+        return unless patch.is_a?(Hash)
+        merged = deep_dup(@data)
+        %w[quick_scan scan_on_open].each { |k| merged[k] = patch[k] if patch.key?(k) }
+        %w[ui ai sketchfab net update].each do |sec|
+          next unless patch[sec].is_a?(Hash)
+          patch[sec].each { |k, v| merged[sec][k] = v if DEFAULTS[sec].key?(k) }
+        end
+        @data = sanitize(merged)
+      end
+
+      def public_hash
+        deep_dup(@data)
+      end
+
+      private
+
+      def migrate(raw)
+        d = deep_dup(raw)
+        unless d['schema'].is_a?(Integer)
+          # Bản gốc: {'roots','favorites','history','model'}
+          model = d.delete('model')
+          d['ai'] ||= {}
+          if model.is_a?(String) && !model.strip.empty? && !LEGACY_DEFAULT_MODELS.include?(model.strip)
+            d['ai']['model'] = model.strip
+          end
+          d['schema'] = SCHEMA
+        end
+        d
+      end
+
+      def sanitize(raw)
+        out = deep_dup(DEFAULTS)
+        out['roots'] = str_list(raw['roots']).map { |r| Util.norm_path(r) }.reject(&:empty?).uniq { |r| Util.path_key(r) }
+        out['favorites'] = id_list(raw['favorites']).first(FAVORITES_MAX)
+        out['history'] = id_list(raw['history']).first(HISTORY_MAX)
+        out['quick_scan'] = bool(raw['quick_scan'], true)
+        out['scan_on_open'] = bool(raw['scan_on_open'], true)
+        ui = raw['ui'].is_a?(Hash) ? raw['ui'] : {}
+        ps = ui['page_size'].to_i
+        out['ui']['page_size'] = [24, 48, 96, 150].include?(ps) ? ps : 48
+        out['ui']['sort'] = SORTS.include?(ui['sort']) ? ui['sort'] : 'relevance'
+        out['ui']['size_max_mb'] = [0, 5, 10, 20, 50, 100].include?(ui['size_max_mb'].to_i) ? ui['size_max_mb'].to_i : 0
+        out['ui']['tab'] = %w[offline online favorites history settings].include?(ui['tab']) ? ui['tab'] : 'offline'
+        ai = raw['ai'].is_a?(Hash) ? raw['ai'] : {}
+        m = ai['model'].to_s.strip
+        out['ai']['model'] = m =~ /\A[A-Za-z0-9._:\-\/]{2,80}\z/ ? m : DEFAULT_MODEL
+        b = ai['base_url'].to_s.strip.sub(%r{/+\z}, '')
+        out['ai']['base_url'] = b =~ %r{\Ahttps://[^\s]+\z} ? b : DEFAULTS['ai']['base_url']
+        out['ai']['detail'] = %w[low high auto].include?(ai['detail']) ? ai['detail'] : 'low'
+        out['ai']['remember_key'] = bool(ai['remember_key'], false)
+        sf = raw['sketchfab'].is_a?(Hash) ? raw['sketchfab'] : {}
+        out['sketchfab']['downloadable_only'] = bool(sf['downloadable_only'], true)
+        out['sketchfab']['token_type'] = %w[token bearer].include?(sf['token_type']) ? sf['token_type'] : 'token'
+        out['sketchfab']['remember_token'] = bool(sf['remember_token'], false)
+        net = raw['net'].is_a?(Hash) ? raw['net'] : {}
+        t = net['timeout'].to_i
+        out['net']['timeout'] = t.between?(5, 180) ? t : 30
+        up = raw['update'].is_a?(Hash) ? raw['update'] : {}
+        out['update']['source'] = %w[none manifest github].include?(up['source']) ? up['source'] : 'none'
+        mu = up['manifest_url'].to_s.strip
+        out['update']['manifest_url'] = mu =~ %r{\Ahttps://\S+\z} ? mu : ''
+        gr = up['github_repo'].to_s.strip
+        out['update']['github_repo'] = gr =~ %r{\A[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+\z} ? gr : ''
+        out['update']['check_on_start'] = bool(up['check_on_start'], false)
+        out
+      end
+
+      def quarantine(exc)
+        bad = "#{@path}.corrupt-#{Time.now.strftime('%Y%m%d%H%M%S')}"
+        File.rename(@path, bad) if File.exist?(@path)
+        @load_warning = "settings.json bị hỏng, đã chuyển sang #{File.basename(bad)} và dùng cấu hình mặc định."
+        @logger&.error(@load_warning, exc)
+        # Thử khôi phục từ bản .bak
+        bak = "#{@path}.bak"
+        return unless File.file?(bak)
+        begin
+          Util.read_json(bak)
+          FileUtils.cp(bak, @path)
+          @load_warning += ' Đã khôi phục từ bản sao lưu settings.json.bak.'
+        rescue StandardError
+          nil
+        end
+      rescue StandardError
+        nil
+      end
+
+      def str_list(v)
+        Array(v).select { |x| x.is_a?(String) }.map { |x| Util.utf8(x) }
+      end
+
+      def id_list(v)
+        str_list(v).select { |x| x =~ /\A[0-9a-f]{64}\z/ }.uniq
+      end
+
+      def bool(v, default)
+        v == true || v == false ? v : default
+      end
+
+      def deep_dup(o)
+        JSON.parse(JSON.generate(o))
+      end
+    end
+  end
+end

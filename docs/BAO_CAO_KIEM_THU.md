@@ -1,4 +1,27 @@
-# Báo cáo kiểm thử — MT SMART LIBRARY PRO V1.0.0
+# Báo cáo kiểm thử — MT SMART LIBRARY PRO
+
+## V1.0.1 (24/11/2026) — sửa lỗi ô tìm kiếm
+
+Lỗi thực tế báo từ SketchUp 2022: gõ vào ô tìm kiếm không thấy chữ.
+
+| Kiểm tra | Kết quả |
+|---|---|
+| Tái hiện lỗi bằng CSS V1.0.0 trên Chromium: `#q` có color/caret/text-fill = rgb(255,255,255) trên nền trắng; là ô duy nhất bị (1/18 ô nhập) | ✅ tái hiện đúng |
+| `tests/ui/input_test.js` — 27 kiểm tra bằng bàn phím/chuột thật: màu chữ, con trỏ, placeholder, user-select; focus khi click ô và vùng thanh tìm kiếm; gõ tiếng Anh; debounce (11 ký tự → 1 lần tìm); Backspace/Delete; Enter tìm ngay; Ctrl+A/C/V; tiếng Việt kiểu UniKey (xóa lùi + gõ lại) → “ghế sofa”; kiểu IME ghép dấu (không tìm giữa chừng, tìm sau compositionend); nhận 9 loại dữ liệu từ Ruby không mất từ khóa/focus; Escape; 18 ô nhập khác đủ tương phản và gõ được; ô repo trong trình cập nhật | ✅ 27/27 |
+| Toàn bộ test cũ (56 test Ruby, test giao diện, test khởi động từ RBZ) | ✅ |
+| `tools/verify_upgrade.rb`: giải nén V1.0.0, dùng **updater của V1.0.0** cài RBZ V1.0.1 → đúng phiên bản, dữ liệu người dùng (settings, chỉ mục, thumbnail, key mã hóa) giữ nguyên byte-by-byte, không trùng loader; khôi phục về V1.0.0 thành công | ✅ |
+
+Chưa kiểm thử: UniKey thật trên Windows trong CEF của SketchUp 2022 (đã mô phỏng cả 2 kiểu gửi phím của UniKey trên Chromium; Chromium bản mới hơn CEF của SketchUp 2022 — tính năng dùng đều có từ Chromium 86 trở xuống, và giao diện V1.0.0 đã hiển thị đúng trên máy thật).
+
+Checklist nhanh sau khi cập nhật lên V1.0.1 (khởi động lại SketchUp trước):
+1. Bấm ô tìm kiếm → thấy con trỏ nhấp nháy màu tối.
+2. Gõ `ghế sofa` bằng UniKey (Telex/VNI), gõ `modern sofa` → chữ hiển thị rõ, kết quả cập nhật sau khoảng 0,2 giây.
+3. Ctrl+A, Ctrl+C, Ctrl+V, Backspace, Delete, Enter, Escape hoạt động.
+4. Cài đặt: gõ vào các ô key/model/timeout bình thường.
+
+---
+
+## V1.0.0
 
 Ngày: 24/11/2026. Môi trường kiểm thử tự động: Linux, Ruby 3.3.6 (stub SketchUp/UI), Chrome headless (Playwright).
 **Chưa chạy trong SketchUp 2022 thật trên Windows** → cần chạy checklist mục 3 trước khi dùng chính thức.

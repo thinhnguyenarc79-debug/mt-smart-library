@@ -81,42 +81,42 @@ class TestUpdater < Minitest::Test
   # ------------------------------------------------------------------ tests
   def test_full_update_backup_restore_cycle
     File.write(File.join(@plugins, 'mt_smart_library', 'stale_old_file.rb'), '# cũ')
-    pkg = make_pkg('1.0.1')
+    pkg = make_pkg('1.2.1')
     info = @u.inspect_package(pkg, su_major: 22)
-    assert_equal '1.0.1', info['version']
+    assert_equal '1.2.1', info['version']
     assert_equal 'newer', info['relation']
     assert info['compatible']
-    assert_equal ['Bản thử 1.0.1'], info['changelog']
+    assert_equal ['Bản thử 1.2.1'], info['changelog']
     type, payload = run_install(info)
     assert_equal :install_done, type, payload.inspect
-    assert_equal '1.0.1', installed_version
-    assert File.file?(File.join(@plugins, 'mt_smart_library', 'NEW_IN_1_0_1.txt'))
+    assert_equal '1.2.1', installed_version
+    assert File.file?(File.join(@plugins, 'mt_smart_library', 'NEW_IN_1_2_1.txt'))
     refute File.exist?(File.join(@plugins, 'mt_smart_library', 'stale_old_file.rb')), 'file thừa của bản cũ được dọn'
     refute File.exist?(File.join(@plugins, 'mt_smart_library.__old__'))
     refute File.exist?(File.join(@plugins, 'mt_smart_library.rb.bak'))
     assert_equal 1, Dir.glob(File.join(@plugins, '*.rb')).size, 'không tạo loader trùng'
     assert user_data_intact?, 'dữ liệu người dùng phải giữ nguyên'
-    assert_equal '1.0.1', @u.pending_restart_version
+    assert_equal '1.2.1', @u.pending_restart_version
     b = @u.backups.list
     assert_equal 1, b.size
-    assert_equal '1.0.0', b[0]['version']
+    assert_equal SL::VERSION, b[0]['version']
     assert_equal 'ok', @u.history.first['status']
-    assert_includes File.read(@u.log_path), '1.0.0 -> 1.0.1'
+    assert_includes File.read(@u.log_path), "#{SL::VERSION} -> 1.2.1"
 
     # Khôi phục bản trước
     rinfo = @u.inspect_backup(b[0]['id'], su_major: 22)
-    assert_equal '1.0.0', rinfo['version']
+    assert_equal SL::VERSION, rinfo['version']
     type, = run_install(rinfo, 'Khôi phục phiên bản')
     assert_equal :install_done, type
-    assert_equal '1.0.0', installed_version
-    refute File.exist?(File.join(@plugins, 'mt_smart_library', 'NEW_IN_1_0_1.txt'))
+    assert_equal SL::VERSION, installed_version
+    refute File.exist?(File.join(@plugins, 'mt_smart_library', 'NEW_IN_1_2_1.txt'))
     assert File.exist?(File.join(@plugins, 'mt_smart_library', 'stale_old_file.rb')), 'khôi phục đúng nguyên trạng bản cũ'
     assert_equal 2, @u.backups.list.size
     assert user_data_intact?
   end
 
   def test_auto_rollback_when_verify_fails
-    pkg = make_pkg('1.0.2')
+    pkg = make_pkg('1.2.2')
     info = @u.inspect_package(pkg, su_major: 22)
     before = snapshot(@plugins)
     @u.define_singleton_method(:verify_tree!) do |src|
@@ -186,7 +186,7 @@ class TestUpdater < Minitest::Test
   end
 
   def test_corrupted_package_crc
-    pkg = make_pkg('1.0.3')
+    pkg = make_pkg('1.2.3')
     e = SL::ZipReader.new(pkg).entries.find { |x| x.name == 'mt_smart_library/updater/version.rb' }
     bytes = File.binread(pkg)
     nlen, elen = bytes.byteslice(e.offset + 26, 4).unpack('vv')

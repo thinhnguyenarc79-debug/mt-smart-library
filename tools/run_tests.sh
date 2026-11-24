@@ -11,4 +11,6 @@ done
 if command -v node >/dev/null 2>&1 && [ -x /usr/bin/google-chrome ]; then
   echo "== UI (Chrome headless)"
   node ui/ui_test.js "${SHOTS:-/tmp}"
+  echo "== Ô nhập liệu (Chrome headless)"
+  node ui/input_test.js "${SHOTS:-/tmp}"
 fi

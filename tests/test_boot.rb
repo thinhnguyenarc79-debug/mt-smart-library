@@ -62,7 +62,7 @@ class TestBoot < Minitest::Test
     load loader # nạp lại (ví dụ người dùng cài đè khi SketchUp đang mở)
     load File.join($plugins, 'mt_smart_library', 'main.rb')
     assert_equal 1, $registered.size, 'chỉ đăng ký 1 extension'
-    assert_equal '1.0.0', $registered[0].version
+    assert_equal File.read(File.join($plugins, 'mt_smart_library', 'updater', 'version.rb'))[/VERSION = '([^']+)'/, 1], $registered[0].version
     assert_equal 1, $toolbars.size, 'chỉ 1 toolbar'
     assert_equal 2, $toolbars[0].items.size
     assert_equal 1, $menu_items.count { |t, _| t == :submenu }, 'không trùng menu'

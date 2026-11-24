@@ -1,4 +1,4 @@
-# MT SMART LIBRARY PRO — V1.0.0
+# MT SMART LIBRARY PRO — V1.0.1
 
 Plugin SketchUp quản lý thư viện model 3D cho MT Design (Kiến trúc & Nội thất Mạnh Trường).
 Tương thích **SketchUp 2022 (Ruby 2.7.2) trên Windows**. Mã định danh plugin: `mtdesign.smart_library_pro`.
@@ -6,13 +6,13 @@ Tương thích **SketchUp 2022 (Ruby 2.7.2) trên Windows**. Mã định danh pl
 ## 1. Cài đặt
 
 1. Mở SketchUp 2022 → **Extensions › Extension Manager › Install Extension**.
-2. Chọn file `MT_SMART_LIBRARY_PRO_v1.0.0.rbz` → **Yes** để cài.
+2. Chọn file `MT_SMART_LIBRARY_PRO_v1.0.1.rbz` → **Yes** để cài.
 3. Khởi động lại SketchUp (khuyến nghị).
 4. Mở bằng toolbar **MT SMART LIBRARY PRO** (2 nút: *Mở thư viện* và *Cập nhật*) hoặc menu
    **Extensions › MT SMART LIBRARY PRO**.
 
 Nếu máy đã có bản mẫu cũ (`mt_smart_library.rb` cùng tên), cài RBZ mới sẽ ghi đè. Danh sách thư mục,
-yêu thích và lịch sử của bản cũ được tự chuyển sang V1.0.0.
+yêu thích và lịch sử của bản cũ được tự chuyển sang bản mới.
 
 Từ V1.0.0 trở đi, cập nhật bằng nút **⟳ CẬP NHẬT** trong plugin, không cần gỡ bản cũ (xem mục 4).
 
@@ -95,6 +95,6 @@ HtmlDialog và thao tác model chạy ở main thread qua `UI.start_timer`.
 ## 6. Build và kiểm thử (dành cho lập trình)
 
 ```bash
-tools/run_tests.sh      # 56 test Ruby + test giao diện Chrome headless
+tools/run_tests.sh      # 56 test Ruby + 2 bộ test giao diện Chrome headless
 ruby tools/build.rb     # kiểm tra cú pháp, đồng bộ phiên bản, tạo dist/*.rbz + dist/update_manifest.json
 ```

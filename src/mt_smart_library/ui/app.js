@@ -6,7 +6,7 @@
     tab: 'offline', page: 0, pages: 1, seq: 0, lastSeq: 0, anyOf: null, settings: null, secrets: null,
     thumbs: new Map(), thumbWant: new Set(), thumbTimer: null, observer: null,
     sf: { q: '', cursor: null, stack: [], next: null, seq: 0 }, sfItems: new Map(), dl: new Map(),
-    ai: { src: null, mime: null, busy: false }, newerId: null, debounce: null, version: ''
+    ai: { src: null, mime: null, busy: false }, newerId: null, debounce: null, version: '', composing: false
   };
 
   function call(name) {
@@ -47,6 +47,10 @@
       sort: $('fSort').value, size_max_mb: Number($('fSize').value), root: $('fRoot').value,
       per_page: S.settings ? S.settings.ui.page_size : 48
     });
+  }
+  function onQueryChanged() {
+    if (S.anyOf) { S.anyOf = null; updateAiFilter(); }
+    if (S.tab === 'offline' || S.tab === 'favorites' || S.tab === 'history') searchSoon();
   }
   function searchSoon() { clearTimeout(S.debounce); S.debounce = setTimeout(function () { S.page = 0; search(); }, 220); }
 
@@ -387,10 +391,19 @@
   // ---------------------------------------------------------------- Sự kiện
   function bind() {
     document.querySelectorAll('#tabs [data-tab]').forEach(function (b) { b.addEventListener('click', function () { setTab(b.dataset.tab); }); });
-    $('q').addEventListener('input', function () { if (S.anyOf) { S.anyOf = null; updateAiFilter(); } searchSoon(); });
-    $('q').addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') { if (S.tab === 'online') sfSearch(null); else { clearTimeout(S.debounce); S.page = 0; search(); } }
-      if (e.key === 'Escape') { $('q').value = ''; searchSoon(); }
+    // Ô tìm kiếm (V1.0.1): hỗ trợ bộ gõ ghép dấu (UniKey/IME), không tìm giữa chừng khi đang ghép chữ.
+    var q = $('q');
+    q.addEventListener('compositionstart', function () { S.composing = true; });
+    q.addEventListener('compositionend', function () { S.composing = false; onQueryChanged(); });
+    q.addEventListener('input', function (e) { if (e.isComposing || S.composing) return; onQueryChanged(); });
+    q.addEventListener('keydown', function (e) {
+      if (e.isComposing || S.composing || e.keyCode === 229) return;
+      if (e.key === 'Enter') { e.preventDefault(); if (S.tab === 'online') sfSearch(null); else { clearTimeout(S.debounce); S.page = 0; search(); } }
+      else if (e.key === 'Escape' && q.value) { e.stopPropagation(); q.value = ''; onQueryChanged(); }
+    });
+    document.querySelector('.search').addEventListener('mousedown', function (e) {
+      if (e.target === q || e.target.closest('button')) return;
+      e.preventDefault(); q.focus();
     });
     ['fRoot', 'fSize', 'fSort'].forEach(function (id) { $(id).addEventListener('change', function () { S.page = 0; search(); }); });
     $('fSort').addEventListener('change', function () { saveSettings({ ui: { sort: $('fSort').value } }); });

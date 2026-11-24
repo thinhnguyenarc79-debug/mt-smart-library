@@ -2,7 +2,11 @@
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;display:flex;flex-direction:column;background:var(--bg);color:var(--text);font:13px "Segoe UI",Tahoma,Arial,sans-serif;overflow:hidden}
-button,input,select,textarea{font:inherit;color:inherit}
+button{font:inherit;color:inherit}
+/* V1.0.1: ô nhập luôn có màu chữ tối riêng, không kế thừa màu trắng của thanh tiêu đề */
+input,select,textarea{font:inherit;color:#1d2939;-webkit-text-fill-color:#1d2939;caret-color:#1d2939;user-select:text;-webkit-user-select:text}
+input::placeholder,textarea::placeholder{color:#8492a6;-webkit-text-fill-color:#8492a6;opacity:1}
+input:disabled,select:disabled,textarea:disabled{color:#8492a6;-webkit-text-fill-color:#8492a6}
 button{border:1px solid #c9d5e1;background:#fff;border-radius:6px;padding:6px 11px;cursor:pointer;white-space:nowrap}
 button:hover:not(:disabled){background:var(--blue2);border-color:var(--blue)}
 button:disabled{opacity:.5;cursor:default}
@@ -25,7 +29,9 @@ code{background:#eef2f6;padding:1px 4px;border-radius:4px;word-break:break-all}
 .brand small{color:#a9c7df;font-size:11px}
 .logo{width:32px;height:32px;border:2px solid #fff;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:17px}
 .search{flex:1;display:flex;gap:8px}
-.search input{flex:1;min-width:120px;border:0;padding:9px 12px;font-size:14px}
+.search input{flex:1;min-width:120px;border:0;padding:9px 12px;font-size:14px;color:#1d2939;background-color:#ffffff;caret-color:#1d2939;-webkit-text-fill-color:#1d2939;user-select:text;-webkit-user-select:text}
+.search input::placeholder{color:#8492a6;-webkit-text-fill-color:#8492a6;opacity:1}
+.search input::-webkit-search-cancel-button{cursor:pointer}
 .tools{display:flex;align-items:center;gap:10px}
 .dot{width:11px;height:11px;border-radius:50%;background:#7d8b99;display:inline-block}
 .dot.online{background:#3ddc84}.dot.offline{background:#ff6b5b}.dot.checking{background:var(--gold)}

@@ -1,5 +1,14 @@
 # CHANGELOG — MT SMART LIBRARY PRO
 
+## V1.0.1 — 24/11/2026 (bản sửa lỗi)
+
+- **Sửa lỗi**: gõ vào ô tìm kiếm không thấy chữ trên SketchUp 2022. Nguyên nhân: `input` dùng `color: inherit` nằm trong thanh `.top` có `color: #fff` → chữ trắng trên nền trắng (chỉ ô `#q` bị; 17 ô nhập khác không bị).
+- Mọi `input/select/textarea` có màu chữ, `-webkit-text-fill-color`, `caret-color`, placeholder và `user-select: text` riêng; ô tìm kiếm áp dụng đúng khối CSS yêu cầu.
+- Ô tìm kiếm: hỗ trợ bộ gõ ghép dấu (UniKey chế độ TSF/IME) — không gửi tìm kiếm giữa chừng khi đang ghép dấu; Enter tìm ngay; Escape xóa từ khóa; bấm vào vùng thanh tìm kiếm là nhận focus; gõ ở tab Online không gửi tìm offline thừa.
+- Trình cập nhật: thông báo “chưa cấu hình nguồn online” chỉ đúng vị trí (mục 2 trong cửa sổ Cập nhật).
+- Thêm bộ test bàn phím thật trên Chromium (27 kiểm tra): focus, tiếng Anh, UniKey, IME, Ctrl+A/C/V, Backspace/Delete/Enter/Escape, debounce, giữ từ khóa khi nhận dữ liệu từ Ruby, màu chữ của toàn bộ ô nhập.
+- Không thay đổi chức năng khác; MT SMART UPDATE SYSTEM giữ nguyên. Không có chức năng Smart Placement/Curtain/Wall/Ceiling/Parametric Library trong mã nguồn.
+
 ## V1.0.0 — 24/11/2026
 
 Viết lại toàn bộ từ bản mẫu (xem `docs/REVIEW_MA_NGUON_CU.md` — 15 lỗi thực tế của bản mẫu đã được xử lý).

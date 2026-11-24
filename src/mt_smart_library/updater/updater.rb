@@ -322,7 +322,7 @@ module MTDesign
             end
           end
         else
-          cb.call(:error, 'Chưa cấu hình nguồn cập nhật online (Cài đặt > Nguồn cập nhật).')
+          cb.call(:error, 'Chưa cấu hình nguồn cập nhật online. Chọn "GitHub Releases" hoặc "URL manifest JSON" ở mục 2 ngay trong cửa sổ này rồi bấm "Lưu nguồn". Hiện vẫn có thể cập nhật từ file ở mục 1.')
         end
       end
 

@@ -10,7 +10,8 @@ module MTDesign
     # Luồng nền (quét, HTTP, cập nhật) chỉ trao đổi qua Queue/Mutex và được poll bởi timer.
     class App
       TICK = 0.1
-      ALLOWED_OPEN_HOSTS = %w[sketchfab.com www.sketchfab.com platform.openai.com github.com www.blender.org polyhaven.com].freeze
+      ALLOWED_OPEN_HOSTS = (%w[sketchfab.com www.sketchfab.com platform.openai.com github.com www.blender.org polyhaven.com] +
+                            AccountManager.hosts).uniq.freeze
 
       def self.instance
         @instance ||= new
@@ -55,15 +56,15 @@ module MTDesign
           Providers::LocalProvider.new(@index),
           Providers::SketchfabProvider.new(@http, @result_cache, @log),
           Providers::PolyHavenProvider.new(@http, Paths.data_root, @log),
-          Providers::UnavailableProvider.new('warehouse', '3D Warehouse',
-                                             'Chưa tích hợp: Trimble không có API công khai cho plugin bên thứ ba (đã xác nhận trên diễn đàn SketchUp); ' \
-                                             'không thu thập dữ liệu trái điều khoản. Dùng cửa sổ 3D Warehouse có sẵn của SketchUp (Window › 3D Warehouse).'),
-          Providers::UnavailableProvider.new('cgtrader', 'CGTrader',
-                                             'Chưa tích hợp: API CGTrader yêu cầu OAuth client ID/secret do CGTrader cấp cho ứng dụng. ' \
-                                             'Sẽ tích hợp khi MT Design được cấp khóa và tài liệu API.'),
-          Providers::UnavailableProvider.new('3dsky', '3dsky',
-                                             'Chưa tích hợp: 3dsky không công bố API tìm kiếm công khai; không thu thập dữ liệu trái điều khoản.')
-        ]
+          Providers::WpProvider.new('cgtips', @http, @result_cache, @log),
+          Providers::WpProvider.new('sketchupfree', @http, @result_cache, @log),
+          Providers::WpProvider.new('thuviensketchup', @http, @result_cache, @log)
+        ] + AccountManager::SOURCES.reject { |x| AccountManager::INTEGRATED.include?(x['id']) }.map do |x|
+          Providers::UnavailableProvider.new(x['id'], x['name'], "Chưa tích hợp: #{x['note']}")
+        end
+        @watcher = DownloadWatcher.new
+        @found = nil
+        @sf_expired = false
         @converter = ConverterManager.new(settings: @settings, data_root: Paths.data_root, logger: @log)
         @search = SearchManager.new(providers: @providers, settings: @settings, emit: ->(t, pl) { emit(t, pl) }, logger: @log)
       end
@@ -142,6 +143,9 @@ module MTDesign
         cb(d, 'open_data_dir') { |*| UI.openURL(Util.file_url(Paths.data_root)) }
         cb(d, 'open_log') { |*| UI.openURL(Util.file_url(File.dirname(@log.path.to_s))) }
         cb(d, 'open_updater') { |*| show_updater }
+        cb(d, 'insert_found') { |*| insert_found }
+        cb(d, 'found_dismiss') { |*| @found = nil; @watcher.stop }
+        cb(d, 'acct_action') { |id, act| account_action(id.to_s, act.to_s) }
         cb(d, 'convert_cancel') { |*| @converter.cancel_all; status('Đã hủy chuyển đổi.', 'warn'); emit('convert_state', { 'state' => 'cancelled' }) }
         cb(d, 'blender_detect') { |*| blender_detect(nil) }
         cb(d, 'blender_pick') { |*| blender_pick }
@@ -192,7 +196,7 @@ module MTDesign
                'pending_restart' => @updater.pending_restart_version,
                'categories' => Categories.all(@settings['categories_custom']),
                'sources_status' => @providers.map { |p| p.status_info(@settings) },
-               'blender' => @converter.blender_status
+               'blender' => @converter.blender_status, 'accounts' => accounts_state
              })
         flush_support
       end
@@ -213,6 +217,7 @@ module MTDesign
         return status('Không còn thông tin model — hãy tìm lại.', 'warn') unless it
         return insert_sketchfab(it) if it['source'] == 'sketchfab'
         return insert_polyhaven(it) if it['source'] == 'polyhaven'
+        return insert_web(it) if it['web_only']
         status('Nguồn này chưa hỗ trợ chèn trực tiếp.', 'warn')
       end
 
@@ -312,6 +317,32 @@ module MTDesign
         @downloads[uid]['state'] = 'error'
         emit('dl_state', { 'uid' => uid, 'state' => 'error', 'msg' => msg })
         status(msg, 'error')
+      end
+
+      # Nguồn không cho tải tự động: mở trang tải chính thức, theo dõi thư mục Downloads để nhận file người dùng vừa tải.
+      def insert_web(it)
+        site = WpSources::SITES[it['source'].to_s]
+        url = WpSources.safe_https(it['url'], site ? site['hosts'] : [])
+        return status('Liên kết nguồn không hợp lệ.', 'warn') unless url
+        UI.openURL(url)
+        ok = @watcher.start(source: it['source_label'], title: it['title'], passwords: site['zip_passwords'])
+        msg = "Đã mở “#{it['title']}” trên #{it['source_label']}. Tải file trên trang"
+        status(ok ? "#{msg} — plugin sẽ tự nhận file vừa tải để chèn." : "#{msg}, rồi dùng “Chèn file từ máy…”.", 'info')
+        ensure_timer
+      end
+
+      def poll_watcher
+        f = @watcher.poll
+        return unless f
+        @found = f
+        emit('dl_found', { 'name' => File.basename(f[:path]), 'title' => f[:title], 'source' => f[:source] })
+      end
+
+      def insert_found
+        f = @found
+        return status('Không còn file vừa tải.', 'warn') unless f && File.file?(f[:path])
+        @found = nil
+        smart_insert(f[:path], name: f[:title], passwords: f[:passwords])
       end
 
       def fav_any(key)
@@ -521,8 +552,11 @@ module MTDesign
       end
 
       # MỘT điểm vào cho mọi định dạng: chọn cách nhập phù hợp, tự chuyển đổi khi cần.
-      def smart_insert(path, name: nil)
+      def smart_insert(path, name: nil, passwords: [])
         name ||= File.basename(path, '.*')
+        if path =~ /\.(rar|7z)\z/i
+          return status("File #{File.extname(path).upcase} chưa giải nén được trong plugin — giải nén bằng WinRAR/7-Zip rồi dùng “Chèn file từ máy…”.", 'warn')
+        end
         case ImportManager.route(path)
         when :skp then defer { place_any_skp(path) }
         when :gltf
@@ -542,20 +576,25 @@ module MTDesign
               path =~ /\.stl\z/i ? convert_and_insert(path, name) : status("Không nhập được: #{ex.message}", 'error')
             end
           end
-        when :zip then prepare_zip(path, name)
+        when :zip then prepare_zip(path, name, passwords)
         else status("Định dạng #{File.extname(path)} chưa hỗ trợ.", 'error')
         end
       end
 
       # Giải nén ZIP ở luồng nền rồi chèn file model chính.
-      def prepare_zip(path, name)
+      def prepare_zip(path, name, passwords = [])
         return status('Đang xử lý một file khác, vui lòng đợi.', 'warn') if @zip_job
         status('Đang giải nén…')
-        dest = path.sub(/\.zip\z/i, '') + '_extracted'
+        dest = if Util.path_key(path).start_with?(Util.path_key(Paths.data_root))
+                 path.sub(/\.zip\z/i, '') + '_extracted'
+               else # file ở Downloads của người dùng: giải nén vào thư mục dữ liệu plugin, không xả rác ra Downloads
+                 key = Digest::SHA256.hexdigest("#{path}|#{File.size(path)}|#{File.mtime(path).to_i}")[0, 10]
+                 Paths.sub('downloads', 'imported', "#{Util.safe_filename(File.basename(path, '.*'))[0, 60]}_#{key}")
+               end
         t = Thread.new do
           Thread.current.report_on_exception = false
           begin
-            ImportManager.extract_zip(path, dest) unless File.directory?(dest)
+            ImportManager.extract_zip(path, dest, passwords: Array(passwords)) unless File.directory?(dest)
             Thread.current[:pick] = ImportManager.pick_model(dest)
           rescue StandardError => e
             Thread.current[:error] = e.message
@@ -752,6 +791,21 @@ module MTDesign
         env && !env.empty? ? env : nil
       end
 
+      def accounts_state
+        AccountManager.list('sketchfab_token' => !secret('sketchfab').to_s.empty?, 'sketchfab_expired' => @sf_expired)
+      end
+
+      def account_action(id, act)
+        if id == 'sketchfab' && act == 'logout'
+          clear_secret('sketchfab')
+        elsif id == 'sketchfab' && %w[login reconnect].include?(act)
+          emit('need_token', { 'key' => nil })
+        elsif (url = AccountManager.url_for(id, act))
+          open_safe_url(url)
+        end
+        emit('accounts', accounts_state)
+      end
+
       def secrets_state
         {
           'openai' => { 'session' => !@secrets['openai'].to_s.empty?, 'env' => !Util.env_value('OPENAI_API_KEY').to_s.empty?,
@@ -768,6 +822,7 @@ module MTDesign
         return status('Giá trị trống.', 'warn') if v.empty?
         return status('Key/token chứa ký tự không hợp lệ.', 'error') unless v =~ /\A[\x21-\x7e]{8,400}\z/
         @secrets[kind] = v
+        @sf_expired = false if kind == 'sketchfab'
         @log.add_secret(v)
         flag = kind == 'openai' ? %w[ai remember_key] : %w[sketchfab remember_token]
         if o['remember'] == true
@@ -784,6 +839,7 @@ module MTDesign
         end
         @settings.save
         emit('secrets', secrets_state)
+        emit('accounts', accounts_state)
         emit('settings', @settings.public_hash)
       end
 
@@ -795,7 +851,9 @@ module MTDesign
         flag = kind == 'openai' ? %w[ai remember_key] : %w[sketchfab remember_token]
         @settings.data[flag[0]][flag[1]] = false
         @settings.save
+        @sf_expired = false if kind == 'sketchfab'
         emit('secrets', secrets_state)
+        emit('accounts', accounts_state)
         status('Đã xóa key khỏi phiên và khỏi máy.', 'ok')
       end
 
@@ -871,6 +929,10 @@ module MTDesign
         hdr = { 'Authorization' => Sketchfab.auth_header(token, @settings['sketchfab']['token_type']), 'Accept' => 'application/json' }
         @http.request(url: Sketchfab.download_url(uid), headers: hdr, timeout: net_timeout) do |res|
           if !res.ok
+            if res.code == 401
+              @sf_expired = true
+              emit('accounts', accounts_state)
+            end
             msg = res.code > 0 ? Sketchfab.error_message(res.code, res.body) : HttpClient.friendly(res)
             @downloads[uid]['state'] = 'error'
             emit('dl_state', { 'uid' => uid, 'state' => 'error', 'msg' => msg })
@@ -1254,6 +1316,7 @@ module MTDesign
           poll_cache_load
           poll_gltf
           poll_zip
+          poll_watcher
           @converter.poll
           poll_indexer
           @http.poll

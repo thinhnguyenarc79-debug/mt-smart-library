@@ -21,10 +21,19 @@ module MTDesign
 
       attr_reader :path, :entries
 
-      def initialize(path)
+      # Mặc định (gói cập nhật): chặn file mã hóa, tên phải UTF-8, tối đa 200 MB.
+      # Model tải về (V1.0.8): password: mật khẩu ZipCrypto do trang nguồn công bố; lenient: chấp nhận tên CP437/không UTF-8.
+      def initialize(path, password: nil, lenient: false, max_total: MAX_TOTAL)
         @path = path
+        @password = password
+        @lenient = lenient
+        @max_total = max_total
         raise Error, 'Không tìm thấy file gói cập nhật.' unless File.file?(path)
         @entries = read_central
+      end
+
+      def encrypted?
+        @entries.any? { |e| (e.flags & 1) == 1 }
       end
 
       # Kiểm tra đường dẫn entry an toàn; trả lý do lỗi hoặc nil.
@@ -52,6 +61,7 @@ module MTDesign
           f.seek(entry.offset + 30 + nlen + elen)
           raw = f.read(entry.csize) || ''.b
           raise Error, "Dữ liệu thiếu: #{entry.name}" unless raw.bytesize == entry.csize
+          raw = decrypt(raw, entry) if (entry.flags & 1) == 1
           data = case entry.method
                  when 0 then raw
                  when 8
@@ -66,11 +76,52 @@ module MTDesign
                  else raise Error, "Kiểu nén #{entry.method} không hỗ trợ: #{entry.name}"
                  end
           raise Error, "Sai kích thước: #{entry.name}" unless data.bytesize == entry.usize
-          raise Error, "Sai CRC (file hỏng): #{entry.name}" unless Zlib.crc32(data) == entry.crc
+          unless Zlib.crc32(data) == entry.crc
+            raise Error, (entry.flags & 1) == 1 ? "Sai mật khẩu giải nén hoặc file hỏng: #{entry.name}" : "Sai CRC (file hỏng): #{entry.name}"
+          end
           data
         end
       rescue Zlib::Error => e
-        raise Error, "Giải nén lỗi #{entry.name}: #{e.message}"
+        raise Error, (entry.flags & 1) == 1 ? "Sai mật khẩu giải nén hoặc file hỏng: #{entry.name}" : "Giải nén lỗi #{entry.name}: #{e.message}"
+      end
+
+      # ---- ZipCrypto (PKWARE truyền thống) ----
+      CRC_TABLE = (0..255).map do |n|
+        c = n
+        8.times { c = (c & 1) == 1 ? 0xEDB88320 ^ (c >> 1) : c >> 1 }
+        c
+      end.freeze
+
+      def decrypt(raw, entry)
+        raise Error, "File mã hóa cần mật khẩu: #{entry.name}" if @password.nil? || @password.empty?
+        raise Error, "Mã hóa AES chưa hỗ trợ: #{entry.name}" if entry.method == 99
+        raise Error, "Dữ liệu mã hóa hỏng: #{entry.name}" if raw.bytesize < 12
+        t = CRC_TABLE
+        k0 = 0x12345678
+        k1 = 0x23456789
+        k2 = 0x34567890
+        upd = lambda do |b|
+          k0 = t[(k0 ^ b) & 0xff] ^ (k0 >> 8)
+          k1 = ((k1 + (k0 & 0xff)) * 134_775_813 + 1) & 0xffffffff
+          k2 = t[(k2 ^ (k1 >> 24)) & 0xff] ^ (k2 >> 8)
+        end
+        @password.b.each_byte { |b| upd.call(b) }
+        out = raw.b.dup # giải mã tại chỗ, không nhân bộ nhớ
+        i = 0
+        raw.each_byte do |c|
+          tmp = (k2 | 2) & 0xffff
+          p = c ^ (((tmp * (tmp ^ 1)) >> 8) & 0xff)
+          out.setbyte(i, p)
+          i += 1
+          k0 = t[(k0 ^ p) & 0xff] ^ (k0 >> 8)
+          k1 = ((k1 + (k0 & 0xff)) * 134_775_813 + 1) & 0xffffffff
+          k2 = t[(k2 ^ (k1 >> 24)) & 0xff] ^ (k2 >> 8)
+        end
+        # Byte kiểm tra (byte 12 của header) phải khớp CRC (hoặc giờ sửa file khi có data descriptor).
+        chk = out.getbyte(11)
+        ok = chk == (entry.crc >> 24) & 0xff || ((entry.flags & 8) == 8)
+        raise Error, 'Sai mật khẩu giải nén.' unless ok
+        out.byteslice(12, out.bytesize - 12)
       end
 
       private
@@ -107,8 +158,11 @@ module MTDesign
           raw_name = cd.byteslice(p + 46, nlen).to_s
           p += 46 + nlen + elen + clen
           name = raw_name.dup.force_encoding(Encoding::UTF_8)
+          if !name.valid_encoding? && @lenient
+            name = raw_name.dup.force_encoding(Encoding::IBM437).encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: '_')
+          end
           raise Error, 'Tên file trong gói không phải UTF-8.' unless name.valid_encoding?
-          raise Error, "Gói chứa file mã hóa: #{name}" if (flags & 1) == 1
+          raise Error, "Gói chứa file mã hóa: #{name}" if (flags & 1) == 1 && @password.nil?
           raise Error, 'ZIP64 không hỗ trợ.' if [csize, usize, off].include?(0xFFFFFFFF)
           reason = self.class.unsafe_reason(name)
           raise Error, "Đường dẫn nguy hiểm trong gói (#{reason}): #{name}" if reason
@@ -117,7 +171,7 @@ module MTDesign
             raise Error, "Gói chứa symlink (bị chặn): #{name}"
           end
           sum += usize
-          raise Error, 'Gói giải nén quá lớn.' if sum > MAX_TOTAL
+          raise Error, 'Gói giải nén quá lớn.' if sum > @max_total
           list << Entry.new(name, method, csize, usize, off, crc, flags, ext, made_by)
         end
         names = list.map { |e| e.name.downcase }

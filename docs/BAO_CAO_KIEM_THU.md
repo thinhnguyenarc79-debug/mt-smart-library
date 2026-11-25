@@ -1,5 +1,17 @@
 # Báo cáo kiểm thử — MT SMART LIBRARY PRO
 
+## V1.0.8 (25/11/2026)
+
+| Bộ test | Nội dung | Kết quả |
+|---|---|---|
+| `test_sources.rb` (8) | URL REST API lõi WordPress; đọc bài viết/ảnh (bỏ link & ảnh ngoài host, giải mã HTML, bỏ số thứ tự); provider trang Anh (từ khóa dịch, ảnh, cache, hết trang); trang Việt (từ khóa gốc, lọc “giường ngủ” đúng, gói trả phí); lỗi mạng/400 không làm hỏng tìm kiếm; bật/tắt nguồn; theo dõi Downloads (bỏ .crdownload/.txt, chờ ổn định, nhận 1 file); giải nén ZIP mật khẩu (sai mật khẩu báo rõ; gói cập nhật vẫn chặn); trạng thái 12 tài khoản; App: XEM mở đúng trang, nhận file, CHÈN với mật khẩu của trang; chặn link ngoài | ✅ |
+| `ui_test.js` (45) | Tab “Tài khoản thư viện”, trạng thái + nút ĐĂNG NHẬP, thanh CHÈN file vừa tải | ✅ |
+
+Chi tiết từng nguồn: `docs/BAO_CAO_NGUON_THU_VIEN.md`.
+**Chưa kiểm thử thật:** gọi REST API từ SketchUp trên Windows (môi trường test không có mạng ra ngoài), tải file thật từ 3 trang, giải nén file thật của CGTips (có thể là RAR — plugin sẽ báo giải nén thủ công).
+
+---
+
 ## V1.0.6 – V1.0.7 (25/11/2026)
 
 | Bộ test | Nội dung | Kết quả |

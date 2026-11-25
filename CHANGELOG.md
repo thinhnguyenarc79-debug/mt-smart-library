@@ -1,5 +1,15 @@
 # CHANGELOG — MT SMART LIBRARY PRO
 
+## V1.0.8 — 25/11/2026 (Multi-Source Library Engine)
+- `online/wp_sources.rb` + `search/providers/wp_provider.rb`: 3 thư viện SketchUp có WordPress REST API công khai (đã kiểm JSON thật):
+  sketchup.cgtips.org, sketchupfree.com, thuviensketchup.vn. Tìm theo từ khóa (trang Việt: từ khóa gốc; trang Anh: bản dịch), ảnh từ /media, phân trang, cache.
+- Nguồn không cho tải tự động: nút XEM mở trang chính thức; `core/download_watcher.rb` theo dõi thư mục Downloads 30 phút, nhận file vừa tải
+  (bỏ file đang tải dở, chờ dung lượng ổn định) → thanh “Chèn vào SketchUp?” → CHÈN. Giải nén vào thư mục dữ liệu plugin (không xả rác Downloads).
+- ZipReader: hỗ trợ ZIP mã hóa ZipCrypto với mật khẩu do trang nguồn công bố, tên file không UTF-8; gói cập nhật plugin vẫn chặn file mã hóa như cũ.
+- `accounts/account_manager.rb`: tab “Tài khoản thư viện” — 12 website với trạng thái Đã kết nối / Chưa đăng nhập / Không cần đăng nhập / Phiên hết hạn
+  (Sketchfab 401) / Cần cấp quyền API / Chưa xác minh; nút ĐĂNG NHẬP, Đăng xuất, Kết nối lại, Mở trang. Không hỏi mật khẩu, không đọc cookie.
+- Nguồn chưa tích hợp được (3D Warehouse, CGTrader, 3dsky, 3dbox, Sketch Shaper, Tài liệu kiến trúc, sketchup.vn) giữ trong danh sách kèm lý do — xem docs/BAO_CAO_NGUON_THU_VIEN.md.
+
 ## V1.0.7 — 25/11/2026 (Mở rộng nguồn thư viện)
 - Nguồn mới **Poly Haven** (`online/polyhaven.rb`, `search/providers/polyhaven_provider.rb`) qua API chính thức api.polyhaven.com:
   miễn phí mọi mục đích, không cần key; gửi User-Agent riêng; ghi nguồn “Poly Haven” ở chi tiết/tooltip và ATTRIBUTION.txt (điều kiện của API).

@@ -10,9 +10,9 @@ module MTDesign
       updater/version
       core/util core/paths core/logger core/settings core/synonyms core/search_index core/indexer
       core/thumbs core/inserter core/secret_store
-      net/http_client online/link_sources online/sketchfab online/polyhaven ai/vision
+      net/http_client online/link_sources online/sketchfab online/polyhaven online/wp_sources accounts/account_manager core/download_watcher ai/vision
       search/query_normalizer search/categories search/result_cache search/result_ranker
-      search/providers/base_provider search/providers/local_provider search/providers/sketchfab_provider search/providers/polyhaven_provider
+      search/providers/base_provider search/providers/local_provider search/providers/sketchfab_provider search/providers/polyhaven_provider search/providers/wp_provider
       search/search_manager importers/gltf_importer
       convert/blender_runner convert/blender_detector convert/model_cache convert/converter_manager convert/import_manager
       updater/zip_reader updater/backup_manager updater/updater

@@ -1,5 +1,5 @@
 /* MT SMART LIBRARY PRO V1.0.2 — giao diện tìm kiếm tổng hợp.
-   Không tải JS ngoài; mọi dữ liệu hiển thị qua textContent; ảnh chỉ nhận data: hoặc https://media.sketchfab.com, https://cdn.polyhaven.com. */
+   Không tải JS ngoài; mọi dữ liệu hiển thị qua textContent; ảnh chỉ nhận data: hoặc ảnh https từ host nguồn đã tích hợp (IMG_HOSTS). */
 (function () {
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
@@ -21,7 +21,8 @@
   function btn(text, fn, cls, title) { var b = el('button', text, cls); b.type = 'button'; b.addEventListener('click', fn); if (title) b.title = title; return b; }
   function fmtSize(b) { b = Number(b) || 0; if (b < 1024) return b + ' B'; if (b < 1048576) return (b / 1024).toFixed(0) + ' KB'; if (b < 1073741824) return (b / 1048576).toFixed(1) + ' MB'; return (b / 1073741824).toFixed(2) + ' GB'; }
   function fmtDate(t) { if (!t) return ''; var d = new Date(t * 1000); return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear(); }
-  function isSafeImg(u) { return typeof u === 'string' && (/^https:\/\/(media\.sketchfab\.com|cdn\.polyhaven\.com)\//.test(u) || /^data:image\/(png|jpeg|webp|gif);base64,/.test(u)); }
+  var IMG_HOSTS = /^https:\/\/(media\.sketchfab\.com|cdn\.polyhaven\.com|sketchup\.cgtips\.org|img\.sketchupfree\.com|sketchupfree\.com|thuviensketchup\.vn)\//;
+  function isSafeImg(u) { return typeof u === 'string' && (IMG_HOSTS.test(u) || /^data:image\/(png|jpeg|webp|gif);base64,/.test(u)); }
   function setStatus(msg, kind, hint) { $('statusMsg').textContent = msg || ''; $('statusHint').textContent = hint || ''; $('statusBar').className = 'status ' + (kind || ''); }
   function show(id) { $(id).hidden = false; }
   function hide(id) { $(id).hidden = true; }
@@ -123,6 +124,7 @@
   function insLabel(it) { return canInsertish(it) ? 'CHÈN' : 'XEM'; }
   function insTitle(it) {
     if (it.source === 'local') return 'Chèn ngay vào công trình';
+    if (it.web_only) return it.download_note || 'Mở trang tải chính thức';
     if (it.downloadable) return 'Tải và chèn (nếu định dạng tương thích)';
     return 'Tác giả không cho phép tải — mở trang nguồn';
   }
@@ -174,7 +176,7 @@
       row('Định dạng', 'SketchUp (.skp) — chèn trực tiếp'); row('Đường dẫn', it.path);
     } else {
       row('Nguồn', it.source_label); row('Tác giả', it.author); row('Giấy phép', it.license || 'Không rõ');
-      row('Tải về', it.downloadable ? 'Được phép' : 'Tác giả không cho phép tải');
+      row('Tải về', it.web_only ? it.download_note : (it.downloadable ? 'Được phép' : 'Tác giả không cho phép tải'));
       row('Định dạng', (it.formats || []).map(function (f) { return f.type.toUpperCase() + (f.size ? ' ' + fmtSize(f.size) : ''); }).join(', '));
       if (it.faces) row('Số mặt', Number(it.faces).toLocaleString('vi-VN'));
     }
@@ -183,7 +185,7 @@
       attr.hidden = false;
       $('dAttrText').textContent = '“' + it.title + '” của ' + (it.author || '?') + ' — ' + (it.license || 'giấy phép chưa rõ') + ' — nguồn ' + it.source_label + (it.url ? ' (' + it.url + ')' : '') + '.';
     } else attr.hidden = true;
-    $('dInsert').textContent = it.source === 'local' ? 'CHÈN MODEL' : (it.downloadable ? 'TẢI & CHÈN MODEL' : 'XEM TRÊN TRANG NGUỒN');
+    $('dInsert').textContent = it.source === 'local' ? 'CHÈN MODEL' : (it.downloadable ? 'TẢI & CHÈN MODEL' : (it.web_only ? 'MỞ TRANG TẢI' : 'XEM TRÊN TRANG NGUỒN'));
     $('dFav').textContent = it.fav ? '♥ Đã yêu thích' : '♡ Yêu thích';
     $('dOpen').textContent = it.source === 'local' ? 'Mở thư mục' : 'Xem trang nguồn';
     $('dNote').textContent = '';
@@ -320,6 +322,18 @@
       box.appendChild(row);
     });
   }
+  function renderAccounts(list) {
+    var box = $('accList'); if (!box) return; box.replaceChildren();
+    var names = { login: 'ĐĂNG NHẬP', logout: 'Đăng xuất', reconnect: 'Kết nối lại', open: 'Mở trang' };
+    (list || []).forEach(function (a) {
+      var row = el('div', null, 'item acc'); var p = el('div', null, 'p');
+      p.appendChild(el('b', a.name)); p.appendChild(el('span', a.note, 'note')); row.appendChild(p);
+      row.appendChild(el('span', a.status_label, 'st ' + a.status));
+      var acts = el('div', null, 'acts');
+      (a.actions || []).forEach(function (k) { acts.appendChild(btn(names[k] || k, function () { call('acct_action', a.id, k); }, k === 'login' ? 'primary' : '')); });
+      row.appendChild(acts); box.appendChild(row);
+    });
+  }
   function renderSecrets(s) {
     S.secrets = s;
     function txt(x, what) { if (x.session) return '✓ Đã có ' + what + (x.stored ? ' (lưu mã hóa trên máy).' : ' trong phiên này.'); if (x.env) return '✓ Dùng ' + what + ' từ biến môi trường.'; return '✗ Chưa có ' + what + '.'; }
@@ -355,7 +369,7 @@
       $('rememberKeyWrap').hidden = $('rememberSfWrap').hidden = !d.secret_store;
       S.categories = d.categories || []; S.filter = d.settings.ui.filter || 'all';
       S.category = S.categories.some(function (c) { return c.id === d.settings.ui.category; }) ? d.settings.ui.category : 'all';
-      renderCats(); renderSources(d.sources_status || []); renderBlender(d.blender);
+      renderCats(); renderSources(d.sources_status || []); renderBlender(d.blender); renderAccounts(d.accounts);
       if (d.summary) renderSummary(d.summary);
       if (d.update_available) H.update_available(d.update_available);
       if (d.pending_restart) setStatus('Đã cài bản ' + d.pending_restart + ' — khởi động lại SketchUp để áp dụng.', 'ok');
@@ -393,6 +407,8 @@
     blender: function (b) { renderBlender(b); if (b && b.ok) hide('blenderModal'); else if (b && !b.checking && !$('blenderModal').hidden) $('bmReason').textContent = b.reason || ''; },
     need_blender: function (d) { $('bmReason').textContent = d.reason || ''; renderBlender(d.blender); show('blenderModal'); },
     sources_status: function (l) { renderSources(l || []); },
+    accounts: function (l) { renderAccounts(l); },
+    dl_found: function (d) { $('foundText').textContent = 'Đã nhận file vừa tải “' + d.name + '” (' + d.source + '). Chèn vào SketchUp?'; $('foundBar').hidden = false; },
     open_support: function () { hide('settingsModal'); show('supportModal'); },
     convert_state: function (d) { var on = d.state === 'running'; $('convCancel').hidden = !on; $('convSpin').hidden = !on; },
     need_token: function (d) { S.tokenKey = d && d.key; $('tkInput').value = ''; show('tokenModal'); $('tkInput').focus(); },
@@ -450,6 +466,8 @@
       if (e.key !== 'Escape' || e.target === q) return;
       ['detailModal', 'catModal', 'aiModal', 'newerModal', 'settingsModal', 'tokenModal', 'blenderModal'].forEach(function (id) { if (!$(id).hidden) { hide(id); if (id === 'detailModal') S.detailKey = null; } });
     });
+    $('foundIns').onclick = function () { $('foundBar').hidden = true; call('insert_found'); };
+    $('foundX').onclick = function () { $('foundBar').hidden = true; call('found_dismiss'); };
     $('bDetect').onclick = $('bmDetect').onclick = function () { call('blender_detect'); };
     $('bPick').onclick = $('bmPick').onclick = function () { call('blender_pick'); };
     $('bGet').onclick = $('bmGet').onclick = function () { call('open_url', 'https://www.blender.org/download/'); };

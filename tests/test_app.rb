@@ -256,6 +256,10 @@ class TestApp < Minitest::Test
     d.fire('cat_delete', c['id'])
     refute(d.messages('categories').last[1]['list'].any? { |x| x['custom'] })
     init_src = d.messages('init').last[1]['sources_status'].map { |x| [x['id'], x['integrated']] }.to_h
-    assert_equal({ 'local' => true, 'sketchfab' => true, 'polyhaven' => true, 'warehouse' => false, 'cgtrader' => false, '3dsky' => false }, init_src)
+    expect = { 'local' => true, 'sketchfab' => true, 'polyhaven' => true, 'cgtips' => true, 'sketchupfree' => true, 'thuviensketchup' => true,
+               'cgtrader' => false, 'warehouse' => false, '3dsky' => false, '3dbox' => false, 'sketchshaper' => false,
+               'tailieukientruc' => false, 'sketchupvn' => false }
+    assert_equal(expect, init_src)
+    assert_equal 12, d.messages('init').last[1]['accounts'].size
   end
 end

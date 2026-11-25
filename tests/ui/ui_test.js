@@ -173,7 +173,7 @@ function items() {
 
   // V1.0.6: Cài đặt chỉ 4 tab; công cụ kỹ thuật nằm ở bảng Hỗ trợ (mở từ menu)
   const tabs = await page.$$eval('#stabs [data-s]', b => b.map(x => x.textContent.trim()));
-  check('Cài đặt chỉ còn 4 tab', JSON.stringify(tabs) === JSON.stringify(['Thư viện', 'Nguồn tìm kiếm', 'AI', 'Tài khoản Sketchfab']), tabs);
+  check('Cài đặt chỉ còn 4 tab', JSON.stringify(tabs) === JSON.stringify(['Thư viện', 'Nguồn tìm kiếm', 'AI', 'Tài khoản thư viện']), tabs);
   check('Không còn ô thông số kỹ thuật', (await page.$$('#sTimeout, #cTimeout, #cGltf')).length === 0);
   await page.evaluate(() => MT.receive('sources_status', [
     { id: 'local', name: 'Máy tính', enabled: true, integrated: true, note: '' },
@@ -185,6 +185,17 @@ function items() {
   check('Bật/tắt từng nguồn ngay trong danh sách và lưu lại', sv.length === 1 && sv[0].sources && sv[0].sources.polyhaven === false, sv);
   check('Nguồn chưa tích hợp không có ô bật', (await page.$$('#srcList input[data-src=warehouse]')).length === 0);
   await page.evaluate(() => { document.querySelector('#settingsModal').hidden = true; });
+  await page.evaluate(() => MT.receive('accounts', [
+    { id: 'sketchfab', name: 'Sketchfab', status: 'not_logged_in', status_label: 'Chưa đăng nhập', note: '', actions: ['login', 'open'] },
+    { id: 'cgtrader', name: 'CGTrader', status: 'need_api', status_label: 'Cần cấp quyền API', note: '', actions: ['login', 'open'] }]));
+  await page.evaluate(() => { window.__calls.length = 0; document.querySelector('#accList .acc .acts button').click(); });
+  const ac = await page.evaluate(() => window.__calls.filter(c => c[0] === 'acct_action').map(c => c[1]));
+  check('Tài khoản thư viện: hiện trạng thái + nút ĐĂNG NHẬP', ac.length === 1 && ac[0][0] === 'sketchfab' && ac[0][1] === 'login' &&
+    (await page.locator('#accList .st.need_api').count()) === 1, ac);
+  await page.evaluate(() => MT.receive('dl_found', { name: 'sofa.zip', title: 'Sofa', source: 'SketchUp CGTips' }));
+  check('Nhận file vừa tải: hiện thanh CHÈN', await page.locator('#foundBar').isVisible());
+  await page.evaluate(() => { window.__calls.length = 0; document.querySelector('#foundIns').click(); });
+  check('Bấm CHÈN gửi insert_found', await page.evaluate(() => window.__calls.some(c => c[0] === 'insert_found')) && !(await page.locator('#foundBar').isVisible()));
   await page.evaluate(() => MT.receive('open_support'));
   check('Menu Hỗ trợ kỹ thuật mở bảng chẩn đoán', await page.locator('#supportModal').isVisible());
   await page.evaluate(() => { document.querySelector('[data-close=supportModal]').click(); });

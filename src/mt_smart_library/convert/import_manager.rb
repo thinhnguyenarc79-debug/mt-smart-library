@@ -31,8 +31,22 @@ module MTDesign
       end
 
       # Giải nén ZIP an toàn (chặn ../, đường dẫn tuyệt đối, symlink, ZIP64) — thuần Ruby, chạy được ở luồng nền.
-      def extract_zip(zip_path, dest)
-        zip = ZipReader.new(zip_path)
+      # passwords: mật khẩu giải nén do trang nguồn công bố công khai (ví dụ SketchUp CGTips).
+      def extract_zip(zip_path, dest, passwords: [])
+        zip = ZipReader.new(zip_path, password: passwords.first, lenient: true, max_total: 2 * 1024 * 1024 * 1024)
+        if zip.encrypted? && passwords.size > 1
+          ok = passwords.find do |pw|
+            z = ZipReader.new(zip_path, password: pw, lenient: true, max_total: 2 * 1024 * 1024 * 1024)
+            e = z.entries.reject(&:directory?).min_by(&:csize)
+            begin
+              e.nil? || z.read(e) && true
+            rescue ZipReader::Error
+              false
+            end
+          end
+          raise ZipReader::Error, 'File nén có mật khẩu chưa biết — giải nén thủ công rồi dùng “Chèn file từ máy…”.' unless ok
+          zip = ZipReader.new(zip_path, password: ok, lenient: true, max_total: 2 * 1024 * 1024 * 1024)
+        end
         FileUtils.mkdir_p(dest)
         real = File.expand_path(dest)
         zip.entries.reject(&:directory?).each do |e|

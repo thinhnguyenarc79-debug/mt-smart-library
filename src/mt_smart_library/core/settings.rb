@@ -20,7 +20,7 @@ module MTDesign
                   'thumb_size' => 200, 'filter' => 'all', 'category' => 'all' },
         'categories_custom' => [],
         'online_favorites' => [],
-        'sources' => { 'sketchfab' => true, 'polyhaven' => true },
+        'sources' => { 'sketchfab' => true, 'polyhaven' => true, 'cgtips' => true, 'sketchupfree' => true, 'thuviensketchup' => true },
         'auto_save_downloads' => true,
         'converter' => { 'blender_path' => '', 'blender_version' => '', 'blender_ok' => false, 'blender_reason' => '',
                          'timeout' => 600, 'gltf_engine' => 'auto' },
@@ -193,7 +193,7 @@ module MTDesign
         out['online_favorites'] = sanitize_online_favs(raw['online_favorites'])
         src = raw['sources'].is_a?(Hash) ? raw['sources'] : {}
         out['sources']['sketchfab'] = bool(src['sketchfab'], true)
-        out['sources']['polyhaven'] = bool(src['polyhaven'], true)
+        %w[polyhaven cgtips sketchupfree thuviensketchup].each { |k| out['sources'][k] = bool(src[k], true) }
         out['auto_save_downloads'] = bool(raw['auto_save_downloads'], true)
         cv = raw['converter'].is_a?(Hash) ? raw['converter'] : {}
         bp = Util.utf8(cv['blender_path']).strip

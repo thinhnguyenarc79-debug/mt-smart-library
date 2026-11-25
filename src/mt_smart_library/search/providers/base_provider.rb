@@ -32,6 +32,11 @@ module MTDesign
           15
         end
 
+        # Truy vấn dùng để lọc liên quan kết quả online (mặc định: bản tiếng Anh).
+        def relevance_query(session)
+          session.oquery
+        end
+
         def search(_session, _token, &_done)
           raise NotImplementedError
         end

@@ -136,3 +136,11 @@ label.col{display:flex;flex-direction:column;gap:4px;margin:8px 0;font-size:12px
 .chips button{border-radius:14px;padding:3px 10px;font-size:12px;background:var(--blue2);border-color:#b8d4e8}
 @media (max-width:860px){.brand{width:auto}.brand div:last-child{display:none}.side{width:170px}.detail{flex-direction:column}.dimg{max-height:46vh}
   .top button.accent{padding:10px}.fields{grid-template-columns:1fr 1fr}.aibody{flex-direction:column}.aiimg{width:100%}}
+
+.foundbar{position:fixed;left:50%;bottom:44px;transform:translateX(-50%);z-index:60;display:flex;gap:10px;align-items:center;background:#fff;border:1px solid var(--line,#d0d5dd);border-radius:12px;box-shadow:0 8px 24px #0002;padding:10px 14px;max-width:80vw}
+.foundbar span{font-size:13px;color:#1d2939}
+.foundbar .x2{background:none;border:0;font-size:18px;cursor:pointer;color:#667085}
+.acc .st{font-size:12px;border-radius:9px;padding:1px 8px;background:#f2f4f7;color:#475467;white-space:nowrap}
+.acc .st.connected,.acc .st.no_login{background:#ecfdf3;color:#067647}
+.acc .st.expired,.acc .st.need_api,.acc .st.not_logged_in{background:#fffaeb;color:#b54708}
+.acc .acts{display:flex;gap:6px}

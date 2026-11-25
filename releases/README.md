@@ -11,7 +11,8 @@ Không dùng đường dẫn `raw.githubusercontent.com/.../main/...` làm ngu�
 
 | Phiên bản | File | SHA256 |
 |---|---|---|
-| 1.0.10 (mới nhất) | MT_SMART_LIBRARY_PRO_v1.0.10.rbz | e0a48faf485ebe423816e910df7cd32c5ea0d4591777e9987cd0e2f580193dcf |
+| 1.0.11 (mới nhất) | MT_SMART_LIBRARY_PRO_v1.0.11.rbz | 36bc294aa5b0d4c6f8fc47e2d81f23390b92962b7447ee3c82453b3a691ef6cb |
+| 1.0.10 | MT_SMART_LIBRARY_PRO_v1.0.10.rbz | e0a48faf485ebe423816e910df7cd32c5ea0d4591777e9987cd0e2f580193dcf |
 | 1.0.9 | MT_SMART_LIBRARY_PRO_v1.0.9.rbz | 3647ddd083afef4aca97292753d6c8c4807be85f08813d568abb3437b8239c74 |
 | 1.0.8 | MT_SMART_LIBRARY_PRO_v1.0.8.rbz | e780a6f8555f0509ec3b9411ad35bd488615aaaddb8252adff69b09543bd828c |
 | 1.0.7 | MT_SMART_LIBRARY_PRO_v1.0.7.rbz | d718c6ac4a58eaab83748731d52746f45ec8a0ae2bf99729381364c73206aa33 |

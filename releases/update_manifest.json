@@ -2,18 +2,18 @@
   "schema": 1,
   "plugin_id": "mtdesign.smart_library_pro",
   "name": "MT SMART LIBRARY PRO",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "released_at": "2026-11-25",
   "min_sketchup": 22,
   "min_ruby": "2.7.0",
   "changelog": [
-    "Sửa lỗi “Tiến trình AI đã dừng bất thường”: tìm bằng ảnh mặc định chạy CPU (DirectML làm sập khi nạp mô hình ảnh).",
-    "Tùy chọn CPU/GPU trong Cài đặt › AI; GPU được kiểm tra trong tiến trình riêng, lỗi thì tự chuyển CPU.",
-    "Không còn báo lỗi lặp lại mỗi 30 giây; ghi log đầy đủ; giữ nguyên bộ AI đã tải (không tải lại).",
-    "TÌM BẰNG ẢNH chạy AI ngay trên máy (CLIP), không cần OpenAI API Key: chọn ảnh, dán (Ctrl+V) hoặc kéo thả ảnh là tự tìm.",
-    "So sánh hình ảnh thật giữa ảnh mẫu và thumbnail model (thư viện máy tính + mọi nguồn online), giống nhất lên đầu; cắt vùng để tìm 1 món trong ảnh phối cảnh."
+    "Quản lý nguồn: tự thêm website, Facebook Group/Fanpage, Google Drive, MediaFire, Mega, Dropbox, OneDrive, thư mục máy tính; bật/tắt, sửa, xóa, xuất/nhập JSON.",
+    "Website có WordPress REST API công khai (đã kiểm tra robots.txt) được tìm tự động chung với các nguồn khác.",
+    "Nhập link model: link tải trực tiếp/Dropbox tải và chèn ngay; trang cần đăng nhập mở trên trình duyệt, tải xong tự nhận file.",
+    "Kho dữ liệu tích lũy (SQLite): lưu kết quả đã thấy + vector ảnh, tìm bằng ảnh dùng lại ngay, phát hiện trùng, kiểm tra link, xóa cache.",
+    "Tìm bằng ảnh và lập chỉ mục thư viện chạy ở 2 tiến trình riêng (CPU mặc định)."
   ],
-  "download_url": "https://raw.githubusercontent.com/thinhnguyenarc79-debug/mt-smart-library/58527dc185d5f522641a5ac0544cb8cee859ec88/releases/MT_SMART_LIBRARY_PRO_v1.0.10.rbz",
-  "sha256": "e0a48faf485ebe423816e910df7cd32c5ea0d4591777e9987cd0e2f580193dcf",
-  "size": 176949
+  "download_url": "https://raw.githubusercontent.com/thinhnguyenarc79-debug/mt-smart-library/48dcc5ae9742f50a8d5f544fcd100b840c0c3d7e/releases/MT_SMART_LIBRARY_PRO_v1.0.11.rbz",
+  "sha256": "36bc294aa5b0d4c6f8fc47e2d81f23390b92962b7447ee3c82453b3a691ef6cb",
+  "size": 192831
 }

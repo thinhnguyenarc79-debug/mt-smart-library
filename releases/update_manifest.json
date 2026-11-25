@@ -2,18 +2,20 @@
   "schema": 1,
   "plugin_id": "mtdesign.smart_library_pro",
   "name": "MT SMART LIBRARY PRO",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "released_at": "2026-11-25",
   "min_sketchup": 22,
   "min_ruby": "2.7.0",
   "changelog": [
-    "SMART SOURCE EXTRACTOR: nhập URL nguồn một lần — plugin tự nhận diện, kiểm tra kết nối, quét/đồng bộ/dừng, trích xuất ảnh, tên, mô tả, danh mục, link tải, link bài viết, mật khẩu giải nén vào kho dữ liệu.",
-    "Phương thức: WordPress REST API, web crawler theo sitemap (tuân thủ robots.txt), Google Drive API (API key), chỉ mục Brave Search cho bài Facebook công khai.",
-    "Tìm bằng từ khóa và bằng ảnh tự tìm trong kho dữ liệu đã trích xuất; CHÈN dùng link tải đã trích xuất.",
-    "Mỗi nguồn hiện số model đã lập chỉ mục, số có link tải, thời gian đồng bộ, tiến trình và nhật ký lỗi.",
-    "HYBRID HOT RELOAD: bản chỉ đổi giao diện/Python/cấu hình áp dụng ngay, không cần khởi động lại SketchUp; báo loại cập nhật trước khi cài."
+    "TÌM BẰNG ẢNH: bộ lọc danh mục cứng theo danh mục AI nhận diện, áp dụng ở cả bước lấy ứng viên (online, thư viện máy tính, kho dữ liệu) và bước trả kết quả. Ảnh sofa không còn trả ghế ăn/bàn ăn.",
+    "Chế độ Chính xác (mặc định) / Tương tự / Mở rộng; nhớ lựa chọn.",
+    "Điểm tương đồng tính thật trên ảnh preview: 35% cấu trúc (ảnh bỏ màu) + 35% phong cách + 15% hình dáng (viền/bóng/tỉ lệ) + 15% màu sắc; hiện trên thẻ và trong chi tiết.",
+    "Kho dữ liệu cũ được chấm lại theo bộ lọc mới (không dùng điểm cũ).",
+    "SMART SOURCE EXTRACTOR: nhiều công cụ tìm kiếm (Tavily không cần key, Serper, SerpApi, Brave, SearXNG), tự chuyển khi một công cụ lỗi; kiểm tra kết nối + hướng dẫn lấy key trong Cài đặt.",
+    "Facebook: Đăng nhập & lưu bài (bạn tự đăng nhập trong cửa sổ plugin, bấm lưu bài đang hiển thị: nội dung, ảnh, link bài, link tải, mật khẩu); tên thật của nhóm.",
+    "Đồng bộ tất cả nguồn: chạy lần lượt, nguồn lỗi không chặn nguồn khác, báo số model theo từng nguồn."
   ],
-  "download_url": "https://raw.githubusercontent.com/thinhnguyenarc79-debug/mt-smart-library/5f4e8d8a208f00b1ce0d70f265f27cd6b9b98450/releases/MT_SMART_LIBRARY_PRO_v1.0.12.rbz",
-  "sha256": "45d125d10bb01cd8e441edd5bb867b7148a4d00c44fed78c30082fbc355e8faa",
-  "size": 211168
+  "download_url": "https://raw.githubusercontent.com/thinhnguyenarc79-debug/mt-smart-library/c1d1569a3ce337882d4a801e8f207dd1c0113355/releases/MT_SMART_LIBRARY_PRO_v1.0.13.rbz",
+  "sha256": "a74d5f34964cbc619574c6c35e8f282565387bb409b0cc92561324521cc180c7",
+  "size": 236452
 }

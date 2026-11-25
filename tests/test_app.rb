@@ -256,6 +256,6 @@ class TestApp < Minitest::Test
     d.fire('cat_delete', c['id'])
     refute(d.messages('categories').last[1]['list'].any? { |x| x['custom'] })
     init_src = d.messages('init').last[1]['sources_status'].map { |x| [x['id'], x['integrated']] }.to_h
-    assert_equal({ 'local' => true, 'sketchfab' => true, 'warehouse' => false, 'cgtrader' => false, '3dsky' => false }, init_src)
+    assert_equal({ 'local' => true, 'sketchfab' => true, 'polyhaven' => true, 'warehouse' => false, 'cgtrader' => false, '3dsky' => false }, init_src)
   end
 end

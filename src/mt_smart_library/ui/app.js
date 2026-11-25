@@ -1,5 +1,5 @@
 /* MT SMART LIBRARY PRO V1.0.2 — giao diện tìm kiếm tổng hợp.
-   Không tải JS ngoài; mọi dữ liệu hiển thị qua textContent; ảnh chỉ nhận data: hoặc https://media.sketchfab.com. */
+   Không tải JS ngoài; mọi dữ liệu hiển thị qua textContent; ảnh chỉ nhận data: hoặc https://media.sketchfab.com, https://cdn.polyhaven.com. */
 (function () {
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
@@ -21,7 +21,7 @@
   function btn(text, fn, cls, title) { var b = el('button', text, cls); b.type = 'button'; b.addEventListener('click', fn); if (title) b.title = title; return b; }
   function fmtSize(b) { b = Number(b) || 0; if (b < 1024) return b + ' B'; if (b < 1048576) return (b / 1024).toFixed(0) + ' KB'; if (b < 1073741824) return (b / 1048576).toFixed(1) + ' MB'; return (b / 1073741824).toFixed(2) + ' GB'; }
   function fmtDate(t) { if (!t) return ''; var d = new Date(t * 1000); return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear(); }
-  function isSafeImg(u) { return typeof u === 'string' && (/^https:\/\/media\.sketchfab\.com\//.test(u) || /^data:image\/(png|jpeg|webp|gif);base64,/.test(u)); }
+  function isSafeImg(u) { return typeof u === 'string' && (/^https:\/\/(media\.sketchfab\.com|cdn\.polyhaven\.com)\//.test(u) || /^data:image\/(png|jpeg|webp|gif);base64,/.test(u)); }
   function setStatus(msg, kind, hint) { $('statusMsg').textContent = msg || ''; $('statusHint').textContent = hint || ''; $('statusBar').className = 'status ' + (kind || ''); }
   function show(id) { $(id).hidden = false; }
   function hide(id) { $(id).hidden = true; }
@@ -100,7 +100,7 @@
     paintThumb(th, it);
     var heart = btn('♡', function () { call('fav_item', it.key); }, 'heart', 'Yêu thích');
     th.appendChild(heart);
-    th.appendChild(el('span', it.source === 'local' ? '💻' : '☁', 'src'));
+    var sb = el('span', it.source === 'local' ? '💻' : '☁', 'src'); sb.title = 'Nguồn: ' + (it.source_label || ''); th.appendChild(sb);
     var bar = el('div', null, 'cardbar');
     var t = el('div', shortName(it.title), 'title'); t.title = it.title;
     bar.appendChild(t);
@@ -289,7 +289,7 @@
     if (document.activeElement !== $('sModel')) $('sModel').value = s.ai.model;
     if (document.activeElement !== $('sBase')) $('sBase').value = s.ai.base_url;
     $('sDetail').value = s.ai.detail; $('sSfType').value = s.sketchfab.token_type;
-    $('sfDownloadable').checked = !!s.sketchfab.downloadable_only; $('sSfOn').checked = s.sources.sketchfab !== false;
+    $('sfDownloadable').checked = !!s.sketchfab.downloadable_only;
     $('sAutoSave').checked = !!s.auto_save_downloads;
     $('sRememberKey').checked = !!s.ai.remember_key; $('sRememberSf').checked = !!s.sketchfab.remember_token;
     if (document.activeElement !== $('thumbSize')) setThumbSize(s.ui.thumb_size);
@@ -312,7 +312,11 @@
     list.forEach(function (s) {
       var row = el('div', null, 'item'); var p = el('div', null, 'p');
       p.appendChild(el('b', s.name)); p.appendChild(el('span', s.note, 'note')); row.appendChild(p);
-      row.appendChild(el('span', !s.integrated ? 'Chưa tích hợp' : (s.enabled ? 'Đang dùng' : 'Đã tắt'), 'tag' + (s.integrated && s.enabled ? '' : ' off')));
+      if (s.integrated && s.id !== 'local') {
+        var lb = el('label', null, 'check'); var cb = el('input'); cb.type = 'checkbox'; cb.checked = !!s.enabled; cb.dataset.src = s.id;
+        cb.onchange = function () { var p = {}; p[s.id] = cb.checked; saveSettings({ sources: p }); setTimeout(startSearch, 50); };
+        lb.appendChild(cb); lb.appendChild(document.createTextNode(cb.checked ? ' Đang dùng' : ' Đã tắt')); row.appendChild(lb);
+      } else row.appendChild(el('span', !s.integrated ? 'Chưa tích hợp' : 'Đang dùng', 'tag' + (s.integrated ? '' : ' off')));
       box.appendChild(row);
     });
   }
@@ -471,7 +475,6 @@
     $('btnScanFull').onclick = function () { call('scan', 'full'); };
     $('sQuick').onchange = function () { saveSettings({ quick_scan: $('sQuick').checked }); };
     $('sScanOpen').onchange = function () { saveSettings({ scan_on_open: $('sScanOpen').checked }); };
-    $('sSfOn').onchange = function () { saveSettings({ sources: { sketchfab: $('sSfOn').checked } }); setTimeout(startSearch, 50); };
     $('sfDownloadable').onchange = function () { saveSettings({ sketchfab: { downloadable_only: $('sfDownloadable').checked } }); setTimeout(startSearch, 50); };
     $('sAutoSave').onchange = function () { saveSettings({ auto_save_downloads: $('sAutoSave').checked }); };
     $('sModel').onchange = function () { saveSettings({ ai: { model: $('sModel').value.trim() }, _notify: true }); };

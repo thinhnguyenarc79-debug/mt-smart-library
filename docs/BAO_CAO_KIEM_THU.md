@@ -1,5 +1,17 @@
 # Báo cáo kiểm thử — MT SMART LIBRARY PRO
 
+## V1.0.6 – V1.0.7 (25/11/2026)
+
+| Bộ test | Nội dung | Kết quả |
+|---|---|---|
+| `test_polyhaven.rb` (5) | Đọc danh mục (bỏ id độc, ảnh ngoài cdn.polyhaven.com); chọn glTF 2k→1k→4k; chặn đường dẫn `../`, host lạ; tìm “ghế sofa”/“ghế” ra đúng model, không ra thùng phuy; danh mục tải 1 lần; khởi động lại + mất mạng vẫn tìm bằng bản lưu đĩa; bật/tắt nguồn được ghi nhớ; App: tải gltf+bin+texture đúng thư mục, kiểm MD5, ghi ATTRIBUTION, chèn; lần 2 không tải lại; file sai MD5 → báo lỗi, không chèn | ✅ |
+| `ui_test.js` | Cài đặt chỉ 4 tab, không còn ô thông số kỹ thuật, menu Hỗ trợ kỹ thuật mở bảng chẩn đoán, ô bật/tắt từng nguồn lưu cài đặt | ✅ |
+
+**Chưa kiểm thử với dữ liệu thật:** máy test không gọi được api.polyhaven.com (đã kiểm cấu trúc JSON thật qua công cụ đọc web: `/assets?type=models`, `/files/ArmChair_01`).
+File glTF thật của Poly Haven chưa được chạy qua bộ đọc tích hợp trong SketchUp 2022 — nếu bộ đọc không đọc được, plugin tự chuyển qua Blender.
+
+---
+
 ## V1.0.4 (25/11/2026) — MT AUTO CONVERT ENGINE
 
 | Bộ test | Nội dung | Kết quả |

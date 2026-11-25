@@ -2,15 +2,15 @@
   "schema": 1,
   "plugin_id": "mtdesign.smart_library_pro",
   "name": "MT SMART LIBRARY PRO",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "released_at": "2026-11-25",
   "min_sketchup": 22,
   "min_ruby": "2.7.0",
   "changelog": [
+    "Thêm nguồn Poly Haven (API chính thức, miễn phí CC0): tìm cùng lúc với máy tính và Sketchfab, bấm CHÈN là tải và chèn thẳng.",
+    "Bật/tắt từng nguồn ngay trong Cài đặt › Nguồn tìm kiếm (được ghi nhớ; nguồn đã tích hợp mặc định bật).",
     "Cài đặt gọn lại còn 4 tab: Thư viện, Nguồn tìm kiếm, AI, Tài khoản Sketchfab.",
     "Thời gian chờ, cache, đường dẫn, bộ đọc glTF… plugin tự quản lý; chỉ báo khi thiếu Blender.",
-    "Công cụ chẩn đoán chuyển sang menu Extensions › MT SMART LIBRARY PRO › Hỗ trợ kỹ thuật.",
-    "Sửa: tắt/bật nguồn Sketchfab giờ cập nhật trạng thái ngay (trước đây vẫn hiện “Đang dùng” dù đã tắt).",
-    "Đổi tên ô thành “Bật nguồn Sketchfab (tìm online)”; cập nhật mô tả: GLB chèn thẳng, định dạng khác tự chuyển đổi."
+    "Công cụ chẩn đoán chuyển sang menu Extensions › MT SMART LIBRARY PRO › Hỗ trợ kỹ thuật."
   ]
 }

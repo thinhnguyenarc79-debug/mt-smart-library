@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+require 'digest'
 require 'json'
 require 'base64'
 require 'fileutils'
@@ -9,7 +10,7 @@ module MTDesign
     # Luồng nền (quét, HTTP, cập nhật) chỉ trao đổi qua Queue/Mutex và được poll bởi timer.
     class App
       TICK = 0.1
-      ALLOWED_OPEN_HOSTS = %w[sketchfab.com www.sketchfab.com platform.openai.com github.com www.blender.org].freeze
+      ALLOWED_OPEN_HOSTS = %w[sketchfab.com www.sketchfab.com platform.openai.com github.com www.blender.org polyhaven.com].freeze
 
       def self.instance
         @instance ||= new
@@ -53,9 +54,10 @@ module MTDesign
         @providers = [
           Providers::LocalProvider.new(@index),
           Providers::SketchfabProvider.new(@http, @result_cache, @log),
+          Providers::PolyHavenProvider.new(@http, Paths.data_root, @log),
           Providers::UnavailableProvider.new('warehouse', '3D Warehouse',
-                                             'Chưa hiển thị kết quả trực tiếp: Trimble chưa công bố API tìm kiếm công khai cho plugin bên thứ ba. ' \
-                                             'Có thể dùng cửa sổ 3D Warehouse có sẵn của SketchUp.'),
+                                             'Chưa tích hợp: Trimble không có API công khai cho plugin bên thứ ba (đã xác nhận trên diễn đàn SketchUp); ' \
+                                             'không thu thập dữ liệu trái điều khoản. Dùng cửa sổ 3D Warehouse có sẵn của SketchUp (Window › 3D Warehouse).'),
           Providers::UnavailableProvider.new('cgtrader', 'CGTrader',
                                              'Chưa tích hợp: API CGTrader yêu cầu OAuth client ID/secret do CGTrader cấp cho ứng dụng. ' \
                                              'Sẽ tích hợp khi MT Design được cấp khóa và tài liệu API.'),
@@ -210,6 +212,7 @@ module MTDesign
         it = find_item(key)
         return status('Không còn thông tin model — hãy tìm lại.', 'warn') unless it
         return insert_sketchfab(it) if it['source'] == 'sketchfab'
+        return insert_polyhaven(it) if it['source'] == 'polyhaven'
         status('Nguồn này chưa hỗ trợ chèn trực tiếp.', 'warn')
       end
 
@@ -232,6 +235,83 @@ module MTDesign
         @sf_items[it['uid']] = { 'name' => it['title'], 'author' => it['author'], 'author_url' => it['author_url'],
                                  'license' => it['license'], 'viewer_url' => it['url'], 'downloadable' => true, 'key' => it['key'] }
         sketchfab_download('uid' => it['uid'], 'format' => fmt, 'auto_insert' => true)
+      end
+
+      # Poly Haven: lấy danh sách file glTF (API /files) → tải gltf + bin + texture (kiểm MD5) → chèn bằng bộ đọc tích hợp.
+      def insert_polyhaven(it)
+        uid = it['uid'].to_s
+        id = uid.sub(/\Aph-/, '')
+        return status('Mã model Poly Haven không hợp lệ.', 'warn') unless PolyHaven.valid_id?(id)
+        d = @downloads[uid]
+        if d && d['state'] == 'done' && d['main'] && File.file?(d['main'])
+          return smart_insert(d['main'], name: it['title'])
+        end
+        return status('Model này đang được tải.', 'warn') if d && %w[requesting downloading].include?(d['state'])
+        @downloads[uid] = { 'state' => 'requesting', 'progress' => { 'bytes' => 0, 'total' => 0 }, 'base' => 0, 'auto_insert' => true }
+        emit('dl_state', { 'uid' => uid, 'state' => 'requesting' })
+        status("Đang tải “#{it['title']}” từ Poly Haven…")
+        @http.request(url: PolyHaven.files_url(id), headers: { 'Accept' => 'application/json' }, timeout: net_timeout) do |res|
+          begin
+            raise(res.code > 0 ? "Poly Haven trả lỗi HTTP #{res.code}." : HttpClient.friendly(res)) unless res.ok
+            plan = PolyHaven.pick_gltf(res.body)
+            folder = Paths.sub('downloads', 'polyhaven', id)
+            FileUtils.mkdir_p(folder)
+            dd = @downloads[uid]
+            dd.merge!('state' => 'downloading', 'queue' => plan['files'].dup, 'folder' => folder, 'res' => plan['resolution'],
+                      'total_all' => plan['total'], 'item' => it, 'main' => File.join(folder, plan['files'][0]['rel']))
+            emit('dl_state', { 'uid' => uid, 'state' => 'downloading', 'total' => plan['total'] })
+            ph_next(uid)
+          rescue StandardError => e
+            ph_fail(uid, e.message)
+          end
+        end
+        ensure_timer
+      end
+
+      def ph_next(uid)
+        d = @downloads[uid]
+        f = d['queue'].shift
+        return ph_done(uid) unless f
+        dest = File.join(d['folder'], *f['rel'].split('/'))
+        if File.file?(dest) && f['md5'] =~ /\A\h{32}\z/ && Digest::MD5.file(dest).hexdigest == f['md5'].downcase
+          d['base'] += f['size'] # đã có từ lần trước
+          return ph_next(uid)
+        end
+        d['progress'] = { 'bytes' => 0, 'total' => f['size'] }
+        @http.request(url: f['url'], dest: dest, timeout: [net_timeout, 60].max, progress: d['progress']) do |res|
+          begin
+            raise "Không tải được #{f['rel']}: #{HttpClient.friendly(res)}" unless res.ok
+            if f['md5'] =~ /\A\h{32}\z/ && Digest::MD5.file(dest).hexdigest != f['md5'].downcase
+              File.delete(dest)
+              raise "File #{f['rel']} tải về bị lỗi (sai MD5)."
+            end
+            d['base'] += f['size']
+            d['progress'] = { 'bytes' => 0, 'total' => 0 }
+            ph_next(uid)
+          rescue StandardError => e
+            ph_fail(uid, e.message)
+          end
+        end
+      end
+
+      def ph_done(uid)
+        d = @downloads[uid]
+        it = d['item']
+        File.write(File.join(d['folder'], 'ATTRIBUTION.txt'), PolyHaven.attribution(it, d['res']), mode: 'w:UTF-8')
+        d['state'] = 'done'
+        d['files'] = [classify(d['main'])]
+        emit('dl_state', { 'uid' => uid, 'state' => 'done', 'folder' => d['folder'], 'files' => d['files'], 'note' => 'Đã tải xong.',
+                           'key' => it['key'] })
+        smart_insert(d['main'], name: it['title'])
+      rescue StandardError => e
+        ph_fail(uid, e.message)
+      end
+
+      def ph_fail(uid, msg)
+        @downloads[uid] ||= {}
+        @downloads[uid]['state'] = 'error'
+        emit('dl_state', { 'uid' => uid, 'state' => 'error', 'msg' => msg })
+        status(msg, 'error')
       end
 
       def fav_any(key)
@@ -884,6 +964,9 @@ module MTDesign
       end
 
       def open_download_folder(uid)
+        if uid =~ /\Aph-([A-Za-z0-9_\-]{1,80})\z/
+          return UI.openURL(Util.file_url(Paths.sub('downloads', 'polyhaven', Regexp.last_match(1))))
+        end
         return unless uid =~ /\A[0-9a-f]{32}\z/
         UI.openURL(Util.file_url(Paths.sub('downloads', 'sketchfab', uid)))
       end
@@ -1201,7 +1284,11 @@ module MTDesign
         emit('scan_progress', @indexer.progress) if @indexer.running?
         @downloads.each do |uid, d|
           next unless d['state'] == 'downloading'
-          emit('dl_progress', { 'uid' => uid, 'bytes' => d['progress']['bytes'], 'total' => d['progress']['total'] })
+          if d['total_all'] # tải nhiều file (Poly Haven): cộng dồn
+            emit('dl_progress', { 'uid' => uid, 'bytes' => d['base'].to_i + d['progress']['bytes'].to_i, 'total' => d['total_all'] })
+          else
+            emit('dl_progress', { 'uid' => uid, 'bytes' => d['progress']['bytes'], 'total' => d['progress']['total'] })
+          end
         end
       end
 

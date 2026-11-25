@@ -1,5 +1,13 @@
 # CHANGELOG — MT SMART LIBRARY PRO
 
+## V1.0.7 — 25/11/2026 (Mở rộng nguồn thư viện)
+- Nguồn mới **Poly Haven** (`online/polyhaven.rb`, `search/providers/polyhaven_provider.rb`) qua API chính thức api.polyhaven.com:
+  miễn phí mọi mục đích, không cần key; gửi User-Agent riêng; ghi nguồn “Poly Haven” ở chi tiết/tooltip và ATTRIBUTION.txt (điều kiện của API).
+  Danh mục model tải 1 lần, lưu đĩa 24 giờ, tìm tức thì bằng từ khóa Việt/Anh; mất mạng vẫn dùng bản đã lưu.
+  CHÈN: lấy /files/{id} → tải glTF 2k (hoặc 1k/4k) + bin + texture, kiểm MD5 từng file, giữ thư mục textures/ → bộ đọc glTF tích hợp chèn thẳng.
+- Cài đặt › Nguồn tìm kiếm: ô bật/tắt cho từng nguồn đã tích hợp (ghi nhớ; mặc định bật). Bỏ ô riêng “Bật nguồn Sketchfab”.
+- 3D Warehouse / CGTrader / 3dsky: vẫn chưa tích hợp vì không có API công khai hợp lệ cho plugin (ghi rõ lý do).
+
 ## V1.0.6 — 25/11/2026 (Đơn giản hóa cài đặt)
 - Bỏ tab “Chuyển đổi” và “Mạng & dữ liệu”; Cài đặt còn 4 tab: Thư viện, Nguồn tìm kiếm, AI, Tài khoản Sketchfab.
 - Bỏ các ô thông số kỹ thuật (thời gian chờ mạng/chuyển đổi, cách đọc glTF): dùng mặc định tự quản lý; glTF luôn ưu tiên bộ đọc tích hợp, lỗi mới dùng Blender.

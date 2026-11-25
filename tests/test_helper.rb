@@ -104,9 +104,9 @@ module MTDesign
 end
 %w[
   updater/version core/util core/paths core/logger core/settings core/synonyms core/search_index core/indexer
-  core/thumbs core/inserter core/secret_store net/http_client online/link_sources online/sketchfab ai/vision
+  core/thumbs core/inserter core/secret_store net/http_client online/link_sources online/sketchfab online/polyhaven ai/vision
   search/query_normalizer search/categories search/result_cache search/result_ranker
-  search/providers/base_provider search/providers/local_provider search/providers/sketchfab_provider search/search_manager
+  search/providers/base_provider search/providers/local_provider search/providers/sketchfab_provider search/providers/polyhaven_provider search/search_manager
   importers/gltf_importer convert/blender_runner convert/blender_detector convert/model_cache convert/converter_manager convert/import_manager
   updater/zip_reader updater/backup_manager updater/updater ui/app
 ].each { |f| require File.join(SRC, 'mt_smart_library', f) }

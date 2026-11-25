@@ -175,6 +175,16 @@ function items() {
   const tabs = await page.$$eval('#stabs [data-s]', b => b.map(x => x.textContent.trim()));
   check('Cài đặt chỉ còn 4 tab', JSON.stringify(tabs) === JSON.stringify(['Thư viện', 'Nguồn tìm kiếm', 'AI', 'Tài khoản Sketchfab']), tabs);
   check('Không còn ô thông số kỹ thuật', (await page.$$('#sTimeout, #cTimeout, #cGltf')).length === 0);
+  await page.evaluate(() => MT.receive('sources_status', [
+    { id: 'local', name: 'Máy tính', enabled: true, integrated: true, note: '' },
+    { id: 'polyhaven', name: 'Poly Haven', enabled: true, integrated: true, note: 'API chính thức' },
+    { id: 'warehouse', name: '3D Warehouse', enabled: false, integrated: false, note: 'Chưa tích hợp' }]));
+  await page.evaluate(() => { document.querySelector('#stabs [data-s=src]').click(); document.querySelector('#settingsModal').hidden = false; });
+  await page.evaluate(() => { window.__calls.length = 0; const c = document.querySelector('#srcList input[data-src=polyhaven]'); c.click(); });
+  const sv = await page.evaluate(() => window.__calls.filter(c => c[0] === 'save_settings').map(c => JSON.parse(c[1][0])));
+  check('Bật/tắt từng nguồn ngay trong danh sách và lưu lại', sv.length === 1 && sv[0].sources && sv[0].sources.polyhaven === false, sv);
+  check('Nguồn chưa tích hợp không có ô bật', (await page.$$('#srcList input[data-src=warehouse]')).length === 0);
+  await page.evaluate(() => { document.querySelector('#settingsModal').hidden = true; });
   await page.evaluate(() => MT.receive('open_support'));
   check('Menu Hỗ trợ kỹ thuật mở bảng chẩn đoán', await page.locator('#supportModal').isVisible());
   await page.evaluate(() => { document.querySelector('[data-close=supportModal]').click(); });

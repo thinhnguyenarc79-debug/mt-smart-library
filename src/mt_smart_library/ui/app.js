@@ -290,9 +290,8 @@
     if (document.activeElement !== $('sBase')) $('sBase').value = s.ai.base_url;
     $('sDetail').value = s.ai.detail; $('sSfType').value = s.sketchfab.token_type;
     $('sfDownloadable').checked = !!s.sketchfab.downloadable_only; $('sSfOn').checked = s.sources.sketchfab !== false;
-    $('sAutoSave').checked = !!s.auto_save_downloads; $('sTimeout').value = s.net.timeout;
+    $('sAutoSave').checked = !!s.auto_save_downloads;
     $('sRememberKey').checked = !!s.ai.remember_key; $('sRememberSf').checked = !!s.sketchfab.remember_token;
-    if (s.converter) { $('cTimeout').value = s.converter.timeout; $('cGltf').value = s.converter.gltf_engine; }
     if (document.activeElement !== $('thumbSize')) setThumbSize(s.ui.thumb_size);
     renderRoots();
   }
@@ -345,7 +344,8 @@
   var H = {
     init: function (d) {
       $('verLabel').textContent = 'PRO · V' + d.version;
-      $('verInfo').textContent = 'MT SMART LIBRARY PRO ' + d.version + ' (' + d.build + ') · SketchUp ' + d.su + ' · ID ' + d.plugin_id;
+      $('verInfo').textContent = 'MT SMART LIBRARY PRO ' + d.version + ' (' + d.build + ') · SketchUp ' + d.su;
+      $('verInfo2').textContent = 'ID ' + d.plugin_id + ' · log: ' + (d.log || '');
       $('dataRoot').textContent = d.data_root;
       renderSecrets(d.secrets); S.rootsState = d.roots_state; applySettings(d.settings);
       $('rememberKeyWrap').hidden = $('rememberSfWrap').hidden = !d.secret_store;
@@ -389,6 +389,7 @@
     blender: function (b) { renderBlender(b); if (b && b.ok) hide('blenderModal'); else if (b && !b.checking && !$('blenderModal').hidden) $('bmReason').textContent = b.reason || ''; },
     need_blender: function (d) { $('bmReason').textContent = d.reason || ''; renderBlender(d.blender); show('blenderModal'); },
     sources_status: function (l) { renderSources(l || []); },
+    open_support: function () { hide('settingsModal'); show('supportModal'); },
     convert_state: function (d) { var on = d.state === 'running'; $('convCancel').hidden = !on; $('convSpin').hidden = !on; },
     need_token: function (d) { S.tokenKey = d && d.key; $('tkInput').value = ''; show('tokenModal'); $('tkInput').focus(); },
     net: function (d) { $('netText').textContent = d.state === 'online' ? '✓ Đang trực tuyến' + (d.ms ? ' (' + d.ms + ' ms)' : '') : d.state === 'checking' ? 'Đang kiểm tra…' : '✗ ' + (d.msg || 'Mất kết nối'); },
@@ -448,8 +449,6 @@
     $('bDetect').onclick = $('bmDetect').onclick = function () { call('blender_detect'); };
     $('bPick').onclick = $('bmPick').onclick = function () { call('blender_pick'); };
     $('bGet').onclick = $('bmGet').onclick = function () { call('open_url', 'https://www.blender.org/download/'); };
-    $('cTimeout').onchange = function () { saveSettings({ converter: { timeout: Number($('cTimeout').value) } }); };
-    $('cGltf').onchange = function () { saveSettings({ converter: { gltf_engine: $('cGltf').value } }); };
     $('cClear').onclick = function () { call('convert_clear_cache'); };
     $('convCancel').onclick = function () { call('convert_cancel'); };
     $('tkOpen').onclick = function () { call('open_url', 'https://sketchfab.com/settings/password'); };
@@ -479,7 +478,6 @@
     $('sBase').onchange = function () { saveSettings({ ai: { base_url: $('sBase').value.trim() }, _notify: true }); };
     $('sDetail').onchange = function () { saveSettings({ ai: { detail: $('sDetail').value } }); };
     $('sSfType').onchange = function () { saveSettings({ sketchfab: { token_type: $('sSfType').value } }); };
-    $('sTimeout').onchange = function () { saveSettings({ net: { timeout: Number($('sTimeout').value) }, _notify: true }); };
     $('btnSaveKey').onclick = function () { var v = $('sKey').value.trim(); if (!v) return; callJ('set_secret', { kind: 'openai', value: v, remember: $('sRememberKey').checked }); $('sKey').value = ''; };
     $('btnClearKey').onclick = function () { call('clear_secret', 'openai'); };
     $('btnSaveSf').onclick = function () { var v = $('sSfToken').value.trim(); if (!v) return; callJ('set_secret', { kind: 'sketchfab', value: v, remember: $('sRememberSf').checked }); $('sSfToken').value = ''; };
@@ -490,7 +488,6 @@
     $('btnOpenData').onclick = function () { call('open_data_dir'); };
     $('btnOpenLog').onclick = function () { call('open_log'); };
     $('btnClearThumbs').onclick = function () { S.localThumbs.clear(); call('clear_thumbs'); };
-    $('btnImportSkp').onclick = function () { call('import_skp'); };
     $('btnImport3d').onclick = function () { call('import_3d'); };
   }
 

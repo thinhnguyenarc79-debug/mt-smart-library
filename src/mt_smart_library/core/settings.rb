@@ -202,7 +202,7 @@ module MTDesign
         out['converter']['blender_reason'] = Util.utf8(cv['blender_reason'])[0, 300]
         to = cv['timeout'].to_i
         out['converter']['timeout'] = to.between?(60, 3600) ? to : 600
-        out['converter']['gltf_engine'] = %w[auto blender].include?(cv['gltf_engine']) ? cv['gltf_engine'] : 'auto'
+        out['converter']['gltf_engine'] = 'auto' # V1.0.6: luôn ưu tiên bộ đọc GLB/glTF tích hợp (không còn tùy chọn trên giao diện)
         ai = raw['ai'].is_a?(Hash) ? raw['ai'] : {}
         m = ai['model'].to_s.strip
         out['ai']['model'] = m =~ /\A[A-Za-z0-9._:\-\/]{2,80}\z/ ? m : DEFAULT_MODEL

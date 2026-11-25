@@ -171,6 +171,13 @@ function items() {
   const col = await page.evaluate(() => getComputedStyle(document.getElementById('q')).webkitTextFillColor);
   check('Ô tìm kiếm chữ tối', col === 'rgb(29, 41, 57)', col);
 
+  // V1.0.6: Cài đặt chỉ 4 tab; công cụ kỹ thuật nằm ở bảng Hỗ trợ (mở từ menu)
+  const tabs = await page.$$eval('#stabs [data-s]', b => b.map(x => x.textContent.trim()));
+  check('Cài đặt chỉ còn 4 tab', JSON.stringify(tabs) === JSON.stringify(['Thư viện', 'Nguồn tìm kiếm', 'AI', 'Tài khoản Sketchfab']), tabs);
+  check('Không còn ô thông số kỹ thuật', (await page.$$('#sTimeout, #cTimeout, #cGltf')).length === 0);
+  await page.evaluate(() => MT.receive('open_support'));
+  check('Menu Hỗ trợ kỹ thuật mở bảng chẩn đoán', await page.locator('#supportModal').isVisible());
+  await page.evaluate(() => { document.querySelector('[data-close=supportModal]').click(); });
   // Trình cập nhật vẫn hoạt động
   const up = await browser.newPage({ viewport: { width: 820, height: 900 } });
   up.on('pageerror', e => errors.push('update: ' + e.message));

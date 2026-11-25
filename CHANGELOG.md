@@ -1,5 +1,13 @@
 # CHANGELOG — MT SMART LIBRARY PRO
 
+## V1.0.6 — 25/11/2026 (Đơn giản hóa cài đặt)
+- Bỏ tab “Chuyển đổi” và “Mạng & dữ liệu”; Cài đặt còn 4 tab: Thư viện, Nguồn tìm kiếm, AI, Tài khoản Sketchfab.
+- Bỏ các ô thông số kỹ thuật (thời gian chờ mạng/chuyển đổi, cách đọc glTF): dùng mặc định tự quản lý; glTF luôn ưu tiên bộ đọc tích hợp, lỗi mới dùng Blender.
+- Công cụ chẩn đoán (Blender: tìm lại/chọn/tải, xóa cache chuyển đổi, kiểm tra kết nối, mở thư mục dữ liệu/log, xóa cache ảnh) chuyển sang bảng
+  “Hỗ trợ kỹ thuật” mở từ menu Extensions › MT SMART LIBRARY PRO. Khi thiếu Blender, hộp hướng dẫn cài vẫn tự hiện như cũ.
+- Nút “Chèn file từ máy…” (SKP/GLB/FBX/OBJ/DAE/USDZ/ZIP…) chuyển vào tab Thư viện.
+- Không đổi: bộ máy chuyển đổi, hệ thống cập nhật, token/API key, thư viện cá nhân.
+
 ## V1.0.5 — 25/11/2026
 - Sửa: bật/tắt nguồn Sketchfab cập nhật nhãn trạng thái ngay (trước đây vẫn hiện “Đang dùng” khi đã tắt → khó nhận ra vì sao không có kết quả online).
 - Ô “Tìm trên Sketchfab” → “Bật nguồn Sketchfab (tìm online)”; mô tả nguồn Sketchfab cập nhật theo V1.0.4.

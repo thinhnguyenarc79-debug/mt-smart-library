@@ -122,8 +122,8 @@ function check(name, ok, detail) { results.push({ name, ok: !!ok, detail }); }
   }));
   const bad = others.filter(o => o.color === o.bg || o.color === 'rgb(255, 255, 255)');
   check('Mọi ô nhập/select/textarea: chữ không trùng màu nền (' + others.length + ' ô)', bad.length === 0, bad);
-  const tabOf = { sKey: 'ai', sModel: 'ai', sBase: 'ai', sTimeout: 'sys', sSfToken: 'sf' };
-  for (const id of ['sKey', 'sModel', 'sBase', 'sTimeout', 'sSfToken']) {
+  const tabOf = { sKey: 'ai', sModel: 'ai', sBase: 'ai', sSfToken: 'sf' };
+  for (const id of ['sKey', 'sModel', 'sBase', 'sSfToken']) {
     await page.click('#stabs [data-s="' + tabOf[id] + '"]');
     await page.fill('#' + id, '');
     await page.click('#' + id); await page.keyboard.type(id === 'sTimeout' ? '45' : 'abc');

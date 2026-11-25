@@ -166,6 +166,19 @@ module MTDesign
         {}
       end
 
+      # Menu Extensions › Hỗ trợ kỹ thuật: mở thư viện rồi hiện bảng chẩn đoán.
+      def show_support
+        @pending_support = true
+        show
+        flush_support
+      end
+
+      def flush_support
+        return unless @pending_support && @dialog && @ready
+        @pending_support = false
+        emit('open_support')
+      end
+
       def send_init
         emit('init', {
                'version' => VERSION, 'plugin_id' => PLUGIN_ID, 'build' => BUILD_DATE, 'su' => su_version,
@@ -179,6 +192,7 @@ module MTDesign
                'sources_status' => @providers.map { |p| p.status_info(@settings) },
                'blender' => @converter.blender_status
              })
+        flush_support
       end
 
       # ================================================================ Tìm kiếm tổng hợp & chèn

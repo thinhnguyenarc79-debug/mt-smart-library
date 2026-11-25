@@ -89,17 +89,18 @@
     <h3>Cài đặt</h3>
     <div class="stabs" id="stabs">
       <button data-s="lib" class="on">Thư viện</button><button data-s="src">Nguồn tìm kiếm</button><button data-s="ai">AI</button>
-      <button data-s="sf">Tài khoản Sketchfab</button><button data-s="cv">Chuyển đổi</button><button data-s="sys">Mạng & dữ liệu</button>
+      <button data-s="sf">Tài khoản Sketchfab</button>
     </div>
     <section data-p="lib">
       <div id="rootList" class="list"></div>
-      <div class="row"><button id="btnAddRoot2" class="primary">+ Thêm thư mục</button><button id="btnScanQuick">Quét nhanh</button><button id="btnScanFull">Quét lại toàn bộ</button></div>
+      <div class="row"><button id="btnAddRoot2" class="primary">+ Thêm thư mục</button><button id="btnScanQuick">Quét nhanh</button><button id="btnScanFull">Quét lại toàn bộ</button><button id="btnImport3d">Chèn file từ máy…</button></div>
       <div class="row">
         <label class="check"><input id="sQuick" type="checkbox"> Quét nhanh (chỉ đọc lại thư mục có thay đổi)</label>
         <label class="check"><input id="sScanOpen" type="checkbox"> Tự quét khi mở thư viện</label>
       </div>
       <div id="scanSummary" class="muted small"></div>
       <details id="scanErrors" hidden><summary>Các mục lỗi khi quét</summary><div id="scanErrList" class="errlist"></div></details>
+      <p id="verInfo" class="muted small"></p>
     </section>
     <section data-p="src" hidden>
       <p class="muted small">Một ô tìm kiếm tìm đồng thời trong máy tính và các nguồn online đã tích hợp. Nguồn chưa có phương thức truy cập hợp lệ được ghi rõ giới hạn bên dưới.</p>
@@ -137,23 +138,21 @@
       </div>
       <p class="muted small">Token dùng để tải model được tác giả cho phép tải. Lấy token tại trang tài khoản Sketchfab <button id="btnSfTokenPage" class="link">(mở trang)</button>.</p>
     </section>
-    <section data-p="cv" hidden>
-      <p id="bStatus" class="small"></p>
-      <p class="small muted">Blender: <code id="bPath">—</code></p>
-      <div class="row"><button id="bDetect" class="primary">Tự tìm Blender</button><button id="bPick">Chọn blender.exe…</button><button id="bGet">Tải Blender 4.5 LTS</button></div>
-      <div class="row">
-        <label>Thời gian chờ tối đa (giây) <input id="cTimeout" type="number" min="60" max="3600" step="60"></label>
-        <label>Đọc GLB/glTF bằng <select id="cGltf"><option value="auto">Bộ đọc tích hợp (nhanh), lỗi thì dùng Blender</option><option value="blender">Luôn dùng Blender</option></select></label>
-        <button id="cClear">Xóa cache chuyển đổi</button>
-      </div>
-      <p class="muted small">FBX, OBJ, USDZ, PLY, BLEND (và GLB lỗi) được Blender chuyển sang DAE ở chế độ nền rồi chèn vào SketchUp. Blender 5.x không xuất được DAE — dùng 4.5 LTS (có thể dùng bản Portable).</p>
-    </section>
-    <section data-p="sys" hidden>
-      <div class="row"><label>Timeout (giây) <input id="sTimeout" type="number" min="5" max="180" step="5"></label><button id="btnCheckNet">Kiểm tra kết nối</button><span id="netText" class="small"></span></div>
-      <p class="small">Dữ liệu người dùng lưu riêng tại <code id="dataRoot"></code> — không bị ảnh hưởng khi cập nhật plugin.</p>
-      <div class="row"><button id="btnOpenData">Mở thư mục dữ liệu</button><button id="btnOpenLog">Mở thư mục log</button><button id="btnClearThumbs">Xóa cache ảnh</button><button id="btnImportSkp">Chèn file SKP…</button><button id="btnImport3d">Nhập file 3D…</button></div>
-      <p id="verInfo" class="muted small"></p>
-    </section>
+  </div>
+</div>
+
+<!-- Hỗ trợ kỹ thuật (chỉ mở từ menu Extensions › MT SMART LIBRARY PRO › Hỗ trợ kỹ thuật) -->
+<div id="supportModal" class="modal" hidden>
+  <div class="dialog wide">
+    <button class="x" data-close="supportModal">×</button>
+    <h3>Hỗ trợ kỹ thuật</h3>
+    <p id="bStatus" class="small"></p>
+    <p class="small muted">Blender: <code id="bPath">—</code></p>
+    <div class="row"><button id="bDetect">Tìm lại Blender</button><button id="bPick">Chọn blender.exe…</button><button id="bGet">Tải Blender 4.5 LTS</button><button id="cClear">Xóa cache chuyển đổi</button></div>
+    <div class="row"><button id="btnCheckNet">Kiểm tra kết nối</button><span id="netText" class="small"></span></div>
+    <div class="row"><button id="btnOpenData">Mở thư mục dữ liệu</button><button id="btnOpenLog">Mở thư mục log</button><button id="btnClearThumbs">Xóa cache ảnh</button></div>
+    <p class="small muted">Dữ liệu người dùng: <code id="dataRoot"></code></p>
+    <p id="verInfo2" class="muted small"></p>
   </div>
 </div>
 

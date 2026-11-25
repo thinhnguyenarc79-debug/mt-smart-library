@@ -33,6 +33,12 @@ module MTDesign
       UI.messagebox("#{PRODUCT_NAME}: không mở được trình cập nhật.\n#{e.message}")
     end
 
+    def self.open_support
+      App.instance.show_support
+    rescue StandardError => e
+      UI.messagebox("#{PRODUCT_NAME}: không mở được bảng hỗ trợ.\n#{e.message}")
+    end
+
     def self.icon(name)
       File.join(CODE_DIR, 'icons', name)
     end
@@ -55,7 +61,7 @@ module MTDesign
       menu.add_item(cmd_lib)
       menu.add_item(cmd_up)
       menu.add_separator
-      menu.add_item('Mở thư mục dữ liệu người dùng') { UI.openURL(Util.file_url(Paths.data_root)) }
+      menu.add_item('Hỗ trợ kỹ thuật…') { open_support }
 
       tb = UI::Toolbar.new(PRODUCT_NAME)
       tb.add_item(cmd_lib)

@@ -1,5 +1,21 @@
 # CHANGELOG — MT SMART LIBRARY PRO
 
+## V1.0.13 — 25/11/2026 (TÌM BẰNG ẢNH CHÍNH XÁC + NGUỒN FACEBOOK / NHIỀU CÔNG CỤ TÌM KIẾM)
+- `ai_runtime/visual_match.py` (mới): Category Hard Filter — zero-shot CLIP trên CHÍNH ảnh preview của từng ứng viên + danh mục trong tên model
+  (khớp cụm dài nhất: “sofa bed” → sofa, “bàn sofa” → bàn trà). Chế độ: Chính xác (cùng danh mục; sofa ↔ sofa góc), Tương tự (cùng họ), Mở rộng (không lọc).
+- Lọc ở bước lấy ứng viên: online tìm theo từ khóa danh mục + danh mục plugin (`loose=false` ở Chính xác); thư viện máy tính và kho dữ liệu lọc trước bằng
+  vector đã có. Lọc lại ở bước trả kết quả (`VisualSearchManager#ranked`). Báo cáo từng ứng viên ở `ai_runtime/work/visual_last.json`.
+- Điểm tổng hợp tính thật: 0,35 cấu trúc (CLIP ảnh xám) + 0,35 phong cách (phân bố 20 phong cách theo danh mục ảnh mẫu) + 0,15 hình dáng
+  (HOG 4×4×8 + bóng 16×16 + tỉ lệ khung) + 0,15 màu. Đặc trưng lưu `features.sqlite` theo ảnh; kho dữ liệu cũ được chấm lại, không dùng điểm cũ.
+- Giao diện: Chính xác/Tương tự/Mở rộng trên thanh tìm bằng ảnh, danh mục được giữ, % tương đồng trên thẻ, chi tiết từng thành phần.
+- `source_extractor.py`: nhiều công cụ tìm kiếm theo thứ tự (Tavily không key → Serper → SerpApi → Brave → SearXNG), lỗi/hết hạn mức tự chuyển;
+  `search_test` kiểm tra kết nối; tên nhóm Facebook thật từ kết quả; chỉ giữ bài đúng nhóm; tiến trình báo số model tìm thấy.
+- `sources/fb_capture.rb/.js` (mới): Facebook “Đăng nhập & lưu bài” — cửa sổ riêng, người dùng tự đăng nhập; bấm “MT: Lưu bài đang hiển thị” → nội dung, ảnh,
+  link bài, link tải, mật khẩu (job `fb_ingest`, ảnh thu nhỏ lưu máy vì ảnh fbcdn có hạn). Không tự cuộn/không đọc cookie/mật khẩu.
+- Đồng bộ tất cả nguồn (lần lượt, tiếp tục khi lỗi, kết quả theo từng nguồn). Nguồn Facebook cũ “facebook.com” → tên theo mã nhóm, rồi tên thật.
+- Cài đặt › Tài khoản thư viện: danh sách công cụ tìm kiếm (bật/tắt, thứ tự, key DPAPI, Kiểm tra, Lấy key/Hướng dẫn), địa chỉ SearXNG.
+- Giữ nguyên dữ liệu: `catalog.sqlite` chỉ thêm, không xóa; Smart Source Extractor, Hybrid Hot Reload giữ nguyên.
+
 ## V1.0.12 — 25/11/2026 (SMART SOURCE EXTRACTOR + HYBRID HOT RELOAD)
 - `ai_runtime/source_extractor.py` (làn tiến trình `crawl`, tách khỏi tìm kiếm và lập chỉ mục):
   - `wp_rest`: liệt kê toàn bộ bài viết qua WordPress REST API (nội dung, danh mục, ảnh đại diện), đồng bộ tăng dần bằng `modified_after`;

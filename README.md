@@ -1,4 +1,4 @@
-# MT SMART LIBRARY PRO — V1.0.12
+# MT SMART LIBRARY PRO — V1.0.13
 
 Plugin SketchUp quản lý thư viện model 3D cho MT Design (Kiến trúc & Nội thất Mạnh Trường).
 Tương thích **SketchUp 2022 (Ruby 2.7.2) trên Windows**. Mã định danh plugin: `mtdesign.smart_library_pro`.

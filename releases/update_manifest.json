@@ -2,18 +2,20 @@
   "schema": 1,
   "plugin_id": "mtdesign.smart_library_pro",
   "name": "MT SMART LIBRARY PRO",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "released_at": "2026-11-25",
   "min_sketchup": 22,
   "min_ruby": "2.7.0",
   "changelog": [
+    "Sửa: tắt/bật nguồn Sketchfab giờ cập nhật trạng thái ngay (trước đây vẫn hiện “Đang dùng” dù đã tắt).",
+    "Đổi tên ô thành “Bật nguồn Sketchfab (tìm online)”; cập nhật mô tả: GLB chèn thẳng, định dạng khác tự chuyển đổi.",
     "Bấm CHÈN là chèn được mọi định dạng: SKP, GLB/glTF, DAE, FBX, OBJ, USDZ, STL, PLY, BLEND, ZIP.",
     "FBX/OBJ/USDZ… được chuyển đổi tự động bằng Blender chạy nền (không mở cửa sổ, có hủy và giới hạn thời gian).",
     "Tự tìm Blender trên máy (bản cài, Steam, Portable); chặn Blender 5.x khi xuất DAE.",
     "ZIP tự giải nén an toàn, nhận đúng file model và texture trong thư mục con.",
     "Lưu bản đã chuyển đổi để lần sau chèn ngay; kiểm tra kích thước sau khi nhập."
   ],
-  "download_url": "https://raw.githubusercontent.com/thinhnguyenarc79-debug/mt-smart-library/b095abbd6f81cbc59d5eba00027ab84198f3a8ac/releases/MT_SMART_LIBRARY_PRO_v1.0.4.rbz",
-  "sha256": "c08d235690fbcfecaf16a3387b7d3026db2fd0245476df230c3d8f70b159ff71",
-  "size": 135265
+  "download_url": "https://raw.githubusercontent.com/thinhnguyenarc79-debug/mt-smart-library/30ac584c1c6302b5a819176a3a2be244cfcf6b79/releases/MT_SMART_LIBRARY_PRO_v1.0.5.rbz",
+  "sha256": "fb41bdfe5fabf5818ff6638b850cbd1a885d2cbba641f0a6e9c0b61f7b8b3da7",
+  "size": 135447
 }

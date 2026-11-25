@@ -10,7 +10,9 @@ module MTDesign
     # Luồng nền (quét, HTTP, cập nhật) chỉ trao đổi qua Queue/Mutex và được poll bởi timer.
     class App
       TICK = 0.1
-      ALLOWED_OPEN_HOSTS = (%w[sketchfab.com www.sketchfab.com platform.openai.com github.com www.blender.org polyhaven.com] +
+      ALLOWED_OPEN_HOSTS = (%w[sketchfab.com www.sketchfab.com platform.openai.com github.com www.blender.org polyhaven.com
+                               app.tavily.com serper.dev serpapi.com api-dashboard.search.brave.com docs.searxng.org
+                               console.cloud.google.com] +
                             AccountManager.hosts).uniq.freeze
 
       def self.instance
@@ -67,7 +69,8 @@ module MTDesign
         @sources = SourceRegistry.new(Paths.sub('sources.json'), builtins: builtin_sources)
         add_custom_providers
         @providers << Providers::CatalogProvider.new(@runtime, -> { disabled_source_ids })
-        @runtime.env_provider = ->(lane) { lane == 'crawl' ? { 'MT_SRC_GOOGLE_KEY' => secret('google'), 'MT_SRC_BRAVE_KEY' => secret('brave') } : {} }
+        # Khóa chỉ đưa vào biến môi trường của tiến trình trích xuất (làn crawl) — không ghi vào file job/log.
+        @runtime.env_provider = ->(lane) { lane == 'crawl' ? CRAWL_KEYS.map { |k| ["MT_SRC_#{k.upcase}_KEY", secret(k)] }.to_h : {} }
         @sync = {}
         @src_stats = {}
         @cat_buf = {}
@@ -141,6 +144,11 @@ module MTDesign
         cb(d, 'src_check') { |id| src_check_deep(id.to_s) }
         cb(d, 'src_scan') { |id, mode| src_scan(id.to_s, mode.to_s) }
         cb(d, 'src_stop') { |id| src_stop(id.to_s) }
+        cb(d, 'src_sync_all') { |*| src_sync_all }
+        cb(d, 'src_sync_all_stop') { |*| src_sync_all_stop }
+        cb(d, 'search_test') { |p| search_test(p.to_s) }
+        cb(d, 'fb_open') { |id| fb_open(id.to_s) }
+        cb(d, 'vs_mode') { |m| @visual.set_mode(m.to_s) }
         cb(d, 'src_log') { |id| src_log(id.to_s) }
         cb(d, 'src_stats') { |*| src_stats }
         cb(d, 'src_open') { |id| src_open(id.to_s) }
@@ -483,9 +491,9 @@ module MTDesign
         return status('Nguồn đang được quét.', 'warn') if @sync[id] && @sync[id]['running']
         @sync[id] = { 'running' => true, 'phase' => 'Đang chuẩn bị…', 'done' => 0, 'total' => 0, 'mode' => mode }
         emit('src_progress', @sync[id].merge('id' => id))
-        job = @runtime.submit('src_crawl', { 'source' => spec, 'mode' => mode, 'limit' => SCAN_LIMIT[mode] }, lane: 'crawl',
+        job = @runtime.submit('src_crawl', { 'source' => spec, 'mode' => mode, 'limit' => SCAN_LIMIT[mode], 'search' => @settings['search'] }, lane: 'crawl',
                               on_progress: lambda { |p|
-                                @sync[id].merge!(p.slice('phase', 'done', 'total'))
+                                @sync[id].merge!(p.slice('phase', 'done', 'total', 'found', 'with_links'))
                                 emit('src_progress', @sync[id].merge('id' => id))
                               }) do |r|
           @sync[id]['running'] = false
@@ -493,7 +501,10 @@ module MTDesign
             x = r['result']
             @sync[id].merge!('phase' => "Xong: #{x['found']} model, #{x['with_links']} có link tải", 'result' => x)
             @sources.set_status(id, 'method' => x['method'], 'status' => 'ok') if @sources.find(id)
-            status("#{spec['name']}: đã trích xuất #{x['found']} model (#{x['with_links']} có link tải). Đang tạo vector ảnh…", 'ok')
+            @sources.rename_auto(id, x['group_name']) if x['group_name'] && @sources.find(id)
+            used = x['providers_used'].is_a?(Hash) && !x['providers_used'].empty? ? " · qua #{x['providers_used'].keys.join(', ')}" : ''
+            @sync[id]['phase'] += used
+            status("#{spec['name']}: đã trích xuất #{x['found']} model (#{x['with_links']} có link tải)#{used}. Đang tạo vector ảnh…", 'ok')
             @runtime.submit('catalog_embed', { 'source' => id, 'limit' => 600 }, lane: 'index') { |_e| src_stats }
           elsif r['cancelled']
             @sync[id]['phase'] = 'Đã dừng.'
@@ -504,8 +515,118 @@ module MTDesign
           end
           emit('src_progress', @sync[id].merge('id' => id))
           src_stats
+          sync_all_next(id, r)
         end
         @sync[id]['job'] = job
+        ensure_timer
+        true
+      end
+
+      # ĐỒNG BỘ TẤT CẢ NGUỒN: lần lượt từng nguồn đang bật; nguồn lỗi được ghi lại và bỏ qua, các nguồn khác vẫn chạy tiếp.
+      def src_sync_all
+        return status('Đang đồng bộ tất cả nguồn.', 'warn') if @sync_all && @sync_all['running']
+        return status('Cần cài bộ AI (Python) để quét nguồn — bấm 📷 Tìm bằng ảnh để cài một lần.', 'warn') unless @runtime.available?
+        ids = sources_payload['list'].select { |x| x['enabled'] && x['scannable'] }.map { |x| x['id'] }
+        return status('Chưa có nguồn nào quét được đang bật.', 'warn') if ids.empty?
+        @sync_all = { 'running' => true, 'queue' => ids.dup, 'total' => ids.size, 'done' => 0, 'results' => [] }
+        sync_all_step
+      end
+
+      def sync_all_step
+        a = @sync_all
+        return unless a && a['running']
+        id = a['queue'].shift
+        unless id
+          a['running'] = false
+          a['current'] = nil
+          ok = a['results'].count { |x| x['ok'] }
+          found = a['results'].sum { |x| x['found'].to_i }
+          status("Đồng bộ tất cả xong: #{ok}/#{a['total']} nguồn thành công, #{found} model.", ok == a['total'] ? 'ok' : 'warn')
+          return emit('src_all', a)
+        end
+        a['current'] = id
+        emit('src_all', a)
+        started = begin
+          src_scan(id, 'sync') == true
+        rescue StandardError => e
+          a['results'] << { 'id' => id, 'ok' => false, 'error' => e.message }
+          false
+        end
+        unless started
+          a['results'] << { 'id' => id, 'ok' => false, 'error' => 'Không bắt đầu được (đang quét hoặc không hỗ trợ).' } unless a['results'].any? { |x| x['id'] == id }
+          a['done'] += 1
+          defer { sync_all_step }
+        end
+      end
+
+      def sync_all_next(id, r)
+        a = @sync_all
+        return unless a && a['running'] && a['current'] == id
+        x = r['ok'] ? r['result'] : {}
+        a['results'] << { 'id' => id, 'name' => (source_spec(id) || {})['name'], 'ok' => r['ok'] ? true : false,
+                          'found' => x['found'].to_i, 'with_links' => x['with_links'].to_i,
+                          'error' => r['ok'] ? nil : (r['cancelled'] ? 'Đã dừng' : r['error'].to_s[0, 200]) }
+        a['done'] += 1
+        if r['cancelled'] && a['stop']
+          a['running'] = false
+          return emit('src_all', a)
+        end
+        sync_all_step
+      end
+
+      def src_sync_all_stop
+        a = @sync_all
+        return unless a && a['running']
+        a['stop'] = true
+        a['queue'].clear
+        src_stop(a['current']) if a['current']
+      end
+
+      # ---- Công cụ tìm kiếm (Tavily / Serper / SerpApi / Brave / SearXNG): kiểm tra kết nối thật
+      def search_test(provider)
+        return status('Cần cài bộ AI (Python) trước — bấm 📷 Tìm bằng ảnh để cài một lần.', 'warn') unless @runtime.available?
+        emit('search_test', { 'provider' => provider, 'state' => 'checking' })
+        @runtime.submit('search_test', { 'provider' => provider.to_s, 'search' => @settings['search'] }, lane: 'crawl') do |r|
+          x = r['ok'] ? r['result'] : { 'ok' => false, 'error' => r['error'] }
+          emit('search_test', x.merge('provider' => provider, 'state' => x['ok'] ? 'ok' : 'error'))
+        end
+        ensure_timer
+      end
+
+      # ---- Facebook: đăng nhập thủ công trong cửa sổ riêng + lưu bài đang xem
+      def fb_open(id)
+        s = @sources.find(id)
+        return status('Chỉ dùng cho nguồn Facebook.', 'warn') unless s && s['type'].to_s.start_with?('facebook')
+        return status('Cần cài bộ AI (Python) để lưu bài — bấm 📷 Tìm bằng ảnh để cài một lần.', 'warn') unless @runtime.available?
+        @fb ||= FbCapture.new(on_posts: method(:fb_posts), on_title: method(:fb_title), logger: @log)
+        @fb.open(s)
+        status('Đã mở nhóm. Tự đăng nhập Facebook trong cửa sổ (plugin không đọc mật khẩu), cuộn xem bài rồi bấm “MT: Lưu bài đang hiển thị”.', 'info')
+      end
+
+      def fb_title(id, name)
+        emit_sources if @sources.rename_auto(id, name)
+      end
+
+      def fb_posts(id, payload)
+        s = @sources.find(id)
+        return unless s
+        posts = Array(payload['posts']).select { |p| p.is_a?(Hash) }.first(200)
+        return @fb&.notify('Không thấy bài viết nào trên màn hình.') if posts.empty?
+        spec = source_spec(id)
+        @fb&.notify("Đang lưu #{posts.size} bài…")
+        @runtime.submit('fb_ingest', { 'source' => spec, 'posts' => posts, 'group_name' => payload['group'].to_s[0, 120] }, lane: 'crawl') do |r|
+          if r['ok']
+            x = r['result']
+            @sources.set_status(id, 'status' => 'ok', 'method' => s['method'] == 'index' ? 'index' : 'manual')
+            msg = "Đã lưu #{x['found']} bài (#{x['added']} mới, #{x['with_links']} có link tải, #{x['images']} ảnh)."
+            @fb&.notify(msg)
+            status("#{s['name']}: #{msg}", 'ok')
+          else
+            @fb&.notify("Lỗi: #{r['error']}")
+            status("#{s['name']}: #{r['error']}", 'error')
+          end
+          src_stats
+        end
         ensure_timer
       end
 
@@ -537,7 +658,7 @@ module MTDesign
         return src_check(id) unless spec && @runtime.available? && @sources.find(id)
         @sources.set_status(id, 'status' => 'checking')
         emit_sources
-        @runtime.submit('src_check', { 'source' => spec }, lane: 'search') do |r|
+        @runtime.submit('src_check', { 'source' => spec, 'search' => @settings['search'] }, lane: 'search') do |r|
           x = r['ok'] ? r['result'] : { 'method' => 'unverified', 'status' => 'error', 'note' => r['error'] }
           @sources.set_status(id, x.slice('method', 'status', 'note', 'sitemaps'))
           add_custom_providers
@@ -1221,9 +1342,13 @@ module MTDesign
       # ================================================================ Bí mật & cài đặt
       # Khóa/token: openai, sketchfab, google (Drive API), brave (Brave Search API). Cờ “ghi nhớ” trong settings; giá trị chỉ ở bộ nhớ hoặc DPAPI.
       SECRET_FLAGS = { 'openai' => %w[ai remember_key], 'sketchfab' => %w[sketchfab remember_token],
-                       'google' => %w[keys google_remember], 'brave' => %w[keys brave_remember] }.freeze
+                       'google' => %w[keys google_remember], 'brave' => %w[keys brave_remember],
+                       'tavily' => %w[keys tavily_remember], 'serper' => %w[keys serper_remember],
+                       'serpapi' => %w[keys serpapi_remember] }.freeze
       SECRET_ENV = { 'openai' => 'OPENAI_API_KEY', 'sketchfab' => 'SKETCHFAB_API_TOKEN', 'google' => 'MT_GOOGLE_API_KEY',
-                     'brave' => 'MT_BRAVE_API_KEY' }.freeze
+                     'brave' => 'MT_BRAVE_API_KEY', 'tavily' => 'TAVILY_API_KEY', 'serper' => 'SERPER_API_KEY',
+                     'serpapi' => 'SERPAPI_API_KEY' }.freeze
+      CRAWL_KEYS = %w[google brave tavily serper serpapi].freeze
 
       def load_remembered_secrets
         SECRET_FLAGS.each_key do |k|
@@ -1267,7 +1392,10 @@ module MTDesign
           'sketchfab' => { 'session' => !@secrets['sketchfab'].to_s.empty?, 'env' => !Util.env_value('SKETCHFAB_API_TOKEN').to_s.empty?,
                            'stored' => SecretStore.stored?('sketchfab') },
           'google' => { 'session' => !@secrets['google'].to_s.empty?, 'stored' => SecretStore.stored?('google') },
-          'brave' => { 'session' => !@secrets['brave'].to_s.empty?, 'stored' => SecretStore.stored?('brave') }
+          'brave' => { 'session' => !@secrets['brave'].to_s.empty?, 'stored' => SecretStore.stored?('brave') },
+          'tavily' => { 'session' => !secret('tavily').to_s.empty?, 'stored' => SecretStore.stored?('tavily') },
+          'serper' => { 'session' => !secret('serper').to_s.empty?, 'stored' => SecretStore.stored?('serper') },
+          'serpapi' => { 'session' => !secret('serpapi').to_s.empty?, 'stored' => SecretStore.stored?('serpapi') }
         }
       end
 
@@ -1297,7 +1425,7 @@ module MTDesign
         emit('secrets', secrets_state)
         emit('accounts', accounts_state)
         emit('settings', @settings.public_hash)
-        @runtime.lane('crawl').restart if %w[google brave].include?(kind) # khóa mới cho tiến trình trích xuất
+        @runtime.lane('crawl').restart if CRAWL_KEYS.include?(kind) # khóa mới cho tiến trình trích xuất
       end
 
       def clear_secret(kind)
@@ -1307,7 +1435,7 @@ module MTDesign
         SecretStore.delete(kind)
         flag = SECRET_FLAGS[kind]
         @settings.data[flag[0]][flag[1]] = false
-        @runtime.lane('crawl').restart if %w[google brave].include?(kind)
+        @runtime.lane('crawl').restart if CRAWL_KEYS.include?(kind)
         @settings.save
         @sf_expired = false if kind == 'sketchfab'
         emit('secrets', secrets_state)

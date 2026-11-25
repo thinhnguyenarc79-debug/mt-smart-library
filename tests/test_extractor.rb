@@ -16,7 +16,8 @@ class TestExtractor < Minitest::Test
     @models = File.join(@data, 'm')
     system(PY, File.join(__dir__, 'fixtures', 'make_tiny_clip.py'), @models) or raise 'tiny'
     { 'MT_AI_PYTHON' => PY, 'MT_AI_MODELS' => @models, 'MT_TEST_ALLOW_HTTP' => '1',
-      'MT_TEST_GDRIVE_BASE' => "#{@base}/drive/v3/", 'MT_TEST_BRAVE_BASE' => "#{@base}/brave" }.each { |k, v| ENV[k] = v }
+      'MT_TEST_GDRIVE_BASE' => "#{@base}/drive/v3/", 'MT_TEST_BRAVE_BASE' => "#{@base}/brave",
+      'MT_TEST_TAVILY_BASE' => "#{@base}/tavily", 'MT_TEST_SERPER_BASE' => "#{@base}/serper" }.each { |k, v| ENV[k] = v }
     @rt = SL::RuntimeManager.new(http: Object.new, runner: SL::BlenderRunner.new, data_root: @data, code_dir: File.join(SRC, 'mt_smart_library'))
     @keys = { 'MT_SRC_GOOGLE_KEY' => 'GKEY', 'MT_SRC_BRAVE_KEY' => 'BKEY' }
     @rt.env_provider = ->(lane) { lane == 'crawl' ? @keys : {} }
@@ -25,7 +26,8 @@ class TestExtractor < Minitest::Test
   def teardown
     @rt&.stop
     Process.kill('TERM', @srv.pid) rescue nil
-    %w[MT_AI_PYTHON MT_AI_MODELS MT_TEST_ALLOW_HTTP MT_TEST_GDRIVE_BASE MT_TEST_BRAVE_BASE].each { |k| ENV.delete(k) }
+    %w[MT_AI_PYTHON MT_AI_MODELS MT_TEST_ALLOW_HTTP MT_TEST_GDRIVE_BASE MT_TEST_BRAVE_BASE MT_TEST_TAVILY_BASE MT_TEST_SERPER_BASE
+       FAKE_TAVILY].each { |k| ENV.delete(k) }
   end
 
   def job(type, payload, lane: 'crawl', progress: nil, secs: 60)
@@ -121,8 +123,9 @@ class TestExtractor < Minitest::Test
     assert_includes tu['links'][0]['url'], 'key=%7BGOOGLE_KEY%7D', 'không lưu API key vào kho'
     refute_includes File.read(File.join(@rt.work_dir, 'catalog.sqlite'), mode: 'rb'), 'GKEY'
     fb = { 'id' => 'u_fb00000001', 'name' => 'Nhóm 3D', 'type' => 'facebook_group', 'url' => 'https://www.facebook.com/groups/thuvien3d' }
-    assert_equal 'index', job('src_check', { 'source' => fb })['result']['method']
-    r = job('src_crawl', { 'source' => fb.merge('method' => 'index'), 'mode' => 'full', 'limit' => 50 })
+    brave_only = { 'order' => %w[brave], 'enabled' => { 'tavily' => false, 'brave' => true } }
+    assert_equal 'index', job('src_check', { 'source' => fb, 'search' => brave_only })['result']['method']
+    r = job('src_crawl', { 'source' => fb.merge('method' => 'index'), 'mode' => 'full', 'limit' => 50, 'search' => brave_only })
     assert r['ok'], r.inspect
     posts = items_of('u_fb00000001')
     assert_equal ['Chia sẻ model giường ngủ SketchUp miễn phí'], posts.map { |i| i['title'] }
@@ -130,8 +133,61 @@ class TestExtractor < Minitest::Test
     # Thiếu khóa → báo rõ, không giả kết quả
     @keys = {}
     @rt.lane('crawl').restart
-    c = job('src_check', { 'source' => fb })['result']
+    c = job('src_check', { 'source' => fb, 'search' => brave_only })['result']
     refute c['ok']
     assert_equal 'need_key', c['status']
+  end
+
+  FB = { 'id' => 'u_fb00000002', 'name' => 'Nhóm Facebook thuvien3d', 'type' => 'facebook_group',
+         'url' => 'https://www.facebook.com/groups/thuvien3d', 'method' => 'index' }.freeze
+
+  def test_facebook_without_any_key_uses_tavily_keyless
+    @keys = {}
+    @rt.lane('crawl').restart
+    c = job('src_check', { 'source' => FB })['result']
+    assert c['ok'], 'mặc định không cần key (Tavily không key)'
+    assert_includes c['note'], 'Tavily'
+    r = job('src_crawl', { 'source' => FB, 'mode' => 'full', 'limit' => 50 })
+    assert r['ok'], r.inspect
+    assert_equal 'Thư Viện 3D SketchUp Việt Nam', r['result']['group_name'], 'tên thật của nhóm từ kết quả tìm kiếm'
+    assert_equal({ 'Tavily' => r['result']['providers_used']['Tavily'] }, r['result']['providers_used'])
+    posts = items_of('u_fb00000002')
+    assert_equal ['Sofa văng da Ý - file SketchUp'], posts.map { |i| i['title'] }, 'chỉ bài của đúng nhóm; bỏ trang gốc và nhóm khác'
+    assert_equal 'gdrive', posts[0]['links'][0]['kind']
+    assert_equal 'mtdesign', posts[0]['password']
+  end
+
+  def test_provider_fallback_when_first_is_rate_limited
+    flag = File.join(Dir.tmpdir, "fake_tavily_limit_#{@port}")
+    File.write(flag, '1') # máy chủ thử: Tavily không key trả 429
+    @keys = { 'MT_SRC_SERPER_KEY' => 'SKEY' }
+    @rt.lane('crawl').restart
+    r = job('src_crawl', { 'source' => FB, 'mode' => 'full', 'limit' => 50 })
+    assert r['ok'], r.inspect
+    assert_equal ['Serper (Google)'], r['result']['providers_used'].keys, 'Tavily bị giới hạn → tự chuyển sang Serper'
+    assert_equal 1, r['result']['found']
+    log = job('src_log', { 'id' => FB['id'] }, lane: 'search')['result']['text']
+    assert_match(/Tavily: HTTP 429.*chuyển sang công cụ tìm kiếm khác/, log)
+    t = job('search_test', { 'provider' => 'serper', 'search' => {} })['result']
+    assert t['ok']
+    bad = job('search_test', { 'provider' => 'serpapi', 'search' => {} })['result']
+    refute bad['ok']
+    assert_includes bad['error'], 'chưa có key'
+  ensure
+    File.delete(flag) if flag && File.exist?(flag)
+  end
+
+  def test_facebook_saved_posts_extract_title_links_password
+    posts = [{ 'url' => 'https://www.facebook.com/groups/thuvien3d/posts/333', 'images' => [],
+               'text' => "Bộ bàn ăn gỗ óc chó 6 ghế\nFile SKP 2021\nLink tải: https://www.mediafire.com/file/xyz/banan.rar/file\nPass: 123mt",
+               'links' => ['https://www.mediafire.com/file/xyz/banan.rar/file', 'https://www.facebook.com/hashtag/sketchup'] },
+             { 'url' => 'javascript:alert(1)', 'text' => 'x' }]
+    r = job('fb_ingest', { 'source' => FB, 'posts' => posts, 'group_name' => 'Thư Viện 3D' })
+    assert r['ok'], r.inspect
+    assert_equal 1, r['result']['found'], 'bỏ link không phải https'
+    it = items_of('u_fb00000002').find { |i| i['uid'] }
+    assert_equal 'Bộ bàn ăn gỗ óc chó 6 ghế', it['title']
+    assert_equal ['mediafire'], it['links'].map { |l| l['kind'] }, 'bỏ link Facebook nội bộ'
+    assert_equal '123mt', it['password']
   end
 end

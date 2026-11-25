@@ -4,6 +4,8 @@ Mô phỏng ĐÚNG giao thức thật đã kiểm chứng: WordPress REST API (/
 robots.txt + sitemap index/urlset, Google Drive API v3 files.list, Brave Search API (web.results). Nội dung bài viết là dữ liệu kiểm thử."""
 import io
 import json
+import os
+import tempfile
 import sys
 import threading
 import urllib.parse
@@ -112,7 +114,7 @@ class H(BaseHTTPRequestHandler):
         if p == '/brave':
             if self.headers.get('X-Subscription-Token') != 'BKEY':
                 return self.send(401, {'type': 'ErrorResponse'})
-            if 'sketchup' in q.get('q', '') and q['q'].startswith('site:www.facebook.com/groups/thuvien3d'):
+            if 'sketchup' in q.get('q', '') and q['q'].startswith('site:facebook.com/groups/thuvien3d'):
                 return self.send(200, {'web': {'results': [
                     {'url': 'https://www.facebook.com/groups/thuvien3d/posts/111', 'title': 'Chia sẻ model giường ngủ SketchUp miễn phí',
                      'description': 'Link tải: https://www.mediafire.com/file/abc/giuong.zip/file', 'thumbnail': {'src': BASE + '/img/1.png'}},
@@ -121,6 +123,37 @@ class H(BaseHTTPRequestHandler):
         self.send(404, 'not found', 'text/plain')
 
 
+FB_POSTS = [
+    {'url': 'https://www.facebook.com/groups/thuvien3d', 'title': 'Thư Viện 3D SketchUp Việt Nam | Facebook', 'content': 'Nhóm công khai'},
+    {'url': 'https://www.facebook.com/groups/thuvien3d/posts/222', 'title': 'Sofa văng da Ý - file SketchUp',
+     'content': 'Model sofa văng da. Link: https://drive.google.com/file/d/1AbCdEf/view pass: mtdesign'},
+    {'url': 'https://www.facebook.com/groups/khac/posts/9', 'title': 'Nhóm khác', 'content': 'không thuộc nhóm'},
+]
+
+
+def _post(self):
+    u = urllib.parse.urlparse(self.path)
+    n = int(self.headers.get('Content-Length') or 0)
+    body = json.loads(self.rfile.read(n) or b'{}')
+    if u.path == '/tavily/search':  # Tavily Search API (tài liệu: POST /search, results[].url/title/content)
+        keyless = self.headers.get('X-Tavily-Access-Mode') == 'keyless'
+        if not keyless and self.headers.get('Authorization') != 'Bearer TKEY':
+            return self.send(401, {'detail': {'error': 'Unauthorized'}})
+        if keyless and os.path.exists(os.path.join(tempfile.gettempdir(), 'fake_tavily_limit_%d' % PORT)):
+            return self.send(429, {'detail': {'error': 'rate limit'}})
+        if 'facebook.com' not in (body.get('include_domains') or []):
+            return self.send(200, {'results': [{'url': 'https://example.com/x', 'title': 'Sketchup sofa model', 'content': 'demo'}]})
+        return self.send(200, {'query': body.get('query'), 'results': FB_POSTS, 'images': []})
+    if u.path == '/serper/search':  # Serper: POST /search, organic[].link/title/snippet
+        if self.headers.get('X-API-KEY') != 'SKEY':
+            return self.send(403, {'message': 'Unauthorized'})
+        if body.get('q', '').startswith('site:facebook.com/groups/thuvien3d'):
+            return self.send(200, {'organic': [{'link': x['url'], 'title': x['title'], 'snippet': x['content']} for x in FB_POSTS]})
+        return self.send(200, {'organic': []})
+    self.send(404, 'not found', 'text/plain')
+
+
+H.do_POST = _post
 srv = ThreadingHTTPServer(('127.0.0.1', PORT), H)
 print('READY', flush=True)
 srv.serve_forever()

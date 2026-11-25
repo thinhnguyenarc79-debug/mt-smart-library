@@ -328,13 +328,18 @@ class Engine:
 
     def protos(self):
         if self._protos is None:
+            import visual_match as vm
             path = os.path.join(self.data_dir, 'text_protos.npy')
-            key = hashlib.sha1(json.dumps([c[0] for c in CATEGORIES]).encode()).hexdigest()
+            key = hashlib.sha1(json.dumps([[c[0] for c in CATEGORIES], vm.TEMPLATES]).encode()).hexdigest()
             meta = path + '.key'
             if os.path.exists(path) and os.path.exists(meta) and open(meta).read() == key:
                 self._protos = np.load(path)
             else:
-                self._protos = self.text_embed(['a photo of a %s, furniture 3d model' % c[0] for c in CATEGORIES])
+                acc = None
+                for t in vm.TEMPLATES:  # trung bình nhiều mẫu câu → phân loại ổn định hơn
+                    e = self.text_embed([t.format(c[0]) for c in CATEGORIES])
+                    acc = e if acc is None else acc + e
+                self._protos = l2n(acc)
                 np.save(path, self._protos)
                 open(meta, 'w').write(key)
         return self._protos
@@ -372,23 +377,132 @@ def job_probe(eng, job, prog):
     return {'device': eng.device, 'dim': int(eng.dim), 'indexed': len(eng.index()['ids'])}
 
 
+CAT_NAMES = [c[0] for c in CATEGORIES]
+CAT_VI = {c[0]: c[1] for c in CATEGORIES}
+
+
+def vm_mod():
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import visual_match
+    return visual_match
+
+
+def feat_cache(eng):
+    if getattr(eng, '_feat', None) is None:
+        eng._feat = vm_mod().FeatCache(os.path.join(eng.data_dir, 'features.sqlite'))
+    return eng._feat
+
+
+def zs_probs(eng, vecs):
+    try:
+        return vm_mod().zero_shot(eng, vecs, CAT_NAMES)
+    except Exception as e:  # thiếu mô hình văn bản: không lọc danh mục
+        log('zero-shot lỗi: %s' % e)
+        return None
+
+
 def job_embed_query(eng, job, prog):
+    vm = vm_mod()
     im = open_image(job['image'])
     if im is None:
         raise ValueError('Không đọc được ảnh mẫu.')
     im = crop_box(im, job.get('crop'))
-    v = eng.embed_images([preprocess(im)])[0]
-    np.save(job['out_vec'], v)
-    cats = []
-    try:
+    rgb, gray, shp = vm.features(eng, [im], preprocess)
+    v = rgb[0]
+    vm.save_query(job['out_vec'], rgb[0], gray[0], shp[0])
+    cats, allowed = [], {'exact': [], 'similar': []}
+    probs = zs_probs(eng, v[None, :])
+    if probs is not None:
+        p = probs[0]
+        order = np.argsort(-p)[:5]
         sims = eng.protos() @ v
-        order = np.argsort(-sims)[:5]
         for i in order:
             c = CATEGORIES[int(i)]
-            cats.append({'en': c[0], 'vi': c[1], 'keywords': c[2], 'score': round(float(sims[i]), 4)})
-    except Exception as e:  # thiếu mô hình văn bản: vẫn tìm được trong máy bằng vector ảnh
-        log('zero-shot lỗi: %s' % e)
-    return {'categories': cats, 'dim': int(v.shape[0])}
+            cats.append({'en': c[0], 'vi': c[1], 'keywords': c[2], 'prob': round(float(p[i]), 4), 'score': round(float(sims[i]), 4)})
+        allowed = vm.allowed_sets([c['en'] for c in cats], [c['prob'] for c in cats])
+    return {'categories': cats, 'allowed': allowed, 'dim': int(v.shape[0])}
+
+
+def score_entries(eng, job, entries):
+    """entries: [{key, src, title, load: callable→PIL|None, vec: rgb cũ (tùy chọn)}] → kết quả chấm điểm theo thứ tự.
+    Đặc trưng (màu/xám/hình dáng) tính thật từ ảnh preview, lưu bộ nhớ đặc trưng theo ảnh."""
+    vm = vm_mod()
+    q = vm.load_query(job['vec'])
+    allowed = job.get('allowed') or {}
+    fc = feat_cache(eng)
+    ck = [vm.FeatCache.key(e['src']) for e in entries]
+    have = fc.get_many(ck)
+    todo_i, ims = [], []
+    for n, e in enumerate(entries):
+        if ck[n] in have:
+            continue
+        im = None
+        try:
+            im = e['load']()
+        except Exception as ex:
+            log('ảnh preview lỗi %s: %s' % (e['src'][:120], ex))
+        if im is not None:
+            todo_i.append(n)
+            ims.append(im)
+    if ims:
+        r, g, s = vm.features(eng, ims, preprocess)
+        rows = {}
+        for j, n in enumerate(todo_i):
+            have[ck[n]] = (r[j], g[j], s[j])
+            rows[ck[n]] = (r[j], g[j], s[j])
+        fc.put_many(rows)
+    keep, rgb, gray, shp, approx = [], [], [], [], []
+    for n, e in enumerate(entries):
+        f = have.get(ck[n])
+        if f is not None:
+            rgb.append(f[0]); gray.append(f[1]); shp.append(f[2]); approx.append(False)
+        elif e.get('vec') is not None:  # không tải được ảnh: chỉ còn vector cũ → điểm ước lượng (đánh dấu)
+            rgb.append(e['vec']); gray.append(e['vec']); shp.append(None); approx.append(True)
+        else:
+            continue
+        keep.append(n)
+    if not keep:
+        return []
+    probs = zs_probs(eng, np.stack(rgb))
+    if probs is None:
+        probs = np.full((len(keep), len(CAT_NAMES)), 1.0 / len(CAT_NAMES), dtype=np.float32)
+        allowed = {}
+    try:
+        cat = (job.get('allowed') or {}).get('exact') or [None]
+        styles = (vm.style_probs(eng, q[0][None, :], cat[0])[0], vm.style_probs(eng, np.stack(rgb), cat[0]))
+    except Exception as e:  # thiếu mô hình văn bản: bỏ thành phần phong cách
+        log('phong cách lỗi: %s' % e)
+        styles = None
+    res = vm.score_rows(q, np.stack(rgb), np.stack(gray), shp, probs, CAT_NAMES, [entries[n].get('title') for n in keep],
+                        allowed, CAT_VI, approx, styles)
+    out = []
+    for n, r in zip(keep, res):
+        r['key'] = entries[n]['key']
+        if not allowed:
+            r['ok'] = {'exact': True, 'similar': True}
+        out.append(r)
+    return out
+
+
+def prefilter(eng, vecs, sims, allowed, k):
+    """Bước lấy ứng viên: lọc danh mục trên vector đã có (không cần tải ảnh) rồi lấy k ứng viên gần nhất."""
+    order = np.argsort(-sims)
+    sim_al = (allowed or {}).get('similar') or []
+    if not sim_al:
+        return [int(i) for i in order[:k]]
+    top = order[: max(k * 6, 300)]
+    probs = zs_probs(eng, vecs[top].astype(np.float32))
+    if probs is None:
+        return [int(i) for i in order[:k]]
+    idx = [CAT_NAMES.index(c) for c in sim_al if c in CAT_NAMES]
+    out = []
+    for j, i in enumerate(top):
+        p = probs[j]
+        if CAT_NAMES[int(np.argmax(p))] in sim_al or float(p[idx].sum()) >= 0.25:
+            out.append(int(i))
+            if len(out) >= k:
+                break
+    return out
 
 
 def job_search_local(eng, job, prog):
@@ -397,9 +511,26 @@ def job_search_local(eng, job, prog):
         return {'hits': [], 'indexed': 0}
     q = np.load(job['vec']).astype(np.float32)
     sims = ix['vec'].astype(np.float32) @ q
-    k = int(job.get('k', 200))
-    order = np.argsort(-sims)[:k]
-    return {'hits': [{'id': ix['ids'][int(i)], 'score': round(float(sims[i]), 4)} for i in order], 'indexed': len(ix['ids'])}
+    k = int(job.get('k', 60))
+    mode = job.get('mode', 'exact')
+    if 'allowed' not in job or mode == 'wide' and not job.get('items_file'):
+        order = np.argsort(-sims)[:k]
+        return {'hits': [{'id': ix['ids'][int(i)], 'score': round(float(sims[i]), 4)} for i in order], 'indexed': len(ix['ids'])}
+    picks = prefilter(eng, ix['vec'], sims, job['allowed'] if mode != 'wide' else {}, k)
+    by_id = {}
+    if job.get('items_file') and os.path.exists(job['items_file']):
+        by_id = {it['id']: it for it in library_items(job)}
+    entries = []
+    for i in picks:
+        lid = ix['ids'][i]
+        it = by_id.get(lid) or {}
+        src = thumb_source(it) if it else None
+        entries.append({'key': lid, 'src': 'local:%s:%s' % (src or lid, ix['keys'][i]), 'title': it.get('name') or os.path.basename(it.get('path') or ''),
+                        'load': (lambda s=src: open_image(s) if s else None), 'vec': ix['vec'][i].astype(np.float32)})
+    hits = score_entries(eng, job, entries)
+    for h in hits:
+        h['id'] = h.pop('key')
+    return {'hits': hits, 'indexed': len(ix['ids'])}
 
 
 def thumb_source(item):
@@ -510,42 +641,45 @@ def fetch(url, hosts, cache_dir):
 
 
 def job_rank_urls(eng, job, prog):
-    q = np.load(job['vec']).astype(np.float32)
     hosts = set(h.lower() for h in job['hosts'])
     cache = os.path.join(eng.data_dir, 'online_thumbs')
-    out, batch, keys, failed, vecs = [], [], [], 0, []
     items = job['items']
-    for n, it in enumerate(items):
-        prog({'done': n, 'total': len(items)})
-        try:
-            im = open_image(fetch(it['url'], hosts, cache))
-            batch.append(preprocess(im))
-            keys.append(it['key'])
-        except Exception as e:
-            failed += 1
-            log('thumbnail lỗi %s: %s' % (it.get('url'), e))
-        if len(batch) >= 16 or (n == len(items) - 1 and batch):
-            v = eng.embed_images(batch)
-            for k, s in zip(keys, v @ q):
-                out.append({'key': k, 'score': round(float(s), 4)})
-            vecs.extend(zip(keys, v))
-            batch, keys = [], []
+    done = [0]
+
+    def loader(url):
+        def f():
+            done[0] += 1
+            prog({'done': done[0], 'total': len(items)})
+            return open_image(fetch(url, hosts, cache))
+        return f
+    entries = [{'key': it['key'], 'src': 'url:' + it['url'], 'title': it.get('title'), 'load': loader(it['url'])} for it in items]
+    res = score_entries(eng, job, entries)
+    failed = len(items) - len(res)
     dups = 0
-    if job.get('store') and vecs:  # kho dữ liệu: lưu metadata + vector để lần sau tìm lại không cần tải ảnh
+    if job.get('store') and res:  # kho dữ liệu: lưu metadata + vector để lần sau tìm lại không cần tải ảnh
         try:
+            vm = vm_mod()
+            fc = feat_cache(eng).get_many([vm.FeatCache.key(e['src']) for e in entries])
+            vecs = [(e['key'], fc[vm.FeatCache.key(e['src'])][0]) for e in entries if vm.FeatCache.key(e['src']) in fc]
             cat = catalog(eng)
             cat.upsert(job['store'])
             dups = cat.set_vectors(vecs)
         except Exception as e:
             log('lưu kho dữ liệu lỗi: %s' % e)
-    return {'scores': out, 'failed': failed, 'dups': dups}
+    return {'scores': res, 'failed': failed, 'dups': dups}
+
+
+def fetch_any(url, cache_dir):
+    """Ảnh preview của mục trong kho (do bộ trích xuất lưu từ nguồn người dùng đã thêm): chỉ https, có giới hạn dung lượng."""
+    host = (urllib.parse.urlparse(url).hostname or '').lower()
+    return fetch(url, {host}, cache_dir)
 
 
 # --------------------------------------------------------------------------- Kho dữ liệu tích lũy (SQLite)
 # Lưu metadata kết quả online đã thấy (không tải file SKP), vector ảnh xem trước, trạng thái link, trùng lặp.
 CAT_FIELDS = ('source', 'source_label', 'uid', 'title', 'thumb', 'thumb_large', 'author', 'author_url', 'license', 'url',
               'downloadable', 'free', 'insertable', 'web_only', 'download_note', 'format', 'formats', 'likes', 'faces',
-              'description', 'categories', 'links', 'password', 'size')
+              'description', 'categories', 'links', 'password', 'size', 'thumb_local', 'images')
 DUP_COS = 0.97
 
 
@@ -699,8 +833,10 @@ def extractor():
     return source_extractor
 
 
-def src_keys():
-    return {'google': os.environ.get('MT_SRC_GOOGLE_KEY', ''), 'brave': os.environ.get('MT_SRC_BRAVE_KEY', '')}
+def src_keys(job=None):
+    k = {n: os.environ.get('MT_SRC_%s_KEY' % n.upper(), '') for n in ('google', 'brave', 'tavily', 'serper', 'serpapi')}
+    k['_search'] = (job or {}).get('search') or {}
+    return k
 
 
 def crawl_paths(eng, sid):
@@ -715,7 +851,7 @@ def job_src_check(eng, job, prog):
     logp, _ = crawl_paths(eng, job['source']['id'])
     f = ex.Fetcher(lambda m: None, delay=0.3)
     try:
-        return ex.check(job['source'], f, src_keys())
+        return ex.check(job['source'], f, src_keys(job))
     except Exception as e:
         with open(logp, 'a', encoding='utf-8') as fp:
             fp.write('%s KIỂM TRA LỖI: %s\n' % (time.strftime('%Y-%m-%d %H:%M:%S'), e))
@@ -736,7 +872,7 @@ def job_src_crawl(eng, job, prog):
     log('BẮT ĐẦU %s (%s) %s' % ('quét toàn bộ' if job.get('mode') == 'full' else 'đồng bộ', src.get('method'), src.get('url')))
     cat = catalog(eng)
     try:
-        res = ex.crawl(src, job.get('mode', 'sync'), int(job.get('limit', 500)), src_keys(), prog, log, statep, cat.upsert)
+        res = ex.crawl(src, job.get('mode', 'sync'), int(job.get('limit', 500)), src_keys(job), prog, log, statep, cat.upsert)
     except Cancelled:
         log('ĐÃ DỪNG theo yêu cầu')
         raise
@@ -746,6 +882,54 @@ def job_src_crawl(eng, job, prog):
     res['errors'] = len(errors) - 1
     log('XONG: %d model, %d có link tải, %d yêu cầu mạng' % (res['found'], res['with_links'], res['requests']))
     return res
+
+
+def job_search_test(eng, job, prog):
+    return extractor().search_test(job['provider'], src_keys(job), job.get('search') or {}, lambda m: None)
+
+
+def job_fb_ingest(eng, job, prog):
+    """Bài Facebook NGƯỜI DÙNG bấm lưu khi đang xem nhóm (đã tự đăng nhập): trích tên, nội dung, ảnh, link tải, mật khẩu.
+    Ảnh fbcdn có hạn dùng → lưu bản thu nhỏ trên máy ngay lúc lưu bài; tạo vector ảnh để tìm bằng ảnh."""
+    ex = extractor()
+    src = job['source']
+    logp, statep = crawl_paths(eng, src['id'])
+    items = ex.fb_items(src, job.get('posts') or [])
+    cache = os.path.join(eng.data_dir, 'online_thumbs')
+    tdir = os.path.join(eng.data_dir, 'fb_thumbs')
+    os.makedirs(tdir, exist_ok=True)
+    pairs, n_img = [], 0
+    for n, it in enumerate(items):
+        prog({'phase': 'Đang lưu bài viết', 'done': n, 'total': len(items)})
+        if not it.get('thumb'):
+            continue
+        try:
+            im = open_image(fetch_any(it['thumb'], cache))
+            t = im.copy()
+            t.thumbnail((320, 320))
+            tp = os.path.join(tdir, hashlib.sha1(it['key'].encode()).hexdigest() + '.jpg')
+            t.save(tp, 'JPEG', quality=82)
+            it['thumb_local'] = tp
+            pairs.append((it['key'], eng.embed_images([preprocess(im)])[0]))
+            n_img += 1
+        except Cancelled:
+            raise
+        except Exception as e:
+            log('ảnh bài Facebook lỗi: %s' % e)
+    cat = catalog(eng)
+    added = cat.upsert(items)
+    dups = cat.set_vectors(pairs) if pairs else 0
+    st = json.load(open(statep, encoding='utf-8')) if os.path.exists(statep) else {}
+    st['last_sync'] = int(time.time())
+    st['method'] = st.get('method') or 'manual'
+    if job.get('group_name'):
+        st['group_name'] = job['group_name'][:120]
+    write_json(statep, st)
+    with open(logp, 'a', encoding='utf-8') as fp:
+        fp.write('%s LƯU BÀI ĐANG XEM: %d bài, %d mới, %d có link tải, %d ảnh\n' % (
+            time.strftime('%Y-%m-%d %H:%M:%S'), len(items), added, sum(1 for i in items if i['links']), n_img))
+    return {'found': len(items), 'added': added, 'with_links': sum(1 for i in items if i['links']), 'images': n_img, 'dups': dups,
+            'titles': [i['title'] for i in items[:5]]}
 
 
 def job_catalog_embed(eng, job, prog):
@@ -807,7 +991,44 @@ def job_catalog_upsert(eng, job, prog):
 
 def job_catalog_search(eng, job, prog):
     q = np.load(job['vec']).astype(np.float32)
-    return {'items': catalog(eng).search(q, int(job.get('k', 60)), tuple(job.get('exclude_sources', [])))}
+    k = int(job.get('k', 60))
+    cat = catalog(eng)
+    mode = job.get('mode')
+    if not mode:  # gọi kiểu cũ
+        return {'items': cat.search(q, k, tuple(job.get('exclude_sources', [])))}
+    keys, mat = cat.matrix()
+    if mat is None:
+        return {'items': []}
+    sims = mat @ q
+    picks = prefilter(eng, mat, sims, job.get('allowed') if mode != 'wide' else {}, k * 2)
+    cache = os.path.join(eng.data_dir, 'online_thumbs')
+    rows, entries = {}, []
+    excl = set(job.get('exclude_sources', []))
+    for i in picks:
+        row = cat.db.execute('SELECT data, link_status FROM items WHERE key=?', (keys[i],)).fetchone()
+        if not row or row[1] == 'dead':
+            continue
+        d = json.loads(row[0])
+        if d.get('source') in excl:
+            continue
+        d['key'] = keys[i]
+        d['from_catalog'] = True
+        rows[keys[i]] = d
+        th, tl = d.get('thumb') or '', d.get('thumb_local') or ''
+
+        def load(th=th, tl=tl):
+            if tl and os.path.exists(tl):
+                return open_image(tl)
+            return open_image(fetch_any(th, cache)) if th.startswith('http') else None
+        entries.append({'key': keys[i], 'src': 'url:' + (th or tl or keys[i]), 'title': d.get('title'), 'load': load, 'vec': mat[i]})
+        if len(entries) >= k:
+            break
+    out = []
+    for r in score_entries(eng, job, entries):
+        d = rows[r['key']]
+        d.update(r)
+        out.append(d)
+    return {'items': out}
 
 
 def job_catalog_stats(eng, job, prog):
@@ -873,7 +1094,8 @@ JOBS = {'probe': job_probe, 'embed_query': job_embed_query, 'search_local': job_
         'catalog_upsert': job_catalog_upsert, 'catalog_search': job_catalog_search, 'catalog_stats': job_catalog_stats,
         'catalog_clear': job_catalog_clear, 'catalog_check_links': job_catalog_check_links,
         'src_check': job_src_check, 'src_crawl': job_src_crawl, 'catalog_embed': job_catalog_embed,
-        'catalog_text': job_catalog_text, 'catalog_source_stats': job_catalog_source_stats, 'src_log': job_src_log}
+        'catalog_text': job_catalog_text, 'catalog_source_stats': job_catalog_source_stats, 'src_log': job_src_log,
+        'search_test': job_search_test, 'fb_ingest': job_fb_ingest}
 
 
 def probe_gpu(model_dir, data_dir, out):

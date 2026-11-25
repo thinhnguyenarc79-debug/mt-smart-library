@@ -34,7 +34,12 @@ class TestSourceRegistry < Minitest::Test
     assert_equal 'unverified', w['method']
     fb = @reg.add('url' => 'https://www.facebook.com/groups/thuvien3d', 'type' => '')
     assert_equal 'facebook_group', fb['type']
-    assert_equal 'open_only', fb['method']
+    assert_equal 'index', fb['method'], 'V1.0.13: Facebook mặc định tìm qua chỉ mục máy tìm kiếm'
+    assert_equal 'Nhóm Facebook thuvien3d', fb['name'], 'tên theo mã nhóm, không còn “facebook.com”'
+    assert @reg.rename_auto(fb['id'], 'Thư Viện 3D SketchUp VN')
+    assert_equal 'Thư Viện 3D SketchUp VN', @reg.find(fb['id'])['name'], 'tên thật của nhóm thay cho tên tự đặt'
+    @reg.update(fb['id'], 'name' => 'Nhóm của tôi')
+    refute @reg.rename_auto(fb['id'], 'Tên khác'), 'tên người dùng tự đặt được giữ nguyên'
     assert_equal 'facebook_page', @reg.add('url' => 'https://facebook.com/mtdesign')['type']
     assert_equal 'dropbox', @reg.add('url' => 'https://www.dropbox.com/scl/fo/abc')['type']
     assert_equal 'direct_link', @reg.find(@reg.custom.last['id'])['method']

@@ -210,10 +210,13 @@ def check(source, f, keys):
         d = f.json(drive_url('files', {'q': "'%s' in parents and trashed=false" % fid, 'pageSize': 1, 'fields': 'files(id,name)', 'key': keys['google']}))
         return {'method': 'gdrive', 'ok': True, 'status': 'ok', 'note': 'Google Drive API: đọc được thư mục công khai (%d mục mẫu).' % len(d.get('files', []))}
     if t in ('facebook_group', 'facebook_page'):
-        if not keys.get('brave'):
+        provs = providers_for(keys.get('_search') or {}, keys)
+        names = ', '.join(SEARCH_INFO[p]['name'] for p in provs)
+        if not provs:
             return {'method': 'index', 'ok': False, 'status': 'need_key',
-                    'note': 'Facebook không cho truy cập tự động (Groups API đã gỡ). Có thể tìm bài CÔNG KHAI đã được máy tìm kiếm lập chỉ mục — cần Brave Search API key.'}
-        return {'method': 'index', 'ok': True, 'status': 'ok', 'note': 'Tìm bài công khai đã được Brave Search lập chỉ mục (không đọc được bài riêng tư trong nhóm).'}
+                    'note': 'Chưa bật công cụ tìm kiếm nào. Bật Tavily (không cần key) trong Tài khoản thư viện › Công cụ tìm kiếm.'}
+        return {'method': 'index', 'ok': True, 'status': 'ok',
+                'note': 'Tìm bài CÔNG KHAI đã được lập chỉ mục qua: %s. Bài trong nhóm kín: mở nhóm bằng “Đăng nhập & lưu bài” rồi lưu bài đang xem.' % names}
     if t != 'website':
         return {'method': 'open_only', 'ok': False, 'status': 'unsupported', 'note': 'Dịch vụ này không có phương thức liệt kê công khai hợp lệ — mở nguồn trên trình duyệt; plugin tự nhận file vừa tải.'}
     base = source['url'].rstrip('/')
@@ -445,44 +448,282 @@ def run_gdrive(source, f, st, prog, log, mode, limit, keys):
             yield batch
 
 
-# ---- Chỉ mục máy tìm kiếm (Brave Search API) — bài công khai đã được lập chỉ mục
-BRAVE = os.environ.get('MT_TEST_BRAVE_BASE', 'https://api.search.brave.com/res/v1/web/search')
-QUERIES = ['sketchup', 'skp model', 'sofa sketchup', 'ghế sketchup', 'bàn sketchup', 'giường sketchup', 'tủ sketchup',
-           'đèn sketchup', 'cây sketchup', 'nội thất sketchup', 'ngoại thất sketchup', 'model 3d free']
+# ---- Chỉ mục máy tìm kiếm — NHIỀU nhà cung cấp (thử lần lượt; một nhà cung cấp lỗi/hết hạn mức → chuyển sang cái tiếp theo)
+# Chỉ dùng API chính thức của từng dịch vụ. Không đọc trang Facebook trực tiếp (robots.txt của Facebook cấm truy cập tự động).
+def _env_base(name, default):
+    return os.environ.get('MT_TEST_%s_BASE' % name.upper(), default)
+
+
+SEARCH_INFO = {
+    'tavily': {'name': 'Tavily', 'key': 'optional', 'free': 'Không cần key (giới hạn tốc độ); key miễn phí 1.000 lượt/tháng',
+               'signup': 'https://app.tavily.com', 'site_op': False},
+    'serper': {'name': 'Serper (Google)', 'key': 'required', 'free': '2.500 lượt miễn phí khi đăng ký, không cần thẻ',
+               'signup': 'https://serper.dev', 'site_op': True},
+    'serpapi': {'name': 'SerpApi (Google)', 'key': 'required', 'free': '250 lượt/tháng miễn phí',
+                'signup': 'https://serpapi.com/users/sign_up', 'site_op': True},
+    'brave': {'name': 'Brave Search', 'key': 'required', 'free': 'Tín dụng 5 USD/tháng (~1.000 lượt), cần thẻ',
+              'signup': 'https://api-dashboard.search.brave.com', 'site_op': True},
+    'searxng': {'name': 'SearXNG (máy chủ riêng)', 'key': 'none', 'free': 'Miễn phí — địa chỉ máy chủ SearXNG của bạn (bật định dạng JSON)',
+                'signup': 'https://docs.searxng.org', 'site_op': True},
+}
+QUERIES = ['sketchup', 'skp', 'model 3d', 'sofa', 'ghế', 'bàn', 'giường', 'tủ', 'đèn', 'cây', 'nội thất', 'ngoại thất', 'link tải',
+           'free download']
+
+
+class QuotaErr(Exception):
+    pass
+
+
+def _post_json(f, url, body, headers):
+    if not scheme_ok(url):
+        raise ValueError('chỉ nhận https')
+    host = urllib.parse.urlparse(url).netloc
+    wait = f.delay - (time.time() - f.last.get(host, 0))
+    if wait > 0:
+        time.sleep(wait)
+    h = {'User-Agent': UA, 'Content-Type': 'application/json', 'Accept': 'application/json'}
+    h.update(headers)
+    req = urllib.request.Request(url, data=json.dumps(body).encode('utf-8'), headers=h, method='POST')
+    f.count += 1
+    try:
+        with urllib.request.urlopen(req, timeout=25) as r:
+            return json.loads(r.read(MAX_BODY).decode('utf-8', 'replace'))
+    except urllib.error.HTTPError as e:
+        raise HttpErr(e.code, url)
+    finally:
+        f.last[host] = time.time()
+
+
+def search_web(provider, q, scope_domain, keys, f, cfg, count=20):
+    """→ [{url, title, snippet, thumb}] từ một nhà cung cấp. Ném QuotaErr khi key sai/hết hạn mức (chuyển nhà cung cấp khác)."""
+    site_q = 'site:%s %s' % (scope_domain, q) if scope_domain else q
+    try:
+        if provider == 'tavily':
+            key = keys.get('tavily')
+            hdr = {'Authorization': 'Bearer %s' % key} if key else {'X-Tavily-Access-Mode': 'keyless'}
+            body = {'query': q, 'max_results': min(count, 20), 'include_images': True}
+            if scope_domain:
+                body['include_domains'] = [scope_domain.split('/')[0]]
+            d = _post_json(f, _env_base('tavily', 'https://api.tavily.com') + '/search', body, hdr)
+            out = []
+            for r in d.get('results') or []:
+                imgs = r.get('images') or []
+                th = imgs[0].get('url') if imgs and isinstance(imgs[0], dict) else (imgs[0] if imgs else None)
+                out.append({'url': r.get('url'), 'title': r.get('title'), 'snippet': r.get('content') or '', 'thumb': th})
+            return out
+        if provider == 'serper':
+            if not keys.get('serper'):
+                raise QuotaErr('chưa có key')
+            d = _post_json(f, _env_base('serper', 'https://google.serper.dev') + '/search', {'q': site_q, 'num': min(count, 20)},
+                           {'X-API-KEY': keys['serper']})
+            return [{'url': r.get('link'), 'title': r.get('title'), 'snippet': r.get('snippet') or '', 'thumb': r.get('imageUrl')}
+                    for r in d.get('organic') or []]
+        if provider == 'serpapi':
+            if not keys.get('serpapi'):
+                raise QuotaErr('chưa có key')
+            d = f.json(_env_base('serpapi', 'https://serpapi.com') + '/search.json?' + urllib.parse.urlencode(
+                {'engine': 'google', 'q': site_q, 'num': min(count, 20), 'api_key': keys['serpapi']}))
+            if d.get('error') and not d.get('organic_results'):
+                if 'hasn' in d['error'] and 'results' in d['error']:
+                    return []
+                raise QuotaErr(d['error'])
+            return [{'url': r.get('link'), 'title': r.get('title'), 'snippet': r.get('snippet') or '', 'thumb': r.get('thumbnail')}
+                    for r in d.get('organic_results') or []]
+        if provider == 'brave':
+            if not keys.get('brave'):
+                raise QuotaErr('chưa có key')
+            d = f.json(_env_base('brave', 'https://api.search.brave.com/res/v1/web/search') + '?' + urllib.parse.urlencode(
+                {'q': site_q, 'count': min(count, 20)}), headers={'X-Subscription-Token': keys['brave']})
+            out = []
+            for r in (d.get('web') or {}).get('results', []):
+                desc = strip_html(r.get('description', '')) + ' ' + ' '.join(strip_html(x) for x in r.get('extra_snippets', []) or [])
+                th = (r.get('thumbnail') or {}).get('src') or (r.get('thumbnail') or {}).get('original')
+                out.append({'url': r.get('url'), 'title': strip_html(r.get('title', '')), 'snippet': desc.strip(), 'thumb': th})
+            return out
+        if provider == 'searxng':
+            base = (cfg.get('searxng_url') or '').rstrip('/')
+            if not base:
+                raise QuotaErr('chưa nhập địa chỉ máy chủ SearXNG')
+            d = f.json(base + '/search?' + urllib.parse.urlencode({'q': site_q, 'format': 'json'}))
+            return [{'url': r.get('url'), 'title': r.get('title'), 'snippet': r.get('content') or '',
+                     'thumb': r.get('thumbnail') or r.get('img_src')} for r in d.get('results') or []]
+    except HttpErr as e:
+        if e.code in (401, 402, 403, 429, 432, 433):
+            raise QuotaErr('HTTP %s (key sai, hết hạn mức hoặc bị giới hạn tốc độ)' % e.code)
+        raise
+    raise ValueError('nhà cung cấp không hỗ trợ: %s' % provider)
+
+
+def providers_for(cfg, keys):
+    order = cfg.get('order') or ['tavily', 'serper', 'serpapi', 'brave', 'searxng']
+    en = cfg.get('enabled') or {}
+    out = []
+    for p in order:
+        if p not in SEARCH_INFO or en.get(p) is False:
+            continue
+        info = SEARCH_INFO[p]
+        if info['key'] == 'required' and not keys.get(p):
+            continue
+        if p == 'searxng' and not cfg.get('searxng_url'):
+            continue
+        out.append(p)
+    return out
+
+
+def search_test(provider, keys, cfg, log):
+    f = Fetcher(log, delay=0.2)
+    t0 = time.time()
+    try:
+        res = search_web(provider, 'sketchup sofa model', '', keys, f, cfg, count=5)
+        return {'ok': True, 'provider': provider, 'count': len(res), 'ms': int((time.time() - t0) * 1000),
+                'sample': [r.get('title') for r in res[:3]]}
+    except QuotaErr as e:
+        return {'ok': False, 'provider': provider, 'error': str(e)}
+    except Exception as e:
+        return {'ok': False, 'provider': provider, 'error': 'Không kết nối được: %s' % e}
+
+
+FB_TITLE = re.compile(r'\s*[|\-–]\s*Facebook\s*$', re.I)
+
+
+def fb_scope(url):
+    """URL nhóm/trang Facebook → (miền tìm kiếm 'facebook.com/groups/<id>', mã nhóm)."""
+    u = urllib.parse.urlparse(url)
+    parts = [x for x in u.path.split('/') if x]
+    if len(parts) >= 2 and parts[0] == 'groups':
+        return 'facebook.com/groups/%s' % parts[1], parts[1]
+    if parts:
+        return 'facebook.com/%s' % parts[0], parts[0]
+    return 'facebook.com', ''
+
+
+def in_scope(url, gid, is_fb):
+    if not url:
+        return False
+    if not is_fb:
+        return True
+    u = urllib.parse.urlparse(url)
+    if not re.search(r'(^|\.)facebook\.com$', (u.hostname or '').lower()):
+        return False
+    return not gid or ('/%s/' % gid.lower()) in (u.path.lower() + '/') or ('/%s' % gid.lower()) in u.path.lower()
+
+
+def group_name_from(results, gid):
+    """Tên thật của nhóm từ tiêu đề kết quả tìm kiếm (“Tên nhóm | Facebook”) — chỉ khi kết quả là trang gốc của nhóm."""
+    for r in results:
+        u = urllib.parse.urlparse(r.get('url') or '')
+        parts = [x for x in u.path.split('/') if x]
+        if gid and len(parts) == 2 and parts[0] == 'groups' and parts[1].lower() == gid.lower():
+            t = FB_TITLE.sub('', strip_html(r.get('title') or '')).strip()
+            if t and t.lower() not in ('facebook', 'log in or sign up to view', 'đăng nhập facebook'):
+                return t[:120]
+    return None
+
+
+def post_title(title, snippet):
+    t = FB_TITLE.sub('', strip_html(title or '')).strip()
+    if not t or len(t) < 4 or re.match(r'^(facebook|đăng nhập|log in)', t, re.I):
+        t = (snippet or '').strip().split('\n')[0][:120]
+    return t[:200]
 
 
 def run_index(source, f, st, prog, log, mode, limit, keys):
-    key = keys.get('brave')
-    if not key:
-        raise ValueError('Cần Brave Search API key.')
-    f.delay = max(f.delay, 1.1)  # gói miễn phí: 1 yêu cầu/giây
-    u = urllib.parse.urlparse(source['url'])
-    scope = (u.netloc + u.path).rstrip('/')
-    total = 0
-    for n, q in enumerate(QUERIES):
+    cfg = keys.get('_search') or {}
+    provs = providers_for(cfg, keys)
+    if not provs:
+        raise ValueError('Chưa bật công cụ tìm kiếm nào (Cài đặt › Tài khoản thư viện › Công cụ tìm kiếm). Tavily dùng được không cần key.')
+    is_fb = source['type'].startswith('facebook')
+    scope, gid = fb_scope(source['url']) if is_fb else ((urllib.parse.urlparse(source['url']).netloc + urllib.parse.urlparse(source['url']).path).rstrip('/'), '')
+    f.delay = max(f.delay, 1.1)
+    dead, total, seen = set(), 0, set(st.get('seen', []))
+    per = {p: 0 for p in provs}
+    terms = QUERIES if not gid else [gid] + QUERIES
+    for n, q in enumerate(terms):
         if total >= limit:
             break
-        prog({'phase': 'Đang tìm bài công khai đã được lập chỉ mục', 'done': n, 'total': len(QUERIES)})
-        try:
-            d = f.json(BRAVE + '?' + urllib.parse.urlencode({'q': 'site:%s %s' % (scope, q), 'count': 20}),
-                       headers={'X-Subscription-Token': key})
-        except HttpErr as e:
-            log('Brave Search HTTP %s cho “%s”' % (e.code, q))
-            if e.code in (401, 403, 429):
+        prog({'phase': 'Đang tìm bài công khai đã được lập chỉ mục', 'done': n, 'total': len(terms)})
+        res = None
+        for p in provs:
+            if p in dead:
+                continue
+            try:
+                query = q if SEARCH_INFO[p]['site_op'] else ('facebook group %s %s' % (gid, q) if is_fb else '%s %s' % (scope, q))
+                res = search_web(p, query, scope, keys, f, cfg)
+                per[p] += 1
+                break
+            except QuotaErr as e:
+                log('%s: %s — chuyển sang công cụ tìm kiếm khác' % (SEARCH_INFO[p]['name'], e))
+                dead.add(p)
+            except Exception as e:
+                log('%s lỗi với “%s”: %s' % (SEARCH_INFO[p]['name'], q, e))
+                break
+        if res is None:
+            if len(dead) == len(provs):
+                log('Tất cả công cụ tìm kiếm đều không dùng được (key/hạn mức).')
                 break
             continue
+        if is_fb and not st.get('group_name'):
+            name = group_name_from(res, gid)
+            if name:
+                st['group_name'] = name
+                log('Tên nhóm: %s' % name)
         batch = []
-        for r in (d.get('web') or {}).get('results', []):
-            url = r.get('url') or ''
-            if scope.split('/')[0] not in url:
+        for r in res:
+            url = (r.get('url') or '').split('#')[0]
+            if not in_scope(url, gid, is_fb) or url in seen:
                 continue
-            desc = strip_html(r.get('description', '')) + ' ' + ' '.join(strip_html(x) for x in r.get('extra_snippets', []) or [])
-            thumb = (r.get('thumbnail') or {}).get('src') or (r.get('thumbnail') or {}).get('original')
-            batch.append(item_from(source, hashlib.sha1(url.encode()).hexdigest()[:16], strip_html(r.get('title', '')), url, thumb,
-                                   desc.strip(), [], extract_links(desc), find_password(desc)))
+            u = urllib.parse.urlparse(url)
+            if is_fb and len([x for x in u.path.split('/') if x]) <= 2:  # trang gốc của nhóm, không phải bài viết
+                continue
+            seen.add(url)
+            desc = strip_html(r.get('snippet') or '')
+            th = r.get('thumb') if isinstance(r.get('thumb'), str) and r.get('thumb', '').startswith('https://') else None
+            batch.append(item_from(source, hashlib.sha1(url.encode()).hexdigest()[:16], post_title(r.get('title'), desc), url, th,
+                                   desc, [], extract_links(desc), find_password(desc)))
         total += len(batch)
         if batch:
             yield batch
+    st['seen'] = list(seen)[-5000:]
+    st['providers_used'] = {SEARCH_INFO[p]['name']: c for p, c in per.items() if c}
+    log('Công cụ tìm kiếm đã dùng: %s' % (', '.join('%s (%d lượt)' % (k, v) for k, v in st['providers_used'].items()) or 'không có'))
+
+
+FB_BOILER = re.compile(r'^(link|lin|mk|pass|tải|download)\b.{0,30}(bình luận|cmt|comment|dưới|ib|inbox)|^(xem thêm|see more)', re.I)
+
+
+def fb_title(text):
+    """Tên model từ nội dung bài: câu đầu có nghĩa (bỏ “Link ở bình luận…”, dòng quá ngắn, link)."""
+    parts = [x.strip(' .,-–:!') for x in re.split(r'[\n]|(?<=[.!?])\s+', text or '') if x.strip(' .,-–:!')]
+    good = [x for x in parts if len(x) >= 12 and not URL_RX.match(x) and not FB_BOILER.search(x)]
+    t = (good or parts or ['Bài viết Facebook'])[0]
+    t = re.sub(r'^(quá đẹp|đẹp quá)\s+(anh em|ae)\s*ạ?\s*,?\s*', '', t, flags=re.I) or t
+    return t[:120]
+
+
+# ---- Facebook: bài viết NGƯỜI DÙNG tự lưu khi đang xem nhóm (đã đăng nhập thủ công trong cửa sổ plugin)
+def fb_items(source, posts):
+    out = []
+    for p in posts[:200]:
+        text = (p.get('text') or '').strip()
+        url = (p.get('url') or '').split('?')[0]
+        if not url.startswith('https://') or not text and not p.get('images'):
+            continue
+        links = []
+        seen = set()
+        for l in list(p.get('links') or []) + [m.group(0) for m in URL_RX.finditer(text)]:
+            l = l.rstrip('.,;)')
+            k = classify_link(l)
+            if k and l not in seen:
+                seen.add(l)
+                links.append({'url': l, 'kind': k, 'text': ''})
+        text = re.sub(r'\s*…\s*(Xem thêm|See more)\s*$', '…', text)
+        title = fb_title(text)
+        imgs = [i for i in (p.get('images') or []) if isinstance(i, str) and i.startswith('https://')]
+        key = hashlib.sha1(url.encode()).hexdigest()[:16]
+        it = item_from(source, key, title, url, imgs[0] if imgs else None, text, [], links, find_password(text))
+        it['images'] = imgs[:6]
+        out.append(it)
+    return out
 
 
 METHODS = {'wp_rest': run_wp, 'sitemap': run_sitemap}
@@ -507,10 +748,12 @@ def crawl(source, mode, limit, keys, prog, log, state_path, store):
         store(batch)
         found += len(batch)
         links += sum(1 for it in batch if it['links'])
+        prog({'found': found, 'with_links': links})
     st['last_sync'] = int(time.time())
     st['method'] = method
     tmp = state_path + '.tmp'
     with open(tmp, 'w', encoding='utf-8') as fp:
         json.dump(st, fp)
     os.replace(tmp, state_path)
-    return {'method': method, 'found': found, 'with_links': links, 'requests': f.count, 'last_sync': st['last_sync']}
+    return {'method': method, 'found': found, 'with_links': links, 'requests': f.count, 'last_sync': st['last_sync'],
+            'group_name': st.get('group_name'), 'providers_used': st.get('providers_used')}

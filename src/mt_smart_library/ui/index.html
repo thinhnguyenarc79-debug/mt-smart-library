@@ -32,6 +32,10 @@
       <img id="vsThumb" alt="Ảnh mẫu">
       <div class="vsmid">
         <b>Tìm bằng ảnh</b> <span id="vsMsg" class="small"></span>
+        <div id="vsModes" class="seg" title="Chính xác: chỉ đúng danh mục AI nhận diện · Tương tự: cùng nhóm đồ vật · Mở rộng: không lọc danh mục">
+          <button type="button" data-m="exact">Chính xác</button><button type="button" data-m="similar">Tương tự</button><button type="button" data-m="wide">Mở rộng</button>
+        </div>
+        <div id="vsCats" class="muted small"></div>
         <div id="vsProg" class="bar2" hidden><i></i></div>
         <div id="vsIndex" class="muted small"></div>
       </div>
@@ -124,6 +128,9 @@
         <input id="srcUrl" class="grow" placeholder="Link website / group / fanpage / thư mục chia sẻ / đường dẫn thư mục" spellcheck="false">
         <button id="srcAddBtn" class="primary">Thêm nguồn</button><button id="srcCancelEdit" hidden>Hủy sửa</button>
       </div>
+      <div class="row"><button id="srcSyncAll" class="primary">Đồng bộ tất cả nguồn</button><button id="srcSyncAllStop" hidden>Dừng đồng bộ tất cả</button>
+        <span id="srcAllState" class="small muted"></span></div>
+      <div id="srcAllList" class="small muted"></div>
       <div id="srcList" class="list"></div>
       <div class="row"><button id="srcExport">Xuất danh sách (JSON)</button><button id="srcImport">Nhập danh sách (JSON)</button></div>
       <h4 class="small">Nhập link model</h4>
@@ -169,11 +176,13 @@
         <input id="kGoogle" type="password" class="grow" placeholder="Google API key (đọc thư mục Google Drive công khai)" autocomplete="off" spellcheck="false">
         <button id="kGoogleSave" class="primary">Lưu</button><button id="kGoogleClear">Xóa</button><span id="kGoogleState" class="small muted"></span>
       </div>
-      <div class="row">
-        <input id="kBrave" type="password" class="grow" placeholder="Brave Search API key (tìm bài Facebook công khai đã được lập chỉ mục)" autocomplete="off" spellcheck="false">
-        <button id="kBraveSave" class="primary">Lưu</button><button id="kBraveClear">Xóa</button><span id="kBraveState" class="small muted"></span>
-      </div>
-      <p class="muted small">Khóa được ghi nhớ mã hóa bằng Windows DPAPI, không ghi vào settings/log. Lấy khóa: Google Cloud Console (bật Drive API) · api-dashboard.search.brave.com.</p>
+      <p class="muted small">Google API key: Google Cloud Console › bật “Google Drive API” › Credentials › Create API key <button id="kGoogleGet" class="link">(mở trang)</button>.</p>
+      <h4 class="small">Công cụ tìm kiếm (Facebook &amp; nguồn không có API)</h4>
+      <p class="muted small">Plugin thử lần lượt từ trên xuống; công cụ lỗi hoặc hết hạn mức sẽ tự chuyển sang công cụ kế tiếp. Tavily dùng được ngay không cần key.</p>
+      <div id="searchList" class="list"></div>
+      <div class="row"><input id="sSearx" class="grow" placeholder="Địa chỉ máy chủ SearXNG của bạn (https://…), cần bật định dạng JSON" spellcheck="false">
+        <button id="sSearxSave">Lưu địa chỉ</button></div>
+      <p class="muted small">Khóa được ghi nhớ mã hóa bằng Windows DPAPI, không ghi vào settings/log/giao diện.</p>
       <h4 class="small">Sketchfab API token</h4>
       <p id="sfState" class="small"></p>
       <div class="row">

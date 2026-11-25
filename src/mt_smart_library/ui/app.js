@@ -109,6 +109,7 @@
     var heart = btn('♡', function () { call('fav_item', it.key); }, 'heart', 'Yêu thích');
     th.appendChild(heart);
     var sb = el('span', it.source === 'local' ? '💻' : '☁', 'src'); sb.title = 'Nguồn: ' + (it.source_label || ''); th.appendChild(sb);
+    if (it.vscore !== undefined) { var vb = el('span', pct(it.vscore), 'vsc'); vb.title = vsTip(it); th.appendChild(vb); }
     var bar = el('div', null, 'cardbar');
     var t = el('div', shortName(it.title), 'title'); t.title = it.title;
     bar.appendChild(t);
@@ -125,6 +126,13 @@
       if (!pr) { pr = el('div', null, 'prog'); pr.appendChild(el('i')); th.appendChild(pr); }
       pr.firstChild.style.width = (st.total ? Math.round((st.bytes || 0) * 100 / st.total) : 5) + '%';
     } else if (pr) pr.remove();
+  }
+  function pct(x) { return Math.round(Number(x) * 100) + '%'; }
+  function vsTip(it) {
+    var p = it.vparts || {};
+    return 'Tương đồng tổng hợp ' + pct(it.vscore) + ' = 45% cấu trúc ' + pct(p.struct || 0) + ' + 25% hình dáng ' +
+      (p.shape === null || p.shape === undefined ? '—' : pct(p.shape)) + ' + 15% màu/vật liệu ' + pct(p.full || 0) +
+      (it.vcat_vi ? ' · AI nhận diện: ' + it.vcat_vi + ' (' + pct(it.vcat_p || 0) + ')' : '') + (it.vapprox ? ' · ước lượng (không tải được ảnh)' : '');
   }
   function shortName(s) { s = String(s || ''); return s.length > 60 ? s.slice(0, 57) + '…' : s; }
   function canInsertish(it) { return it.source === 'local' || it.downloadable; }
@@ -188,7 +196,13 @@
       if (it.faces) row('Số mặt', Number(it.faces).toLocaleString('vi-VN'));
     }
     if (it.vscore !== undefined) {
-      row('Tương đồng ảnh', Number(it.vscore).toFixed(2) + ' (cosine CLIP, không phải xác suất)');
+      var vp = it.vparts || {};
+      row('Tương đồng tổng hợp', pct(it.vscore) + (it.vapprox ? ' (ước lượng — không tải được ảnh preview)' : ''));
+      row('Cấu trúc', pct(vp.struct || 0) + ' (so ảnh đã bỏ màu)');
+      if (vp.style !== undefined) row('Phong cách', pct(vp.style));
+      if (vp.shape !== null && vp.shape !== undefined) row('Hình dáng', pct(vp.shape) + ' (viền, bóng, tỉ lệ khung)');
+      row('Màu sắc / vật liệu', pct(vp.full || 0));
+      if (it.vcat_vi) row('AI nhận diện ảnh preview', it.vcat_vi + ' (' + pct(it.vcat_p || 0) + ')');
     }
     var attr = $('dAttr');
     if (it.source !== 'local') {
@@ -369,6 +383,8 @@
   function saveSettings(patch) { callJ('save_settings', patch); }
   function applySettings(s) {
     S.settings = s;
+    vsModeUi(s.visual_mode || 'exact');
+    renderSearch();
     $('sQuick').checked = !!s.quick_scan; $('sScanOpen').checked = !!s.scan_on_open;
     if (document.activeElement !== $('sModel')) $('sModel').value = s.ai.model;
     if (document.activeElement !== $('sBase')) $('sBase').value = s.ai.base_url;
@@ -419,7 +435,8 @@
         p.appendChild(el('span', line, 'stat'));
       }
       var sy = s.sync || {};
-      if (sy.phase) p.appendChild(el('span', sy.phase + (sy.running && sy.total ? ' (' + sy.done + '/' + sy.total + ')' : ''), 'prog2'));
+      if (sy.phase) p.appendChild(el('span', sy.phase + (sy.running && sy.total ? ' (' + sy.done + '/' + sy.total + ')' : '') +
+        (sy.running && sy.found !== undefined ? ' · đã tìm thấy ' + sy.found + ' model (' + (sy.with_links || 0) + ' có link tải)' : ''), 'prog2'));
       row.appendChild(p);
       var st = s.builtin ? (s.integrated ? 'Đã tích hợp' : 'Chưa tích hợp') : (SRC_STATUS[s.status] || s.status || '');
       row.appendChild(el('span', st, 'tag' + ((s.integrated || s.status === 'ok') ? '' : ' off')));
@@ -438,6 +455,7 @@
         }
         acts.appendChild(btn('Nhật ký', function () { call('src_log', s.id); }));
       }
+      if (/^facebook/.test(s.type || '')) acts.appendChild(btn('Đăng nhập & lưu bài', function () { call('fb_open', s.id); }, '', 'Mở nhóm trong cửa sổ plugin, bạn tự đăng nhập, rồi bấm “MT: Lưu bài đang hiển thị”'));
       if (!s.builtin) {
         acts.appendChild(btn('Kiểm tra kết nối', function () { call('src_check', s.id); }));
         acts.appendChild(btn('Sửa', function () { S.editSrc = s.id; $('srcName').value = s.name; $('srcType').value = s.type; $('srcUrl').value = s.url; $('srcAddBtn').textContent = 'Lưu'; $('srcCancelEdit').hidden = false; }));
@@ -445,6 +463,62 @@
       }
       row.appendChild(acts); box.appendChild(row);
     });
+  }
+  var SEARCH = {
+    tavily: { name: 'Tavily', key: 'optional', free: 'Không cần key (giới hạn tốc độ) · key miễn phí 1.000 lượt/tháng, không cần thẻ', url: 'https://app.tavily.com' },
+    serper: { name: 'Serper (Google)', key: 'required', free: '2.500 lượt miễn phí khi đăng ký, không cần thẻ', url: 'https://serper.dev' },
+    serpapi: { name: 'SerpApi (Google)', key: 'required', free: '250 lượt/tháng miễn phí', url: 'https://serpapi.com' },
+    brave: { name: 'Brave Search', key: 'required', free: 'Tín dụng 5 USD/tháng (~1.000 lượt), cần thẻ', url: 'https://api-dashboard.search.brave.com' },
+    searxng: { name: 'SearXNG (máy chủ riêng)', key: 'none', free: 'Miễn phí — nhập địa chỉ máy chủ SearXNG của bạn ở ô bên dưới', url: 'https://docs.searxng.org' }
+  };
+  S.searchTest = {};
+  function renderSearch() {
+    var box = $('searchList'); if (!box || !S.settings) return;
+    var cfg = S.settings.search || { order: Object.keys(SEARCH), enabled: {} };
+    if ($('sSearx') && document.activeElement !== $('sSearx')) $('sSearx').value = cfg.searxng_url || '';
+    box.replaceChildren();
+    (cfg.order || []).forEach(function (id, idx) {
+      var info = SEARCH[id]; if (!info) return;
+      var sec = (S.secrets || {})[id] || {};
+      var row = el('div', null, 'item prov'); var p = el('div', null, 'p');
+      p.appendChild(el('b', (idx + 1) + '. ' + info.name));
+      p.appendChild(el('span', info.free, 'note'));
+      var have = info.key === 'none' ? (id === 'searxng' && cfg.searxng_url ? 'Đã có địa chỉ máy chủ' : 'Chưa có địa chỉ máy chủ') :
+        (sec.session ? '✓ Đã có key' + (sec.stored ? ' (lưu mã hóa)' : '') : (info.key === 'optional' ? 'Dùng không key' : 'Chưa có key'));
+      var t = S.searchTest[id];
+      var tt = !t ? '' : t.state === 'checking' ? ' · Đang kiểm tra…' : t.ok ? ' · ✓ Kết nối được (' + t.count + ' kết quả, ' + t.ms + ' ms)' : ' · ✗ ' + (t.error || 'Lỗi');
+      p.appendChild(el('span', have + tt, 'stat'));
+      row.appendChild(p);
+      var acts = el('div', null, 'acts');
+      var lb = el('label', null, 'check'); var cb = el('input'); cb.type = 'checkbox'; cb.checked = (cfg.enabled || {})[id] !== false;
+      cb.onchange = function () { var en = Object.assign({}, cfg.enabled); en[id] = cb.checked; saveSettings({ search: { enabled: en } }); };
+      lb.appendChild(cb); lb.appendChild(document.createTextNode(' Bật')); acts.appendChild(lb);
+      if (idx > 0) acts.appendChild(btn('▲', function () { var o = cfg.order.slice(); o.splice(idx, 1); o.splice(idx - 1, 0, id); saveSettings({ search: { order: o } }); }, '', 'Ưu tiên dùng trước'));
+      if (info.key !== 'none') {
+        var inp = el('input'); inp.type = 'password'; inp.placeholder = 'API key'; inp.autocomplete = 'off'; inp.spellcheck = false; inp.className = 'kin';
+        acts.appendChild(inp);
+        acts.appendChild(btn('Lưu', function () { var v = inp.value.trim(); if (!v) return; callJ('set_secret', { kind: id, value: v, remember: true }); inp.value = ''; }, 'primary'));
+        if (sec.session) acts.appendChild(btn('Xóa', function () { call('clear_secret', id); }));
+      }
+      acts.appendChild(btn('Kiểm tra', function () { S.searchTest[id] = { state: 'checking' }; renderSearch(); call('search_test', id); }));
+      acts.appendChild(btn(info.key === 'none' ? 'Hướng dẫn' : 'Lấy key', function () { call('open_url', info.url); }, 'link'));
+      row.appendChild(acts); box.appendChild(row);
+    });
+  }
+  function renderSyncAll(a) {
+    S.syncAll = a;
+    $('srcSyncAll').hidden = !!a.running; $('srcSyncAllStop').hidden = !a.running;
+    var name = function (id) { var s = ((S.src || {}).list || []).find(function (x) { return x.id === id; }); return s ? s.name : id; };
+    $('srcAllState').textContent = a.running ? 'Đang đồng bộ ' + Math.min(a.done + 1, a.total) + '/' + a.total + ': ' + name(a.current) + '…' :
+      'Đồng bộ tất cả xong: ' + a.results.filter(function (x) { return x.ok; }).length + '/' + a.total + ' nguồn thành công.';
+    var box = $('srcAllList'); box.replaceChildren();
+    (a.results || []).forEach(function (x) {
+      box.appendChild(el('div', (x.ok ? '✓ ' : '✗ ') + name(x.id) + ': ' + (x.ok ? x.found + ' model, ' + x.with_links + ' có link tải' : (x.error || 'lỗi'))));
+    });
+  }
+  function vsModeUi(m) {
+    S.vsMode = m;
+    document.querySelectorAll('#vsModes [data-m]').forEach(function (b) { b.classList.toggle('on', b.dataset.m === m); });
   }
   function fmtTime(t) { var d = new Date(t * 1000); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ' ' + fmtDate(t); }
   function srcResetForm() { S.editSrc = null; $('srcName').value = ''; $('srcUrl').value = ''; $('srcType').value = ''; $('srcAddBtn').textContent = 'Thêm nguồn'; $('srcCancelEdit').hidden = true; }
@@ -472,7 +546,8 @@
     S.secrets = s;
     function txt(x, what) { if (x.session) return '✓ Đã có ' + what + (x.stored ? ' (lưu mã hóa trên máy).' : ' trong phiên này.'); if (x.env) return '✓ Dùng ' + what + ' từ biến môi trường.'; return '✗ Chưa có ' + what + '.'; }
     $('keyState').textContent = txt(s.openai || {}, 'OpenAI API key'); $('sfState').textContent = txt(s.sketchfab || {}, 'Sketchfab token');
-    $('kGoogleState').textContent = (s.google || {}).session ? '✓ Đã có' : 'Chưa có'; $('kBraveState').textContent = (s.brave || {}).session ? '✓ Đã có' : 'Chưa có';
+    $('kGoogleState').textContent = (s.google || {}).session ? '✓ Đã có' : 'Chưa có';
+    renderSearch();
   }
   function renderSummary(sm) {
     if (!sm || sm.cancelled || sm.failed) return;
@@ -545,6 +620,8 @@
     need_blender: function (d) { $('bmReason').textContent = d.reason || ''; renderBlender(d.blender); show('blenderModal'); },
     sources_status: function (l) { renderSources(l || []); },
     src_list: function (d) { renderSrcList(d); },
+    src_all: function (a) { renderSyncAll(a); },
+    search_test: function (t) { S.searchTest[t.provider] = t; renderSearch(); },
     src_progress: function (p) {
       if (!S.src) return; var s = (S.src.list || []).find(function (x) { return x.id === p.id; });
       if (s) { s.sync = p; renderSrcList(S.src); }
@@ -567,7 +644,13 @@
         show('vsInstallModal');
       }
       if (d.state === 'cancelled' || d.state === 'error') $('loading').hidden = true;
-      if (d.categories && d.categories.length) $('vsMsg').textContent = (d.msg || '') + ' Nhận diện: ' + d.categories.map(function (c) { return c.vi; }).join(', ');
+      if (d.categories && d.categories.length) $('vsMsg').textContent = (d.msg || '') + ' Nhận diện: ' + d.categories.map(function (c) { return c.vi + (c.prob !== undefined ? ' ' + pct(c.prob) : ''); }).join(', ');
+      if (d.mode) vsModeUi(d.mode);
+      if (d.allowed) {
+        var m = d.mode || S.vsMode || 'exact';
+        $('vsCats').textContent = m === 'wide' ? 'Mở rộng: không lọc danh mục.' :
+          'Chỉ giữ danh mục: ' + ((d.allowed[m === 'similar' ? 'similar' : 'exact'] || []).join(', ') || '—');
+      }
     },
     vs_index: function (d) {
       if (d.error) { $('vsIndex').textContent = 'Chỉ mục ảnh thư viện: ' + d.error; return; }
@@ -643,12 +726,19 @@
     };
     $('srcCancelEdit').onclick = srcResetForm;
     $('srcExport').onclick = function () { call('src_export'); };
-    ['Google', 'Brave'].forEach(function (k) {
+    ['Google'].forEach(function (k) {
       var kind = k.toLowerCase();
       $('k' + k + 'Save').onclick = function () { var v = $('k' + k).value.trim(); if (!v) return; callJ('set_secret', { kind: kind, value: v, remember: true }); $('k' + k).value = ''; };
       $('k' + k + 'Clear').onclick = function () { call('clear_secret', kind); };
     });
     $('srcImport').onclick = function () { call('src_import'); };
+    document.querySelectorAll('#vsModes [data-m]').forEach(function (b) {
+      b.onclick = function () { vsModeUi(b.dataset.m); $('vsMsg').textContent = 'Đang tìm lại (' + b.textContent + ')…'; call('vs_mode', b.dataset.m); };
+    });
+    $('srcSyncAll').onclick = function () { call('src_sync_all'); };
+    $('srcSyncAllStop').onclick = function () { call('src_sync_all_stop'); };
+    $('kGoogleGet').onclick = function () { call('open_url', 'https://console.cloud.google.com/apis/library/drive.googleapis.com'); };
+    $('sSearxSave').onclick = function () { saveSettings({ search: { searxng_url: $('sSearx').value.trim(), enabled: Object.assign({}, (S.settings.search || {}).enabled, { searxng: true }) }, _notify: true }); };
     $('linkGo').onclick = function () { var u = $('linkUrl').value.trim(); if (!u) return; call('link_import', u); $('linkUrl').value = ''; };
     $('catCheck').onclick = function () { call('cat_check_links'); };
     $('catClear').onclick = function () { call('cat_clear'); };

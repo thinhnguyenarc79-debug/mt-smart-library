@@ -18,15 +18,15 @@ module MTDesign
       METHODS = {
         'api' => 'API chính thức', 'wp_rest' => 'WordPress REST API công khai', 'local' => 'Đọc thư mục máy tính',
         'sitemap' => 'Web crawler theo sitemap (tuân thủ robots.txt)', 'gdrive' => 'Google Drive API (API key)',
-        'index' => 'Chỉ mục máy tìm kiếm (Brave Search API)',
+        'index' => 'Chỉ mục máy tìm kiếm (Tavily / Serper / SerpApi / Brave / SearXNG)',
+        'manual' => 'Lưu bài đang xem (đăng nhập thủ công)',
         'direct_link' => 'Link tải trực tiếp (nhập link)', 'open_only' => 'Mở nguồn + nhập link thủ công',
         'unverified' => 'Chưa xác minh'
       }.freeze
       NOTES = {
-        'facebook_group' => 'Meta đã gỡ Facebook Groups API (22/04/2024) — không có cách tìm tự động hợp lệ. ' \
-                            'Đăng nhập trên trình duyệt, mở nguồn và dán link bài viết/link tải vào “Nhập link model”.',
-        'facebook_page' => 'Đọc bài Fanpage cần Page Public Content Access do Meta duyệt cho ứng dụng — chưa có. ' \
-                           'Mở nguồn trên trình duyệt và dán link tải vào “Nhập link model”.',
+        'facebook_group' => 'Groups API đã bị Meta gỡ (22/04/2024). Đồng bộ = tìm bài CÔNG KHAI đã được máy tìm kiếm lập chỉ mục ' \
+                            '(Tavily không cần key). Nhóm kín: “Đăng nhập & lưu bài” — bạn tự đăng nhập, bấm lưu bài đang xem.',
+        'facebook_page' => 'Đồng bộ = tìm bài công khai đã được lập chỉ mục. Hoặc “Đăng nhập & lưu bài” để lưu bài đang xem.',
         'gdrive' => 'Mở thư mục trên trình duyệt; tải file về, plugin tự nhận file vừa tải (hoặc dán link file).',
         'mediafire' => 'Trang tải có quảng cáo/xác minh — mở trên trình duyệt, plugin tự nhận file vừa tải.',
         'mega' => 'File Mega được mã hóa phía trình duyệt — mở trên trình duyệt, plugin tự nhận file vừa tải.',
@@ -75,6 +75,7 @@ module MTDesign
         s = find(id) || raise('Không tìm thấy nguồn.')
         n = normalize(s.merge(o.select { |k, _| %w[name type url enabled].include?(k) }))
         url_changed = n['url'] != s['url'] || n['type'] != s['type']
+        n['name_auto'] = false if o.key?('name') && o['name'].to_s.strip != s['name'] # người dùng tự đặt tên → giữ
         s.merge!(n)
         if url_changed
           s['method'] = default_method(s['type'])
@@ -90,6 +91,28 @@ module MTDesign
         s.merge!(h.select { |k, _| %w[method status note img_domain checked lang sitemaps].include?(k) })
         s['checked'] = Time.now.to_i
         save
+      end
+
+      # Tên thật học được (tiêu đề nhóm Facebook) — chỉ thay khi tên đang là tên tự đặt (người dùng chưa sửa).
+      def rename_auto(id, name)
+        s = find(id)
+        name = Util.utf8(name.to_s).strip[0, 80]
+        return false unless s && !name.empty? && auto_name?(s) && s['name'] != name
+        s['name'] = name
+        s['name_auto'] = true
+        save
+        true
+      end
+
+      def auto_name?(s)
+        s['name_auto'] == true || s['name'].to_s =~ /\A((www|m|web)\.)?(facebook|fb)\.com\z/i
+      end
+
+      def self.fb_default_name(url)
+        parts = URI.parse(url).path.to_s.split('/').reject(&:empty?)
+        parts[0] == 'groups' && parts[1] ? "Nhóm Facebook #{parts[1]}" : "Facebook #{parts[0] || ''}".strip
+      rescue URI::InvalidURIError
+        'Facebook'
       end
 
       def toggle(id, on)
@@ -145,10 +168,16 @@ module MTDesign
           type = detect_type(u) if type == 'website' && o['type'].to_s.empty?
         end
         name = Util.utf8(o['name'].to_s).strip
-        name = type == 'local' ? File.basename(url) : URI.parse(url).host.sub(/\Awww\./, '') if name.empty?
+        auto = name.empty? ? true : o['name_auto'] == true
+        if name.empty?
+          name = if type == 'local' then File.basename(url)
+                 elsif type.start_with?('facebook') then self.class.fb_default_name(url)
+                 else URI.parse(url).host.sub(/\Awww\./, '')
+                 end
+        end
         { 'name' => name[0, 80], 'type' => type, 'url' => url, 'enabled' => o.key?('enabled') ? o['enabled'] != false : true,
           'method' => o['method'] && METHODS.key?(o['method']) ? o['method'] : default_method(type),
-          'status' => o['status'] || 'unchecked' }
+          'status' => o['status'] || 'unchecked', 'name_auto' => auto }
       rescue URI::InvalidURIError
         raise 'Link không hợp lệ.'
       end
@@ -174,6 +203,7 @@ module MTDesign
         when 'local' then 'local'
         when 'dropbox' then 'direct_link'
         when 'website' then 'unverified'
+        when 'facebook_group', 'facebook_page' then 'index'
         else 'open_only'
         end
       end
@@ -184,7 +214,16 @@ module MTDesign
         return [] unless File.file?(@path)
         d = JSON.parse(File.read(@path, encoding: 'UTF-8'))
         list = d.is_a?(Hash) ? Array(d['sources']) : []
-        list.select { |s| s.is_a?(Hash) && s['id'].to_s =~ /\Au_[0-9a-f]{10}\z/ && TYPES.key?(s['type']) }.first(MAX)
+        list = list.select { |s| s.is_a?(Hash) && s['id'].to_s =~ /\Au_[0-9a-f]{10}\z/ && TYPES.key?(s['type']) }.first(MAX)
+        list.each do |s| # V1.0.13: nhóm Facebook cũ đều tên “facebook.com” → tên theo mã nhóm (thay bằng tên thật khi biết)
+          next unless s['type'].to_s.start_with?('facebook')
+          if auto_name?(s)
+            s['name'] = self.class.fb_default_name(s['url'])
+            s['name_auto'] = true
+          end
+          s['method'] = 'index' if %w[open_only unverified].include?(s['method'])
+        end
+        list
       rescue StandardError
         []
       end

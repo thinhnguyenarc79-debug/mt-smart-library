@@ -69,6 +69,8 @@ class TestVisualSearch < Minitest::Test
     @http = Object.new
     @rt = SL::RuntimeManager.new(http: @http, runner: @runner, data_root: @data, code_dir: File.join(SRC, 'mt_smart_library'))
     @rt.cfg['model']['min_score'] = 0.0 # mô hình thử nghiệm có thang điểm khác CLIP
+    @rt.cfg['visual'] = { 'exact' => { 'min' => 0.0 }, 'similar' => { 'min' => 0.0 }, 'wide' => { 'min' => 0.0 } }
+    @settings['visual_mode'] = 'wide' # các bài cũ: kiểm xếp hạng theo ảnh, không lọc danh mục (mô hình chữ thử nghiệm vô nghĩa)
     @events = []
   end
 
@@ -172,6 +174,91 @@ class TestVisualSearch < Minitest::Test
     pump(vm2) { events('vs_state').any? { |s| s['state'] == 'done' } }
     from_cat = events('sr_update').last['items'].select { |i| i['from_catalog'] }
     assert_equal ['Round thing', 'Long thing'], from_cat.map { |i| i['title'] }, 'kho dữ liệu: tái sử dụng kết quả đã lập chỉ mục'
+  end
+
+  # Danh mục điều khiển được: “nguyên mẫu” zero-shot của sofa = ảnh hình tròn, ghế ăn = ảnh chữ nhật
+  # (thay cho mô hình chữ thử nghiệm vô nghĩa) — để kiểm bộ lọc danh mục cứng chạy thật trong tiến trình AI.
+  def seed_protos
+    FileUtils.mkdir_p(@rt.work_dir)
+    code = <<~PY
+      import sys, json, hashlib, os
+      import numpy as np
+      sys.path.insert(0, sys.argv[1])
+      import inference_worker as w, visual_match as vm
+      eng = w.Engine(sys.argv[2], sys.argv[3])
+      v = lambda p: eng.embed_images([w.preprocess(w.open_image(p))])[0]
+      P = np.random.default_rng(1).normal(size=(len(w.CATEGORIES), eng.dim)).astype(np.float32)
+      P[w.CAT_NAMES.index('sofa')] = v(sys.argv[4])
+      P[w.CAT_NAMES.index('dining chair')] = v(sys.argv[5])
+      P = w.l2n(P)
+      key = hashlib.sha1(json.dumps([[c[0] for c in w.CATEGORIES], vm.TEMPLATES]).encode()).hexdigest()
+      np.save(os.path.join(sys.argv[3], 'text_protos.npy'), P)
+      open(os.path.join(sys.argv[3], 'text_protos.npy.key'), 'w').write(key)
+    PY
+    system(PY, '-c', code, File.join(SRC, 'mt_smart_library', 'ai_runtime'), @models, @rt.work_dir,
+           "#{@img}/red_circle.png", "#{@img}/red_rect.png", err: File::NULL) or raise 'protos'
+  end
+
+  def test_category_hard_filter_modes_and_real_scores
+    seed_protos
+    @settings['visual_mode'] = 'exact'
+    cache = File.join(@rt.work_dir, 'online_thumbs')
+    FileUtils.mkdir_p(cache)
+    th = { 'sofa' => "#{@img}/red_circle.png", 'chair' => "#{@img}/red_rect.png", 'named' => "#{@img}/red_circle.png" }
+    url = ->(k) { "https://media.sketchfab.com/t/#{k}.png" }
+    th.each { |k, f| FileUtils.cp(f, File.join(cache, Digest::SHA1.hexdigest(url.call(k)) + '.img')) }
+    mk = lambda do |uid, title, k|
+      { 'source' => 'sketchfab', 'source_label' => 'Sketchfab', 'uid' => uid, 'title' => title, 'tags' => ALL_KW, 'thumb' => url.call(k),
+        'downloadable' => true, 'free' => true, 'insertable' => false, 'author' => 'A' }
+    end
+    items = [mk.call('s1', 'Round sofa', 'sofa'), mk.call('c1', 'Dining chair red', 'chair'), mk.call('c2', 'Dining chair Oslo', 'named')]
+    vm = manager(items)
+    index_all(vm)
+    q = draw("#{@img}/q_sofa.png", [{ 'shape' => 'circle', 'box' => [60, 60, 340, 340], 'color' => 'red' }])
+    vm.start(q)
+    pump(vm) { events('vs_state').any? { |s| s['state'] == 'done' } }
+    st = events('vs_state').find { |s| s['state'] == 'searching' }
+    assert_equal 'sofa', st['categories'].first['en'], 'AI nhận diện ảnh mẫu là sofa'
+    res = events('sr_update').last
+    titles = res['items'].map { |i| i['title'] }
+    assert_includes titles, 'Bàn tròn đỏ'
+    assert_includes titles, 'Round sofa'
+    refute_includes titles, 'Bàn chữ nhật đỏ', 'ảnh preview là ghế ăn → loại ở chế độ Chính xác (thư viện máy tính)'
+    refute_includes titles, 'Dining chair red', 'ảnh preview là ghế ăn → loại (online)'
+    refute_includes titles, 'Dining chair Oslo', 'tên nói rõ ghế ăn → loại dù ảnh giống sofa'
+    assert_operator res['rejected'], :>=, 3
+    assert_equal 'exact', res['vmode']
+    res['items'].each do |i|
+      p = i['vparts']
+      assert %w[struct full shape style].all? { |k| p[k].is_a?(Numeric) }, 'điểm thành phần tính thật'
+      assert_in_delta 0.35 * p['struct'] + 0.35 * p['style'] + 0.15 * p['shape'] + 0.15 * p['full'], i['vscore'], 0.002,
+                      'điểm hiển thị = công thức thật'
+      assert_equal 'sofa', i['vcat']
+    end
+    rep = JSON.parse(File.read(File.join(@rt.work_dir, 'visual_last.json')))
+    assert_equal 'exact', rep['mode']
+    assert_equal ['sofa', 'sectional sofa'], rep['allowed']['exact']
+    rej = rep['rejected_category'].map { |r| r['title'] }
+    assert_includes rej, 'Dining chair red'
+    assert_includes rej, 'Dining chair Oslo'
+    assert_equal ['dining chair'], rep['rejected_category'].find { |r| r['title'] == 'Dining chair Oslo' }['title_cats']
+    # Mở rộng: không lọc danh mục — ghế ăn quay lại (chứng minh bộ lọc là nguyên nhân loại bỏ)
+    @events.clear
+    vm.set_mode('wide')
+    pump(vm) { events('vs_state').any? { |s| s['state'] == 'done' } }
+    wide = events('sr_update').last['items'].map { |i| i['title'] }
+    assert_includes wide, 'Bàn chữ nhật đỏ'
+    assert_includes wide, 'Dining chair red'
+    assert_equal 'wide', @settings['visual_mode'], 'ghi nhớ chế độ'
+    # Kho dữ liệu tích lũy (đã lưu cả ghế ăn ở lần trước): chế độ Chính xác vẫn loại ghế ăn, chấm lại điểm trên ảnh preview.
+    @events.clear
+    @settings['visual_mode'] = 'exact'
+    vm2 = manager([])
+    vm2.start(q)
+    pump(vm2) { events('vs_state').any? { |s| s['state'] == 'done' } }
+    cat_items = events('sr_update').last['items'].select { |i| i['from_catalog'] }
+    assert_equal ['Round sofa'], cat_items.map { |i| i['title'] }, 'kho dữ liệu cũ không bỏ qua bộ lọc mới'
+    refute cat_items.first['vapprox'], 'điểm tính lại từ ảnh preview, không dùng vector cũ'
   end
 
   def test_cancel_midway_and_runtime_missing

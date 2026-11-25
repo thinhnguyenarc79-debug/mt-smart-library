@@ -151,6 +151,12 @@ label.col{display:flex;flex-direction:column;gap:4px;margin:8px 0;font-size:12px
 .vsbar .vsacts{display:flex;gap:6px;flex-wrap:wrap}
 .vsbar .bar2{margin-top:6px}
 .vsbar.err #vsMsg{color:#b42318}
+.seg{display:inline-flex;margin:6px 0 2px;border:1px solid #d0d5dd;border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0;padding:3px 10px;background:#fff;font-size:12px}
+.seg button.on{background:#1f3a2e;color:#fff}
+.thumb .vsc{position:absolute;left:6px;bottom:6px;background:rgba(31,58,46,.88);color:#fff;font-size:11px;padding:1px 6px;border-radius:8px}
+.item.prov .p .stat{display:block}
+#srcAllList div{margin:2px 0}
 .cropbox{position:relative;display:inline-block;max-width:100%;user-select:none;cursor:crosshair}
 .cropbox img{display:block;max-width:100%;max-height:60vh}
 .cropsel{position:absolute;border:2px solid #1570ef;background:#1570ef22;pointer-events:none}

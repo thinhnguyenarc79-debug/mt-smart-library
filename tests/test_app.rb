@@ -262,4 +262,79 @@ class TestApp < Minitest::Test
     assert_equal(expect, init_src)
     assert_equal 12, d.messages('init').last[1]['accounts'].size
   end
+
+  # Bộ AI giả: trả kết quả công việc ngay ở nhịp timer kế tiếp (không cần Python) — kiểm luồng ĐỒNG BỘ TẤT CẢ trong App.
+  class FakeRt
+    attr_reader :jobs
+    def initialize(fail_ids) = (@fail = fail_ids; @jobs = []; @n = 0)
+    def available? = true
+    def cancel(_id) = nil
+    def submit(type, payload, lane: 'search', on_progress: nil, &blk)
+      @jobs << [type, payload, lane]
+      r = if type == 'src_crawl'
+            sid = payload['source']['id']
+            @fail.include?(sid) ? { 'ok' => false, 'error' => 'HTTP 500 từ nguồn' } :
+              { 'ok' => true, 'result' => { 'found' => 4, 'with_links' => 2, 'method' => 'index',
+                                            'group_name' => payload['source']['type'] == 'facebook_group' ? 'Thư Viện SketchUp Thật' : nil } }
+          elsif type == 'fb_ingest'
+            { 'ok' => true, 'result' => { 'found' => payload['posts'].size, 'added' => payload['posts'].size, 'with_links' => 1, 'images' => 0 } }
+          else
+            { 'ok' => true, 'result' => {} }
+          end
+      UI.start_timer(0, false) { blk&.call(r) }
+      @n += 1
+    end
+  end
+
+  def test_sync_all_continues_after_error_and_learns_group_name
+    @app.show
+    dlg.fire('ready')
+    reg = @app.instance_variable_get(:@sources)
+    a = reg.add('url' => 'https://site-a.example.com', 'type' => 'website')
+    b = reg.add('url' => 'https://site-b.example.com', 'type' => 'website')
+    fb = reg.add('url' => 'https://www.facebook.com/groups/thuvien3d', 'type' => '')
+    assert_equal 'Nhóm Facebook thuvien3d', fb['name']
+    rt = FakeRt.new([a['id']])
+    @app.instance_variable_set(:@runtime, rt)
+    dlg.fire('src_sync_all')
+    pump { (m = dlg.messages('src_all').last) && !m[1]['running'] }
+    res = dlg.messages('src_all').last[1]['results']
+    builtin_ids = res.map { |x| x['id'] } - [a['id'], b['id'], fb['id']]
+    assert_equal [a['id'], b['id'], fb['id']], res.map { |x| x['id'] } - builtin_ids, 'chạy lần lượt mọi nguồn đang bật'
+    assert_equal false, res.find { |x| x['id'] == a['id'] }['ok']
+    assert_equal 'HTTP 500 từ nguồn', res.find { |x| x['id'] == a['id'] }['error']
+    assert res.find { |x| x['id'] == b['id'] }['ok'], 'nguồn lỗi không chặn nguồn sau'
+    assert_equal 4, res.find { |x| x['id'] == fb['id'] }['found']
+    assert_equal 'Thư Viện SketchUp Thật', reg.find(fb['id'])['name'], 'hiển thị tên thật của nhóm'
+    crawl = rt.jobs.select { |t, _, _| t == 'src_crawl' }
+    assert crawl.all? { |_, p, l| l == 'crawl' && p['search'].is_a?(Hash) }, 'cấu hình công cụ tìm kiếm gửi cho bộ trích xuất'
+    refute crawl.any? { |_, p, _| p.to_s.include?('KEY') }, 'không đưa key vào file công việc'
+  end
+
+  def test_facebook_manual_login_window_saves_visible_posts
+    @app.show
+    dlg.fire('ready')
+    reg = @app.instance_variable_get(:@sources)
+    fb = reg.add('url' => 'https://www.facebook.com/groups/thuvien3d', 'type' => '')
+    rt = FakeRt.new([])
+    @app.instance_variable_set(:@runtime, rt)
+    main = dlg
+    main.fire('fb_open', fb['id'])
+    win = UI::HtmlDialog.instances.last
+    refute_same main, win
+    assert_equal 'https://www.facebook.com/groups/thuvien3d', win.url, 'mở đúng nhóm; người dùng tự đăng nhập'
+    UI.run_timers
+    assert win.scripts.any? { |js| js.include?('MT: Lưu bài đang hiển thị') }, 'gắn thanh lưu bài'
+    refute win.scripts.any? { |js| js =~ /password|document\.cookie/i }, 'không đọc mật khẩu/cookie'
+    win.fire('mt_fb_title', 'Thư Viện 3D Thật')
+    assert_equal 'Thư Viện 3D Thật', reg.find(fb['id'])['name']
+    win.fire('mt_fb_capture', JSON.generate('group' => 'Thư Viện 3D Thật', 'posts' => [{ 'url' => 'https://www.facebook.com/groups/thuvien3d/posts/1', 'text' => 'Sofa', 'images' => [], 'links' => [] }]))
+    pump { win.scripts.any? { |js| js.include?('Đã lưu 1 bài') } }
+    t, p, l = rt.jobs.find { |x, _, _| x == 'fb_ingest' }
+    assert_equal ['fb_ingest', 'crawl'], [t, l]
+    assert_equal 1, p['posts'].size
+    assert win.scripts.any? { |js| js.include?('Đã lưu 1 bài') }, 'báo kết quả ngay trong cửa sổ Facebook'
+    win.close
+    assert UI.timers.values.none? { |x| x[:repeat] && x[:sec] == 2.0 }, 'đóng cửa sổ → dừng timer, không để lại timer thừa'
+  end
 end

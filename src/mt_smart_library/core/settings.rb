@@ -26,7 +26,13 @@ module MTDesign
                          'timeout' => 600, 'gltf_engine' => 'auto' },
         'ai' => { 'model' => DEFAULT_MODEL, 'base_url' => 'https://api.openai.com/v1', 'detail' => 'low', 'remember_key' => false, 'device' => 'cpu' },
         'sketchfab' => { 'downloadable_only' => true, 'token_type' => 'token', 'remember_token' => false },
-        'keys' => { 'google_remember' => false, 'brave_remember' => false },
+        'keys' => { 'google_remember' => false, 'brave_remember' => false, 'tavily_remember' => false, 'serper_remember' => false,
+                    'serpapi_remember' => false },
+        'visual_mode' => 'exact',
+        # Công cụ tìm kiếm cho Smart Source Extractor (Facebook, nguồn không có API): thứ tự thử + bật/tắt. Key chỉ ở bộ nhớ/DPAPI.
+        'search' => { 'order' => %w[tavily serper serpapi brave searxng],
+                      'enabled' => { 'tavily' => true, 'serper' => true, 'serpapi' => true, 'brave' => true, 'searxng' => false },
+                      'searxng_url' => '' },
         'net' => { 'timeout' => 30 },
         'update' => { 'source' => 'none', 'manifest_url' => '', 'github_repo' => '', 'check_on_start' => false }
       }.freeze
@@ -45,6 +51,14 @@ module MTDesign
 
       def [](key)
         @data[key]
+      end
+
+      # Chỉ cho đặt các khóa đơn giản đã kiểm tra (không ghi dữ liệu tùy ý vào settings.json).
+      def []=(key, value)
+        case key
+        when 'visual_mode' then @data[key] = %w[exact similar wide].include?(value) ? value : 'exact'
+        else raise ArgumentError, "khóa cài đặt không hỗ trợ: #{key}"
+        end
       end
 
       def load
@@ -110,8 +124,8 @@ module MTDesign
       def apply_ui(patch)
         return unless patch.is_a?(Hash)
         merged = deep_dup(@data)
-        %w[quick_scan scan_on_open auto_save_downloads].each { |k| merged[k] = patch[k] if patch.key?(k) }
-        %w[ui ai sketchfab net update sources].each do |sec|
+        %w[quick_scan scan_on_open auto_save_downloads visual_mode].each { |k| merged[k] = patch[k] if patch.key?(k) }
+        %w[ui ai sketchfab net update sources search].each do |sec|
           next unless patch[sec].is_a?(Hash)
           patch[sec].each { |k, v| merged[sec][k] = v if DEFAULTS[sec].key?(k) }
         end
@@ -216,6 +230,9 @@ module MTDesign
         ks = raw['keys'].is_a?(Hash) ? raw['keys'] : {}
         out['keys']['google_remember'] = bool(ks['google_remember'], false)
         out['keys']['brave_remember'] = bool(ks['brave_remember'], false)
+        %w[tavily serper serpapi].each { |k| out['keys']["#{k}_remember"] = bool(ks["#{k}_remember"], false) }
+        out['visual_mode'] = %w[exact similar wide].include?(raw['visual_mode']) ? raw['visual_mode'] : 'exact'
+        out['search'] = sanitize_search(raw['search'])
         sf = raw['sketchfab'].is_a?(Hash) ? raw['sketchfab'] : {}
         out['sketchfab']['downloadable_only'] = bool(sf['downloadable_only'], true)
         out['sketchfab']['token_type'] = %w[token bearer].include?(sf['token_type']) ? sf['token_type'] : 'token'
@@ -231,6 +248,18 @@ module MTDesign
         out['update']['github_repo'] = gr =~ %r{\A[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+\z} ? gr : ''
         out['update']['check_on_start'] = bool(up['check_on_start'], false)
         out
+      end
+
+      SEARCH_IDS = %w[tavily serper serpapi brave searxng].freeze
+
+      def sanitize_search(raw)
+        raw = raw.is_a?(Hash) ? raw : {}
+        order = Array(raw['order']).map(&:to_s).select { |x| SEARCH_IDS.include?(x) }.uniq
+        order += SEARCH_IDS - order
+        en = raw['enabled'].is_a?(Hash) ? raw['enabled'] : {}
+        enabled = SEARCH_IDS.map { |k| [k, bool(en[k], DEFAULTS['search']['enabled'][k])] }.to_h
+        u = raw['searxng_url'].to_s.strip.sub(%r{/+\z}, '')
+        { 'order' => order, 'enabled' => enabled, 'searxng_url' => u =~ %r{\Ahttps://[^\s/]+(/[^\s]*)?\z} ? u : '' }
       end
 
       def sanitize_online_favs(list)

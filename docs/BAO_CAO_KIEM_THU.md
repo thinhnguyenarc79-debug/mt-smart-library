@@ -1,5 +1,50 @@
 # Báo cáo kiểm thử — MT SMART LIBRARY PRO
 
+## V1.0.13 (25/11/2026) — TÌM BẰNG ẢNH: LỌC DANH MỤC CỨNG + HÌNH DÁNG · SMART SOURCE EXTRACTOR: NHIỀU CÔNG CỤ TÌM KIẾM, FACEBOOK
+
+### Kiểm thử bằng DỮ LIỆU THẬT của máy người dùng (đọc qua cầu nối máy tính, chỉ đọc)
+Mô hình CLIP ViT-B/32 thật (vision_model.onnx 89 MB, text_model.onnx 64 MB), kho `catalog.sqlite` thật (316 mục, 84 vector) và 84 ảnh preview
+thật đã lưu, ảnh sofa người dùng đã tìm (`query/input_1795594553.jpg`). Công cụ đo: `tools/visual_benchmark.py` (chạy lại được).
+Nhãn đúng/sai chỉ lấy theo tên model để thống kê; thuật toán không dùng nhãn này.
+
+| Ảnh mẫu | V1.0.12 (cosine màu, không lọc) | V1.0.13 Chính xác |
+|---|---|---|
+| Sofa của người dùng (AI: sofa 42%, sofa góc 39%) | **51 kết quả, 18 ghế ăn/bàn ăn**, 4 ghế khác, 3 ghế bành | **33 kết quả, 33/33 sofa**, 0 ghế ăn/bàn ăn |
+| Dining Chair 02 (Poly Haven, AI: ghế ăn 67%) | 17 kết quả, **7 sofa** | 12 kết quả, **0 sofa** |
+| Arm Chair 01 (Poly Haven, AI: ghế ăn 61%) | 12 kết quả, 5 sofa | 21 kết quả, 0 sofa |
+
+- V1.0.12 ra đúng 51 kết quả như người dùng báo — tái hiện được lỗi. Nguyên nhân: lấy ứng viên online với `category=all` + `loose=true`
+  và xếp hạng chỉ bằng cosine CLIP ảnh màu (ghế ăn bọc nệm trắng có cosine 0,78–0,85 với sofa trắng), giữ tối thiểu 8 + biên 0,18.
+- Mở rộng (V1.0.13) không lọc → ghế ăn quay lại (60 kết quả, 21 bàn/ghế ăn): chứng minh bộ lọc danh mục là phần loại bỏ.
+- Hạn chế thấy được: trong nhóm sofa, ảnh sản phẩm nền trắng (sofa cổ điển) vẫn xếp gần các sofa hiện đại tối giản; thành phần phong cách
+  (35%) đưa sofa hiện đại lên trước nhưng chưa tách hẳn. “Arm Chair 01” bị AI nhận là ghế ăn (mô hình CLIP B/32).
+- Ảnh có ghi chữ “bộ bàn ăn + ghế” vẫn có thể vào kết quả ghế ăn (bộ đồ có cả hai).
+
+### Kiểm thử Facebook trên trang THẬT (Chrome của người dùng, đã đăng nhập sẵn; chỉ đọc, không đăng/bình luận)
+- Nhóm “CỘNG ĐỒNG SKETCHUP VIỆT NAM” (facebook.com/groups/vietnamsketchup): chạy đúng mã `sources/fb_capture.js` của plugin trên trang nhóm và trang tìm kiếm
+  trong nhóm (“model sofa”): lấy được tên nhóm thật, 4 bài/màn hình với link bài thật (`/groups/vietnamsketchup/posts/<id>/`), nội dung, 5 ảnh fbcdn mỗi bài.
+  Ví dụ bài model thật: “Gần 100 Sofa full setting… Link ở bình luận” (posts/1414458797551620), “…những bộ sofa full setting… đã thiết lập toàn bộ map vật liệu”
+  (posts/1440985564898943). Đưa qua `fb_items` → mục kho dữ liệu đúng tên, link bài, nguồn = tên nhóm.
+- Phát hiện và sửa khi thử trang thật: Facebook hiện dùng `div[role=feed]` + `data-ad-rendering-role=story_message` (role=article chỉ còn ở bình luận);
+  link bài lấy từ `/posts/<id>`, ảnh `set=pcb.<id>`, reel; tên nhóm lấy từ tiêu đề tab (trang tìm kiếm có h1 “Kết quả tìm kiếm”).
+- Tìm qua máy tìm kiếm: thử `site:facebook.com/groups/vietnamsketchup sofa` → không có bài nào của nhóm được lập chỉ mục. Với các nhóm này,
+  cách thực tế là “Đăng nhập & lưu bài”. Link tải nằm trong bình luận chỉ lấy được khi bình luận đang hiển thị.
+
+### Kiểm thử tự động (đều đạt)
+Ruby: core 28, indexer_http 9, search 14, gltf 6, polyhaven 5, sources 8, source_manager 20, extractor 17 (gồm lại visual), hot_reload 4, visual 10,
+convert 14, updater 13, app 8, boot 1. UI 69 kiểm tra, ô nhập liệu 27.
+- Visual (tiến trình Python + ONNX thật, mô hình thử nhỏ, nguyên mẫu danh mục điều khiển được): Chính xác loại ghế ăn ở thư viện máy tính, online,
+  và theo tên (“Dining chair Oslo” ảnh giống sofa vẫn bị loại); điểm hiển thị = công thức; Mở rộng trả lại ghế ăn; kho dữ liệu cũ vẫn bị lọc và chấm lại từ ảnh.
+- Extractor (máy chủ cục bộ mô phỏng đúng định dạng tài liệu Tavily/Serper/Brave): Facebook không key dùng Tavily; Tavily 429 → tự chuyển Serper;
+  tên nhóm thật từ kết quả; chỉ bài đúng nhóm; trích link Drive + mật khẩu; lưu bài Facebook: tên, link MediaFire, mật khẩu, bỏ link nội bộ Facebook.
+- App: Đồng bộ tất cả chạy lần lượt, nguồn lỗi (HTTP 500) không chặn nguồn sau, tên nhóm thật thay “facebook.com”; cửa sổ Facebook gắn thanh lưu bài,
+  không đọc cookie/mật khẩu, đóng cửa sổ dừng timer.
+
+### Chưa kiểm thử
+- Gọi API thật Tavily/Serper/SerpApi/Brave/SearXNG (môi trường build chặn các máy chủ này) — bấm “Kiểm tra” trong Cài đặt trên máy.
+- `UI::HtmlDialog` mở trang Facebook + `sketchup.mt_fb_capture` trên SketchUp 2022 thật (đã thử mã trích xuất trên Chrome, chưa thử trong cửa sổ SketchUp).
+- Tải ảnh fbcdn trong tiến trình Python trên Windows; ngưỡng điểm với kho lớn (100k).
+
 ## V1.0.12 (25/11/2026) — SMART SOURCE EXTRACTOR + HYBRID HOT RELOAD
 
 | Module | Đã kiểm thử | Kết quả |

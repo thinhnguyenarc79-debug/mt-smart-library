@@ -213,6 +213,32 @@ function items() {
   await page.evaluate(() => MT.receive('src_log', { id: 'u_aaaaaaaaaa', text: '2026-11-25 11:00:00 Trang lỗi https://x: HTTP 500' }));
   check('Nhật ký lỗi chi tiết hiển thị', (await page.textContent('#srcLogText')).includes('HTTP 500') && await page.locator('#srcLogModal').isVisible());
   await page.evaluate(() => { document.querySelector('[data-close=srcLogModal]').click(); });
+  // V1.0.13: Đồng bộ tất cả, Facebook đăng nhập & lưu bài, công cụ tìm kiếm, chế độ tìm bằng ảnh, điểm tương đồng
+  await page.evaluate(() => MT.receive('src_list', { types: { facebook_group: 'Facebook Group' }, list: [
+    { id: 'u_bbbbbbbbbb', name: 'CỘNG ĐỒNG SKETCHUP VIỆT NAM', type: 'facebook_group', builtin: false, enabled: true, scannable: true, status: 'ok', method: 'index',
+      url: 'https://www.facebook.com/groups/vietnamsketchup', type_label: 'Facebook Group', method_label: 'Chỉ mục máy tìm kiếm', stats: { indexed: 4 },
+      sync: { running: true, phase: 'Đang tìm bài', done: 2, total: 14, found: 3, with_links: 1 } }] }));
+  const fbTxt = await page.textContent('#srcList');
+  check('Nhóm Facebook hiện tên thật + số model tìm thấy khi đang quét', fbTxt.includes('CỘNG ĐỒNG SKETCHUP VIỆT NAM') && fbTxt.includes('đã tìm thấy 3 model'), fbTxt);
+  await page.evaluate(() => { window.__calls.length = 0; [...document.querySelectorAll('#srcList button')].find(b => b.textContent === 'Đăng nhập & lưu bài').click();
+    document.querySelector('#srcSyncAll').click(); });
+  const fc = await page.evaluate(() => window.__calls.map(c => c[0]));
+  check('Nút Đăng nhập & lưu bài + Đồng bộ tất cả nguồn', fc.includes('fb_open') && fc.includes('src_sync_all'), fc);
+  await page.evaluate(() => MT.receive('src_all', { running: false, total: 2, done: 2, results: [{ id: 'u_bbbbbbbbbb', ok: true, found: 4, with_links: 1 }, { id: 'u_x', ok: false, error: 'HTTP 500' }] }));
+  const sa = await page.textContent('#srcAllList');
+  check('Kết quả đồng bộ tất cả theo từng nguồn, nguồn lỗi vẫn báo', sa.includes('4 model') && sa.includes('HTTP 500'), sa);
+  const prov = await page.$$eval('#searchList .item', x => x.map(e => e.textContent));
+  check('Cài đặt có danh sách công cụ tìm kiếm (Tavily không cần key)', prov.length === 5 && prov[0].includes('Tavily') && prov[0].includes('Dùng không key'), prov);
+  await page.evaluate(() => { window.__calls.length = 0; [...document.querySelectorAll('#searchList button')].find(b => b.textContent === 'Kiểm tra').click(); });
+  check('Kiểm tra kết nối công cụ tìm kiếm', await page.evaluate(() => window.__calls.some(c => c[0] === 'search_test' && c[1][0] === 'tavily')));
+  await page.evaluate(() => MT.receive('search_test', { provider: 'tavily', ok: true, state: 'ok', count: 5, ms: 800 }));
+  check('Hiện kết quả kiểm tra kết nối', (await page.textContent('#searchList')).includes('Kết nối được (5 kết quả'));
+  await page.evaluate(() => { document.querySelector('#settingsModal').hidden = true; window.__calls.length = 0; document.querySelector('#vsBar').hidden = false;
+    document.querySelector('#vsModes [data-m=similar]').click(); });
+  check('Chọn Chính xác / Tương tự / Mở rộng', await page.evaluate(() => window.__calls.some(c => c[0] === 'vs_mode' && c[1][0] === 'similar')) &&
+    await page.evaluate(() => document.querySelector('#vsModes [data-m=similar]').classList.contains('on')));
+  await page.evaluate(() => MT.receive('vs_state', { state: 'searching', mode: 'exact', categories: [{ vi: 'sofa', prob: 0.42 }], allowed: { exact: ['sofa', 'sofa góc'], similar: [] }, msg: 'Đang tìm' }));
+  check('Hiện danh mục được giữ (lọc cứng)', (await page.textContent('#vsCats')).includes('sofa góc'));
   await page.screenshot({ path: OUT + '/v110_sources.png' });
   await page.evaluate(() => { document.querySelector('#settingsModal').hidden = true; });
   await page.evaluate(() => MT.receive('accounts', [

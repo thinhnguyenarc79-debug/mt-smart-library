@@ -9,7 +9,7 @@ module MTDesign
     # KHÔNG ghi vào settings.json, KHÔNG ghi log. Không có DPAPI => không lưu (chỉ giữ trong phiên).
     module SecretStore
       FLAG_UI_FORBIDDEN = 0x1
-      NAMES = %w[openai sketchfab google brave].freeze
+      NAMES = %w[openai sketchfab google brave tavily serper serpapi].freeze
 
       module_function
 

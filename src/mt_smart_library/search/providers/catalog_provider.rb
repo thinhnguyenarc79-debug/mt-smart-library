@@ -30,9 +30,24 @@ module MTDesign
           @jobs[session.sid] = @rt.submit('catalog_text', { 'groups' => groups, 'limit' => 150, 'exclude_sources' => @disabled.call }) do |r|
             @jobs.delete(session.sid)
             items = r['ok'] ? Array(r['result']['items']) : []
-            items.each { |i| i['rel'] = 0.6 }
+            items.each { |i| i['rel'] = 0.6; CatalogProvider.inline_thumb(i) }
             done.call('items' => items, 'next' => nil, 'error' => r['ok'] ? nil : nil)
           end
+        end
+
+        # Ảnh bài Facebook có hạn dùng → hiển thị bản thu nhỏ đã lưu trên máy (data URI, không cần file://).
+        def self.inline_thumb(it)
+          p = it['thumb_local'].to_s
+          return it if p.empty?
+          if File.file?(p) && File.size(p) < 300_000
+            uri = "data:image/jpeg;base64,#{[File.binread(p)].pack('m0')}"
+            it['thumb'] = uri
+            it['thumb_large'] = uri
+          end
+          it.delete('thumb_local')
+          it
+        rescue StandardError
+          it
         end
 
         def cancel(session)

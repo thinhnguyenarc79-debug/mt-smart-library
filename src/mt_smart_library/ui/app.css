@@ -144,3 +144,14 @@ label.col{display:flex;flex-direction:column;gap:4px;margin:8px 0;font-size:12px
 .acc .st.connected,.acc .st.no_login{background:#ecfdf3;color:#067647}
 .acc .st.expired,.acc .st.need_api,.acc .st.not_logged_in{background:#fffaeb;color:#b54708}
 .acc .acts{display:flex;gap:6px}
+
+.vsbar{display:flex;gap:12px;align-items:center;background:#fff;border:1px solid #d0d5dd;border-radius:12px;padding:8px 10px;margin:0 0 10px}
+.vsbar img{width:72px;height:72px;object-fit:contain;background:#f2f4f7;border-radius:8px}
+.vsbar .vsmid{flex:1;min-width:0}
+.vsbar .vsacts{display:flex;gap:6px;flex-wrap:wrap}
+.vsbar .bar2{margin-top:6px}
+.vsbar.err #vsMsg{color:#b42318}
+.cropbox{position:relative;display:inline-block;max-width:100%;user-select:none;cursor:crosshair}
+.cropbox img{display:block;max-width:100%;max-height:60vh}
+.cropsel{position:absolute;border:2px solid #1570ef;background:#1570ef22;pointer-events:none}
+.dropping{outline:3px dashed #1570ef;outline-offset:-6px}

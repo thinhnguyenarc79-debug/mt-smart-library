@@ -1,5 +1,22 @@
 # CHANGELOG — MT SMART LIBRARY PRO
 
+## V1.0.9 — 25/11/2026 (MT VISUAL SEARCH ENGINE)
+- `ai_runtime/inference_worker.py`: tiến trình AI độc lập (Python + ONNX Runtime, CPU; DirectML nếu GPU tương thích), mô hình CLIP ViT-B/32 ONNX
+  (vision + text). Tiền xử lý ảnh chuẩn CLIP, nền trong suốt → trắng, cắt vùng; vector ảnh L2; tokenizer BPE của CLIP cho vector văn bản.
+  Công việc: nhận diện ảnh mẫu (vector + nhóm đồ vật zero-shot), tìm trong chỉ mục, cập nhật chỉ mục theo đợt, xếp hạng thumbnail online.
+  Giao tiếp qua thư mục công việc (atomic), tự thoát khi SketchUp đóng (heartbeat) hoặc rảnh lâu.
+- Chỉ mục vector thư viện máy tính (`vectors.npy` float16 + `ids.json`): lấy ảnh xem trước nhúng trong SKP / thumbnail plugin / ảnh cùng tên;
+  chỉ tính model mới hoặc đổi (mtime+size), xóa model không còn; model không có ảnh được tách riêng (không giả lập); chạy nền theo đợt 64 ảnh.
+- `ai_runtime/runtime_manager.rb`: cài 1 lần sau khi người dùng đồng ý — Python nhúng 3.11 (python.org) → pip (bootstrap.pypa.io) →
+  onnxruntime-directml (lỗi thì onnxruntime) + numpy + pillow (PyPI) → mô hình (Hugging Face Xenova/clip-vit-base-patch32, kiểm SHA256 / git SHA1).
+  Lưu ở `%LOCALAPPDATA%\MT_Smart_Library\ai_runtime`. Tiến trình chạy không cửa sổ, đối số dạng danh sách.
+- `visual_search/visual_search_manager.rb`: ảnh mẫu → vector → (1) so với chỉ mục máy tính, hiện ngay; (2) nhóm đồ vật → từ khóa →
+  lấy ứng viên mọi nguồn online đang bật → tải thumbnail (chỉ host được phép) → vector → so sánh → trộn chung, xếp theo cosine, bỏ điểm thấp.
+- Giao diện: nút 📷 Tìm bằng ảnh mở chọn ảnh ngay (không còn chuyển sang Cài đặt OpenAI); dán Ctrl+V, kéo thả, Đổi ảnh, Cắt vùng, Hủy, Xóa ảnh mẫu;
+  tiến trình Đang nhận diện / Đang tìm / Đang so sánh; chi tiết model ghi “Tương đồng ảnh 0.xx (cosine CLIP, không phải xác suất)”.
+- OpenAI giữ làm tùy chọn (Cài đặt › AI › “phân tích ảnh bằng OpenAI”).
+- SearchManager: chế độ `loose` (bỏ lọc theo tên) cho ứng viên tìm bằng ảnh; ZipReader dùng giải nén Python nhúng.
+
 ## V1.0.8 — 25/11/2026 (Multi-Source Library Engine)
 - `online/wp_sources.rb` + `search/providers/wp_provider.rb`: 3 thư viện SketchUp có WordPress REST API công khai (đã kiểm JSON thật):
   sketchup.cgtips.org, sketchupfree.com, thuviensketchup.vn. Tìm theo từ khóa (trang Việt: từ khóa gốc; trang Anh: bản dịch), ảnh từ /media, phân trang, cache.

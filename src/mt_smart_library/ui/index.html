@@ -28,6 +28,19 @@
   </aside>
 
   <main class="content" id="content">
+    <div id="vsBar" class="vsbar" hidden>
+      <img id="vsThumb" alt="Ảnh mẫu">
+      <div class="vsmid">
+        <b>Tìm bằng ảnh</b> <span id="vsMsg" class="small"></span>
+        <div id="vsProg" class="bar2" hidden><i></i></div>
+        <div id="vsIndex" class="muted small"></div>
+      </div>
+      <div class="vsacts">
+        <button id="vsPick" type="button">Đổi ảnh</button><button id="vsPaste" type="button" title="Hoặc nhấn Ctrl+V">Dán ảnh</button>
+        <button id="vsCropBtn" type="button">Cắt vùng</button><button id="vsCancel" type="button" hidden>Hủy</button>
+        <button id="vsClear" type="button" title="Xóa ảnh mẫu, quay về tìm bằng từ khóa">✕</button>
+      </div>
+    </div>
     <div class="bar">
       <div class="filters" id="filters">
         <button data-f="all" class="on">Tất cả <i></i></button>
@@ -126,6 +139,8 @@
       </div>
       <p id="aiCheck" class="small"></p>
       <p class="muted small">Key không ghi vào settings.json hay log. Ảnh chỉ gửi khi bạn bấm xác nhận.</p>
+      <p class="muted small">Nút 📷 Tìm bằng ảnh dùng AI chạy trên máy (không cần key). OpenAI chỉ là tùy chọn bổ sung:
+        <button id="btnAiOpenAI" type="button" class="link">phân tích ảnh bằng OpenAI</button></p>
     </section>
     <section data-p="sf" hidden>
       <p class="muted small">Đăng nhập luôn diễn ra trên trang chính thức của từng website. Plugin không hỏi mật khẩu, không đọc cookie trình duyệt.</p>
@@ -162,6 +177,28 @@
 <div id="foundBar" class="foundbar" hidden>
   <span id="foundText"></span>
   <button id="foundIns" class="primary">CHÈN</button><button id="foundX" class="x2" title="Bỏ qua">×</button>
+</div>
+
+<!-- Cài bộ AI tìm bằng ảnh (1 lần) -->
+<div id="vsInstallModal" class="modal" hidden>
+  <div class="dialog">
+    <button class="x" data-close="vsInstallModal">×</button>
+    <h3>Cài bộ AI tìm bằng ảnh (một lần)</h3>
+    <p class="small">Tìm bằng ảnh chạy ngay trên máy tính này, không cần OpenAI API Key và không gửi ảnh lên mạng.
+      Cần tải một lần khoảng <b id="vsDlMb">330</b> MB: Python nhúng (python.org), ONNX Runtime (PyPI) và mô hình <span id="vsModel"></span>
+      — giấy phép <span id="vsLic"></span>. Lưu ở thư mục dữ liệu, không mất khi cập nhật plugin.</p>
+    <div class="row"><button id="vsInstallOk" class="primary">Cài đặt</button><button data-close="vsInstallModal">Để sau</button></div>
+  </div>
+</div>
+
+<!-- Cắt vùng ảnh mẫu -->
+<div id="cropModal" class="modal" hidden>
+  <div class="dialog wide">
+    <button class="x" data-close="cropModal">×</button>
+    <h3>Kéo chuột chọn món đồ cần tìm</h3>
+    <div id="cropBox" class="cropbox"><img id="cropImg" alt=""><div id="cropSel" class="cropsel" hidden></div></div>
+    <div class="row"><button id="cropOk" class="primary" disabled>Tìm vùng này</button><button id="cropAll">Dùng cả ảnh</button><button data-close="cropModal">Hủy</button></div>
+  </div>
 </div>
 
 <!-- AI -->

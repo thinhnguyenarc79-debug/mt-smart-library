@@ -44,6 +44,10 @@ module MTDesign
         bump
       end
 
+      def all_entries
+        @entries
+      end
+
       def entries_under(root)
         k = Util.path_key(root)
         @entries.select { |e| Util.path_key(e.root) == k }

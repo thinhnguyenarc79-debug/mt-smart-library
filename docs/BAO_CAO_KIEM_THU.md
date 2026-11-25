@@ -1,5 +1,20 @@
 # Báo cáo kiểm thử — MT SMART LIBRARY PRO
 
+## V1.0.9 (25/11/2026) — MT VISUAL SEARCH ENGINE
+
+| Bộ test | Nội dung | Kết quả |
+|---|---|---|
+| `test_visual.rb` (5) | Chạy THẬT tiến trình Python + ONNX Runtime 1.29 (CPU) với bộ mô hình ONNX nhỏ cùng giao diện CLIP (`tests/fixtures/make_tiny_clip.py`): lập chỉ mục từ ảnh PNG nhúng trong SKP, model không ảnh tách riêng, không tính lại khi không đổi; ảnh mẫu → model giống nhất lên đầu, điểm giảm dần; cắt vùng trong ảnh nhiều đồ vật → đúng món được chọn; ứng viên online xếp theo thumbnail thật, host lạ bị bỏ, trộn với máy tính; hủy giữa chừng; chưa cài bộ AI → hỏi cài 1 lần (không đòi OpenAI); cài đặt: giải nén Python, bật site-packages, pip (bản DirectML lỗi → bản CPU), kiểm SHA256/git SHA1, file hỏng bị xóa, lệnh dạng danh sách | ✅ |
+| `ui_test.js` (53) | Nút Tìm bằng ảnh mở chọn ảnh (không mở Cài đặt), dán Ctrl+V tự tìm, hỏi cài 1 lần, kết quả lên lưới chung, cắt vùng, xóa ảnh mẫu quay về tìm từ khóa | ✅ |
+
+**Chưa kiểm thử (cần máy Windows có mạng):**
+- Mô hình CLIP thật: chưa tải được về máy test → chưa đo chất lượng (sofa cùng dáng khác màu, ghế cùng màu khác dáng, bàn tròn/chữ nhật, ảnh thật vs thumbnail, nền phức tạp). Ngưỡng `min_score 0.55`, `spread 0.18` trong `model_config.json` cần hiệu chỉnh sau khi chạy thật.
+- Cài bộ AI thật trên Windows: tải Python nhúng 3.11.9 (python.org), get-pip (bootstrap.pypa.io), gói PyPI — địa chỉ python.org/pypa chưa xác minh lại được trong phiên này (yêu cầu đọc trang chưa được duyệt); file mô hình Hugging Face đã xác minh dung lượng + SHA256.
+- Tốc độ lập chỉ mục 10.000–100.000 model trên CPU thật; DirectML; tiến trình không cửa sổ (CreateProcessW).
+- WEBP: Pillow hỗ trợ; ảnh xem trước của mọi phiên bản SKP (định dạng mới có thể không chứa PNG ở 8 MB đầu → dùng thumbnail plugin hoặc ảnh cùng tên).
+
+---
+
 ## V1.0.8 (25/11/2026)
 
 | Bộ test | Nội dung | Kết quả |

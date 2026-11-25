@@ -2,15 +2,15 @@
   "schema": 1,
   "plugin_id": "mtdesign.smart_library_pro",
   "name": "MT SMART LIBRARY PRO",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "released_at": "2026-11-25",
   "min_sketchup": 22,
   "min_ruby": "2.7.0",
   "changelog": [
+    "TÌM BẰNG ẢNH chạy AI ngay trên máy (CLIP), không cần OpenAI API Key: chọn ảnh, dán (Ctrl+V) hoặc kéo thả ảnh là tự tìm.",
+    "So sánh hình ảnh thật giữa ảnh mẫu và thumbnail model (thư viện máy tính + mọi nguồn online), giống nhất lên đầu; cắt vùng để tìm 1 món trong ảnh phối cảnh.",
+    "Lần đầu dùng: cài bộ AI một lần (~330 MB) sau khi đồng ý; không mất khi cập nhật plugin.",
     "Thêm 3 thư viện SketchUp: SketchUp CGTips, SketchupFree, Thư viện SketchUp (thuviensketchup.vn) — tìm chung một lưới, có ảnh.",
-    "Nguồn không cho tải tự động: bấm XEM mở trang tải; tải xong plugin tự nhận file trong Downloads và hiện nút CHÈN (tự giải nén cả ZIP có mật khẩu của trang).",
-    "Cài đặt › Tài khoản thư viện: trạng thái từng website, nút Đăng nhập / Đăng xuất / Kết nối lại.",
-    "Thêm nguồn Poly Haven (API chính thức, miễn phí CC0): tìm cùng lúc với máy tính và Sketchfab, bấm CHÈN là tải và chèn thẳng.",
-    "Bật/tắt từng nguồn ngay trong Cài đặt › Nguồn tìm kiếm (được ghi nhớ; nguồn đã tích hợp mặc định bật)."
+    "Nguồn không cho tải tự động: bấm XEM mở trang tải; tải xong plugin tự nhận file trong Downloads và hiện nút CHÈN (tự giải nén cả ZIP có mật khẩu của trang)."
   ]
 }

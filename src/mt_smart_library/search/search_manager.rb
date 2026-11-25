@@ -7,7 +7,7 @@ module MTDesign
     # Chạy ở main thread; nguồn online dùng HttpClient (luồng nền) nên không chặn SketchUp.
     class SearchManager
       Session = Struct.new(:sid, :query, :any_of, :online_q, :cat, :cat_terms, :kind, :filter, :store, :states,
-                           :settings, :hidden, :started, :oquery)
+                           :settings, :hidden, :started, :oquery, :loose)
       MAX_SEND = 900
 
       attr_reader :providers, :session
@@ -38,7 +38,7 @@ module MTDesign
         kind = cat['kind'] || 'category'
         filter = ResultRanker::FILTERS.include?(params['filter']) ? params['filter'] : 'all'
         s = Session.new(params['sid'].to_i, q, any_of, online_text, cat, Categories.terms(cat), kind, filter, {}, {}, st, 0,
-                        Time.now.to_f, oq || q)
+                        Time.now.to_f, oq || q, params['loose'] == true)
         @session = s
         @providers.each do |p|
           next unless p.applicable?(s, st)
@@ -107,7 +107,7 @@ module MTDesign
         st = s.states[provider.id]
         items = Array(res['items'])
         oq = provider.relevance_query(s)
-        if provider.online?
+        if provider.online? && !s.loose # tìm bằng ảnh: lọc bằng độ tương đồng hình ảnh thay cho lọc tên
           before = items.size
           items = items.select { |it| ResultRanker.relevant_online?(it, oq, s.cat_terms) }
           s.hidden += before - items.size

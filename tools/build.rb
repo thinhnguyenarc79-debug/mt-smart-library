@@ -40,6 +40,11 @@ if system('node --version > /dev/null 2>&1')
   js.each { |f| out, st = Open3.capture2e('node', '--check', f); die("#{f}: #{out}") unless st.success? }
 end
 Dir.glob(File.join(SRC, '**', '*.json')).each { |f| JSON.parse(File.read(f)) }
+Dir.glob(File.join(SRC, '**', '__pycache__')).each { |d| FileUtils.rm_rf(d) } # bytecode sinh ra khi chạy test
+Dir.glob(File.join(SRC, '**', '*.py')).each do |f|
+  out, st = Open3.capture2e('python3', '-c', 'import ast,sys; ast.parse(open(sys.argv[1], encoding="utf-8").read())', f)
+  die("#{f}: #{out}") unless st.success?
+end
 junk = Dir.glob(File.join(SRC, '**', '{.DS_Store,Thumbs.db,*.bak,*.tmp*,*~}'), File::FNM_DOTMATCH)
 die("Có file rác trong src: #{junk.join(', ')}") unless junk.empty?
 

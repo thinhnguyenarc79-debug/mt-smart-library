@@ -15,6 +15,7 @@ module MTDesign
       search/providers/base_provider search/providers/local_provider search/providers/sketchfab_provider search/providers/polyhaven_provider search/providers/wp_provider
       search/search_manager importers/gltf_importer
       convert/blender_runner convert/blender_detector convert/model_cache convert/converter_manager convert/import_manager
+      ai_runtime/runtime_manager visual_search/visual_search_manager
       updater/zip_reader updater/backup_manager updater/updater
       ui/app
     ].each { |f| require File.join(CODE_DIR, f) }

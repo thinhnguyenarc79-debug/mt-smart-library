@@ -62,6 +62,12 @@ module MTDesign
         ] + AccountManager::SOURCES.reject { |x| AccountManager::INTEGRATED.include?(x['id']) }.map do |x|
           Providers::UnavailableProvider.new(x['id'], x['name'], "Chưa tích hợp: #{x['note']}")
         end
+        @runtime = RuntimeManager.new(http: @http, runner: BlenderRunner.new(@log), data_root: Paths.data_root,
+                                      code_dir: Paths.code_dir, logger: @log)
+        @visual = VisualSearchManager.new(runtime: @runtime, index: @index, thumbs: @thumbs, online_providers: @providers.select(&:online?),
+                                          settings: @settings, emit: ->(t, pl) { emit(t, pl) }, logger: @log)
+        @vs_image = nil
+        @vs_last_sync = 0
         @watcher = DownloadWatcher.new
         @found = nil
         @sf_expired = false
@@ -109,7 +115,16 @@ module MTDesign
         cb(d, 'search') { |json| do_search(parse(json)) }
         cb(d, 'sr_start') { |json| @search.start(parse(json)); ensure_timer }
         cb(d, 'sr_more') { |sid| @search.more(sid); ensure_timer }
-        cb(d, 'sr_filter') { |sid, f| @search.set_filter(sid, f.to_s); save_settings('ui' => { 'filter' => f.to_s }) }
+        cb(d, 'sr_filter') do |sid, f|
+          @visual.visual_sid?(sid) ? @visual.set_filter(sid.to_i, f.to_s) : @search.set_filter(sid, f.to_s)
+          save_settings('ui' => { 'filter' => f.to_s })
+        end
+        cb(d, 'vs_pick') { |*| vs_pick }
+        cb(d, 'vs_start') { |json| vs_start(parse(json)) }
+        cb(d, 'vs_crop') { |json| vs_crop(parse(json)) }
+        cb(d, 'vs_cancel') { |*| @visual.cancel }
+        cb(d, 'vs_clear') { |*| @visual.cancel(silent: true); @vs_image = nil }
+        cb(d, 'vs_install') { |*| vs_install }
         cb(d, 'insert_item') { |key| insert_any(key.to_s) }
         cb(d, 'fav_item') { |key| fav_any(key.to_s) }
         cb(d, 'open_source') { |key| open_source(key.to_s) }
@@ -196,14 +211,14 @@ module MTDesign
                'pending_restart' => @updater.pending_restart_version,
                'categories' => Categories.all(@settings['categories_custom']),
                'sources_status' => @providers.map { |p| p.status_info(@settings) },
-               'blender' => @converter.blender_status, 'accounts' => accounts_state
+               'blender' => @converter.blender_status, 'accounts' => accounts_state, 'visual' => @runtime.status
              })
         flush_support
       end
 
       # ================================================================ Tìm kiếm tổng hợp & chèn
       def find_item(key)
-        @search.item(key) || Array(@settings['online_favorites']).find { |f| f['key'] == key }
+        @visual.item(key) || @search.item(key) || Array(@settings['online_favorites']).find { |f| f['key'] == key }
       end
 
       def insert_any(key)
@@ -320,6 +335,65 @@ module MTDesign
       end
 
       # Nguồn không cho tải tự động: mở trang tải chính thức, theo dõi thư mục Downloads để nhận file người dùng vừa tải.
+      # ================================================================ Tìm bằng ảnh (AI cục bộ, không cần OpenAI)
+      VS_MAX = 15 * 1024 * 1024
+
+      def vs_pick
+        path = UI.openpanel('Chọn ảnh mẫu để tìm model tương tự', '', 'Ảnh|*.jpg;*.jpeg;*.png;*.webp||')
+        return unless path
+        path = Util.utf8(path)
+        return status('Ảnh lớn hơn 15 MB.', 'warn') if File.size(path) > VS_MAX
+        bytes = File.binread(path)
+        mime = Vision.mime_of(bytes)
+        return status('File không phải ảnh JPG/PNG/WEBP hợp lệ.', 'error') unless mime && mime != 'image/gif'
+        emit('vs_image', { 'src' => "data:#{mime};base64,#{Base64.strict_encode64(bytes)}", 'name' => File.basename(path) })
+        vs_begin(bytes, mime, nil)
+      end
+
+      # Ảnh dán từ Clipboard / kéo thả (base64 từ giao diện).
+      def vs_start(o)
+        b64 = o['b64'].to_s.gsub(/\s+/, '')
+        return status('Ảnh không hợp lệ.', 'error') if b64.empty? || b64 !~ %r{\A[A-Za-z0-9+/=]+\z} || b64.length * 3 / 4 > VS_MAX
+        bytes = Base64.strict_decode64(b64)
+        mime = Vision.mime_of(bytes)
+        return status('Ảnh không phải JPG/PNG/WEBP.', 'error') unless mime && mime != 'image/gif'
+        vs_begin(bytes, mime, o['crop'])
+      rescue ArgumentError
+        status('Ảnh không hợp lệ.', 'error')
+      end
+
+      def vs_crop(o)
+        return status('Chưa có ảnh mẫu.', 'warn') unless @vs_image && File.file?(@vs_image)
+        box = Array(o['crop']).map(&:to_f)
+        box = nil unless box.size == 4 && box.all? { |v| v >= 0 && v <= 1 } && box[2] > box[0] && box[3] > box[1]
+        @visual.start(@vs_image, crop: box)
+        ensure_timer
+      end
+
+      def vs_begin(bytes, mime, crop)
+        ext = { 'image/png' => '.png', 'image/jpeg' => '.jpg', 'image/webp' => '.webp' }[mime]
+        dir = File.join(@runtime.work_dir, 'query')
+        FileUtils.mkdir_p(dir)
+        Dir.glob(File.join(dir, 'input_*')).each { |f| File.delete(f) rescue nil }
+        @vs_image = File.join(dir, "input_#{Time.now.to_i}#{ext}")
+        File.binwrite(@vs_image, bytes)
+        @visual.start(@vs_image, crop: crop)
+        ensure_timer
+      end
+
+      def vs_install
+        emit('vs_state', { 'state' => 'installing', 'msg' => 'Đang cài bộ AI tìm bằng ảnh…' })
+        @runtime.install do |ok, err|
+          if ok
+            emit('vs_state', { 'state' => 'installed', 'msg' => 'Đã cài xong bộ AI. Đang tìm…' })
+            @visual.resume
+          else
+            emit('vs_state', { 'state' => 'error', 'msg' => "Chưa cài được bộ AI: #{err}" })
+          end
+        end
+        ensure_timer
+      end
+
       def insert_web(it)
         site = WpSources::SITES[it['source'].to_s]
         url = WpSources.safe_https(it['url'], site ? site['hosts'] : [])
@@ -1303,8 +1377,16 @@ module MTDesign
         @timer = nil
       end
 
+      def vs_progress
+        return unless @runtime.installing?
+        now = Time.now.to_f
+        return if @vs_prog_at && now - @vs_prog_at < 0.5
+        @vs_prog_at = now
+        emit('vs_state', { 'state' => 'installing', 'msg' => @runtime.status['step'], 'progress' => @runtime.progress })
+      end
+
       def busy?
-        !@cache_thread.nil? || !@gltf_job.nil? || !@zip_job.nil? || @converter.busy? || @indexer.running? || @http.busy? ||
+        !@cache_thread.nil? || !@gltf_job.nil? || !@zip_job.nil? || @converter.busy? || @runtime.busy? || @visual.active? || @indexer.running? || @http.busy? ||
           @updater.busy? || @thumbs.pending?
       end
 
@@ -1317,6 +1399,13 @@ module MTDesign
           poll_gltf
           poll_zip
           poll_watcher
+          @runtime.poll
+          @visual.poll
+          vs_progress
+          if Time.now.to_f - @vs_last_sync > 30 && @library_loaded && !@indexer.running?
+            @vs_last_sync = Time.now.to_f
+            @visual.sync_index
+          end
           @converter.poll
           poll_indexer
           @http.poll
@@ -1333,7 +1422,7 @@ module MTDesign
 
       # Nhường GVL cho luồng nền (SketchUp chỉ chạy Ruby khi có sự kiện).
       def give_threads_time
-        ts = [@cache_thread, @indexer.thread, @updater.thread, @gltf_job && @gltf_job[:thread], @zip_job && @zip_job[:thread]].compact + @http.threads
+        ts = [@cache_thread, @indexer.thread, @updater.thread, @gltf_job && @gltf_job[:thread], @zip_job && @zip_job[:thread]].compact + @http.threads + @runtime.threads
         ts = ts.select(&:alive?)
         return if ts.empty?
         slice = 0.03 / ts.size

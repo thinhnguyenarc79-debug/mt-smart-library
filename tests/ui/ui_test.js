@@ -196,6 +196,38 @@ function items() {
   check('Nhận file vừa tải: hiện thanh CHÈN', await page.locator('#foundBar').isVisible());
   await page.evaluate(() => { window.__calls.length = 0; document.querySelector('#foundIns').click(); });
   check('Bấm CHÈN gửi insert_found', await page.evaluate(() => window.__calls.some(c => c[0] === 'insert_found')) && !(await page.locator('#foundBar').isVisible()));
+  // Tìm bằng ảnh: bấm nút → chọn ảnh (Ruby), dán ảnh → gửi vs_start, cài bộ AI 1 lần, cắt vùng → vs_crop
+  await page.evaluate(() => { window.__calls.length = 0; document.querySelector('#btnAi').click(); });
+  check('TÌM BẰNG ẢNH mở chọn ảnh (không mở Cài đặt OpenAI)', await page.evaluate(() => window.__calls.some(c => c[0] === 'vs_pick')) &&
+    !(await page.locator('#settingsModal').isVisible()) && await page.locator('#vsBar').isVisible());
+  const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==';
+  await page.evaluate((src) => {
+    window.__calls.length = 0;
+    const bin = atob(src.split(',')[1]); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    const dt = new DataTransfer(); dt.items.add(new File([u], 'a.png', { type: 'image/png' }));
+    document.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true }));
+  }, png);
+  await page.waitForFunction(() => window.__calls.some(c => c[0] === 'vs_start'), null, { timeout: 5000 });
+  check('Dán ảnh (Ctrl+V) tự tìm ngay', true);
+  await page.evaluate(() => MT.receive('vs_state', { state: 'need_runtime', sid: 900000001, download_mb: 330, model: 'CLIP ViT-B/32', license: 'MIT' }));
+  check('Lần đầu: hỏi cài bộ AI 1 lần', await page.locator('#vsInstallModal').isVisible());
+  await page.evaluate(() => { window.__calls.length = 0; document.querySelector('#vsInstallOk').click(); });
+  check('Đồng ý → vs_install', await page.evaluate(() => window.__calls.some(c => c[0] === 'vs_install')));
+  await page.evaluate(() => MT.receive('vs_state', { state: 'searching', sid: 900000002, msg: 'Đang tìm model…', categories: [{ vi: 'sofa' }] }));
+  await page.evaluate(() => MT.receive('sr_update', { sid: 900000002, items: [{ key: 'local:x', source: 'local', id: 'x', title: 'Sofa giống', insertable: true, vscore: 0.81 }],
+    counts: { all: 1, local: 1, online: 0, insertable: 1, free: 1 }, filter: 'all', loading: false, has_more: false, sources: [], visual: true }));
+  await page.screenshot({ path: OUT + '/v109_visual.png' });
+  check('Kết quả tìm bằng ảnh hiện trên lưới chung', (await page.locator('#grid .card').count()) === 1 && (await page.textContent('#vsMsg')).includes('sofa'));
+  await page.evaluate(() => { document.querySelector('#vsCropBtn').click(); });
+  check('Mở cắt vùng', await page.locator('#cropModal').isVisible());
+  const bb = await page.locator('#cropImg').boundingBox();
+  if (bb) { await page.mouse.move(bb.x + 2, bb.y + 2); await page.mouse.down(); await page.mouse.move(bb.x + bb.width * 0.6, bb.y + bb.height * 0.7); await page.mouse.up(); }
+  await page.evaluate(() => { window.__calls.length = 0; document.querySelector('#cropOk').disabled = false; document.querySelector('#cropOk').click(); });
+  const cc = await page.evaluate(() => window.__calls.filter(c => c[0] === 'vs_crop').map(c => JSON.parse(c[1][0])));
+  check('Cắt vùng gửi vs_crop', cc.length === 1, cc);
+  await page.evaluate(() => { window.__calls.length = 0; document.querySelector('#vsClear').click(); });
+  check('Xóa ảnh mẫu → về tìm bằng từ khóa', await page.evaluate(() => window.__calls.some(c => c[0] === 'vs_clear') && window.__calls.some(c => c[0] === 'sr_start')) &&
+    !(await page.locator('#vsBar').isVisible()));
   await page.evaluate(() => MT.receive('open_support'));
   check('Menu Hỗ trợ kỹ thuật mở bảng chẩn đoán', await page.locator('#supportModal').isVisible());
   await page.evaluate(() => { document.querySelector('[data-close=supportModal]').click(); });

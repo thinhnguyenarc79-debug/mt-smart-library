@@ -7,7 +7,7 @@
     sid: 0, items: [], byKey: new Map(), cards: new Map(), loading: false, hasMore: false, filter: 'all', category: 'all',
     anyOf: null, settings: null, secrets: null, categories: [], localThumbs: new Map(), thumbWant: new Set(), thumbTimer: null,
     observer: null, debounce: null, composing: false, detailKey: null, dl: new Map(), ai: { src: null, mime: null, busy: false },
-    newerId: null, editCat: null, moreAsked: false, lastQuery: '', beginInfo: ''
+    newerId: null, editCat: null, moreAsked: false, lastQuery: '', beginInfo: '', vs: { on: false, src: null }
   };
 
   function call(name) {
@@ -30,11 +30,13 @@
   // ================================================================ Tìm kiếm
   function startSearch() {
     clearTimeout(S.debounce);
-    S.sid += 1; S.moreAsked = false; S.loading = true; S.lastQuery = $('q').value.trim(); S.beginInfo = '';
+    if (S.vs.on) return; // đang xem kết quả tìm bằng ảnh: không tự làm mới bằng từ khóa
+    S.kwSeq = (S.kwSeq || 0) + 1; S.sid = S.kwSeq; S.moreAsked = false; S.loading = true; S.lastQuery = $('q').value.trim(); S.beginInfo = '';
     $('loading').hidden = false;
     callJ('sr_start', { sid: S.sid, q: S.lastQuery, category: S.category, filter: S.filter, any_of: S.anyOf || [] });
   }
-  function searchSoon() { clearTimeout(S.debounce); S.debounce = setTimeout(startSearch, 350); }
+  function searchSoon() { clearTimeout(S.debounce); S.debounce = setTimeout(kwSearch, 350); }
+  function kwSearch() { if (S.vs.on) vsClear(); startSearch(); } // người dùng tìm bằng từ khóa: bỏ ảnh mẫu
   function onQueryChanged() { if (S.anyOf) S.anyOf = null; searchSoon(); }
 
   function onBegin(d) {
@@ -180,6 +182,9 @@
       row('Định dạng', (it.formats || []).map(function (f) { return f.type.toUpperCase() + (f.size ? ' ' + fmtSize(f.size) : ''); }).join(', '));
       if (it.faces) row('Số mặt', Number(it.faces).toLocaleString('vi-VN'));
     }
+    if (it.vscore !== undefined) {
+      row('Tương đồng ảnh', Number(it.vscore).toFixed(2) + ' (cosine CLIP, không phải xác suất)');
+    }
     var attr = $('dAttr');
     if (it.source !== 'local') {
       attr.hidden = false;
@@ -228,7 +233,7 @@
     document.querySelectorAll('#cats .cat').forEach(function (b) { b.classList.toggle('on', b.dataset.cat === id); });
     $('content').scrollTop = 0;
     callJ('save_settings', { ui: { category: id } });
-    startSearch();
+    kwSearch();
   }
   function editCat(c) {
     S.editCat = c || null;
@@ -245,6 +250,78 @@
     $('aiEndpoint').textContent = p.endpoint; $('aiModelName').textContent = p.model;
     $('aiConsent').hidden = false; $('aiSend').disabled = false; $('aiState').textContent = ''; $('aiResult').hidden = true;
   }
+  // ================================================================ Tìm bằng ảnh (AI cục bộ)
+  function vsShow(src) {
+    S.vs.on = true; if (src) { S.vs.src = src; $('vsThumb').src = src; } $('q').value = '';
+    $('vsBar').hidden = false; $('vsBar').classList.remove('err');
+  }
+  function vsClear() {
+    S.vs.on = false; S.vs.src = null; $('vsBar').hidden = true; $('vsThumb').removeAttribute('src'); call('vs_clear');
+  }
+  function vsFromDataUrl(src) {
+    if (!/^data:image\/(png|jpeg|webp);base64,/.test(src)) { setStatus('Chỉ nhận ảnh JPG, PNG, WEBP.', 'warn'); return; }
+    vsShow(src); $('vsMsg').textContent = 'Đang gửi ảnh…';
+    shrinkImage(src, function (b64, mime) { callJ('vs_start', { b64: b64, mime: mime }); });
+  }
+  function vsFromBlob(blob) {
+    if (!blob || !/^image\/(png|jpeg|webp)$/.test(blob.type)) { setStatus('Chỉ nhận ảnh JPG, PNG, WEBP.', 'warn'); return; }
+    var r = new FileReader(); r.onload = function () { vsFromDataUrl(r.result); }; r.readAsDataURL(blob);
+  }
+  function vsPaste() {
+    if (navigator.clipboard && navigator.clipboard.read) {
+      navigator.clipboard.read().then(function (items) {
+        for (var i = 0; i < items.length; i++) {
+          var t = items[i].types.find(function (x) { return /^image\//.test(x); });
+          if (t) return items[i].getType(t).then(vsFromBlob);
+        }
+        setStatus('Clipboard không có ảnh. Hãy sao chép ảnh rồi nhấn Ctrl+V.', 'warn');
+      }).catch(function () { setStatus('Nhấn Ctrl+V để dán ảnh.', 'info'); });
+    } else setStatus('Nhấn Ctrl+V để dán ảnh.', 'info');
+  }
+  var crop = { box: null, drag: null };
+  function openCrop() {
+    if (!S.vs.src) return;
+    $('cropImg').src = S.vs.src; $('cropSel').hidden = true; crop.box = null; $('cropOk').disabled = true; show('cropModal');
+  }
+  function cropRel(e) {
+    var r = $('cropImg').getBoundingClientRect();
+    return [Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))];
+  }
+  function drawCrop() {
+    var b = crop.box; if (!b) return; var s = $('cropSel'); s.hidden = false;
+    s.style.left = (b[0] * 100) + '%'; s.style.top = (b[1] * 100) + '%'; s.style.width = ((b[2] - b[0]) * 100) + '%'; s.style.height = ((b[3] - b[1]) * 100) + '%';
+  }
+  function bindVisual() {
+    $('btnAi').onclick = function () { if (S.vs.src) { vsShow(); } else { vsShow(); $('vsMsg').textContent = 'Chọn ảnh, dán ảnh (Ctrl+V) hoặc kéo thả ảnh vào đây.'; call('vs_pick'); } };
+    $('vsPick').onclick = function () { call('vs_pick'); };
+    $('vsPaste').onclick = vsPaste;
+    $('vsCropBtn').onclick = openCrop;
+    $('vsCancel').onclick = function () { call('vs_cancel'); };
+    $('vsClear').onclick = function () { kwSearch(); };
+    $('vsInstallOk').onclick = function () { hide('vsInstallModal'); call('vs_install'); };
+    document.addEventListener('paste', function (e) {
+      var t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+      var items = (e.clipboardData && e.clipboardData.items) || [];
+      for (var i = 0; i < items.length; i++) if (items[i].kind === 'file' && /^image\//.test(items[i].type)) { e.preventDefault(); vsFromBlob(items[i].getAsFile()); return; }
+    });
+    var main = $('content');
+    main.addEventListener('dragover', function (e) { if (e.dataTransfer && Array.prototype.some.call(e.dataTransfer.types, function (x) { return x === 'Files'; })) { e.preventDefault(); main.classList.add('dropping'); } });
+    main.addEventListener('dragleave', function () { main.classList.remove('dropping'); });
+    main.addEventListener('drop', function (e) { main.classList.remove('dropping'); var f = e.dataTransfer && e.dataTransfer.files[0]; if (f) { e.preventDefault(); vsFromBlob(f); } });
+    var box = $('cropBox');
+    box.addEventListener('mousedown', function (e) { e.preventDefault(); crop.drag = cropRel(e); crop.box = null; });
+    window.addEventListener('mousemove', function (e) {
+      if (!crop.drag) return; var p = cropRel(e), a = crop.drag;
+      crop.box = [Math.min(a[0], p[0]), Math.min(a[1], p[1]), Math.max(a[0], p[0]), Math.max(a[1], p[1])]; drawCrop();
+    });
+    window.addEventListener('mouseup', function () {
+      if (!crop.drag) return; crop.drag = null;
+      var b = crop.box; $('cropOk').disabled = !(b && b[2] - b[0] > 0.03 && b[3] - b[1] > 0.03);
+    });
+    $('cropOk').onclick = function () { hide('cropModal'); $('vsMsg').textContent = 'Đang tìm theo vùng đã chọn…'; callJ('vs_crop', { crop: crop.box }); };
+    $('cropAll').onclick = function () { hide('cropModal'); callJ('vs_crop', { crop: null }); };
+  }
+
   function shrinkImage(src, cb) {
     var img = new Image();
     img.onload = function () {
@@ -407,6 +484,29 @@
     blender: function (b) { renderBlender(b); if (b && b.ok) hide('blenderModal'); else if (b && !b.checking && !$('blenderModal').hidden) $('bmReason').textContent = b.reason || ''; },
     need_blender: function (d) { $('bmReason').textContent = d.reason || ''; renderBlender(d.blender); show('blenderModal'); },
     sources_status: function (l) { renderSources(l || []); },
+    vs_image: function (d) { vsShow(d.src); $('vsMsg').textContent = 'Đang nhận diện ảnh…'; },
+    vs_state: function (d) {
+      if (d.sid) { S.sid = d.sid; }
+      var busy = ['recognizing', 'searching', 'comparing', 'installing'].indexOf(d.state) >= 0;
+      $('vsCancel').hidden = !busy || d.state === 'installing'; $('vsBar').classList.toggle('err', d.state === 'error');
+      if (d.msg) $('vsMsg').textContent = d.msg;
+      var p = $('vsProg'); p.hidden = !(d.state === 'installing' && d.progress !== undefined && d.progress !== null);
+      if (!p.hidden) p.firstChild.style.width = d.progress + '%';
+      if (busy && d.state !== 'installing') { $('loading').hidden = false; }
+      if (d.state === 'need_runtime') {
+        $('vsMsg').textContent = 'Cần cài bộ AI tìm bằng ảnh (một lần).';
+        $('vsDlMb').textContent = d.download_mb || 330; $('vsModel').textContent = d.model || 'CLIP'; $('vsLic').textContent = d.license || '';
+        show('vsInstallModal');
+      }
+      if (d.state === 'cancelled' || d.state === 'error') $('loading').hidden = true;
+      if (d.categories && d.categories.length) $('vsMsg').textContent = (d.msg || '') + ' Nhận diện: ' + d.categories.map(function (c) { return c.vi; }).join(', ');
+    },
+    vs_index: function (d) {
+      if (d.error) { $('vsIndex').textContent = 'Chỉ mục ảnh thư viện: ' + d.error; return; }
+      var t = d.running ? 'Đang lập chỉ mục ảnh thư viện máy tính… ' + ((d.base || 0) + (d.done || 0)) + (d.library ? '/' + d.library : '') : 'Thư viện máy tính: ' + (d.indexed || 0) + ' ảnh đã lập chỉ mục';
+      if (d.no_thumb) t += ' · ' + d.no_thumb + ' model chưa có thumbnail (không so sánh)';
+      $('vsIndex').textContent = t;
+    },
     accounts: function (l) { renderAccounts(l); },
     dl_found: function (d) { $('foundText').textContent = 'Đã nhận file vừa tải “' + d.name + '” (' + d.source + '). Chèn vào SketchUp?'; $('foundBar').hidden = false; },
     open_support: function () { hide('settingsModal'); show('supportModal'); },
@@ -438,17 +538,18 @@
     q.addEventListener('input', function (e) { if (e.isComposing || S.composing) return; onQueryChanged(); });
     q.addEventListener('keydown', function (e) {
       if (e.isComposing || S.composing || e.keyCode === 229) return;
-      if (e.key === 'Enter') { e.preventDefault(); startSearch(); }
+      if (e.key === 'Enter') { e.preventDefault(); kwSearch(); }
       else if (e.key === 'Escape' && q.value) { e.stopPropagation(); q.value = ''; onQueryChanged(); }
     });
     document.querySelector('.search').addEventListener('mousedown', function (e) { if (e.target === q || e.target.closest('button')) return; e.preventDefault(); q.focus(); });
-    $('btnSearch').onclick = function () { startSearch(); q.focus(); };
+    $('btnSearch').onclick = function () { kwSearch(); q.focus(); };
     $('content').addEventListener('scroll', maybeMore, { passive: true });
     window.addEventListener('resize', maybeMore);
     document.querySelectorAll('#filters [data-f]').forEach(function (b) { b.addEventListener('click', function () { S.filter = b.dataset.f; call('sr_filter', S.sid, S.filter); }); });
     $('thumbSize').addEventListener('input', function () { setThumbSize($('thumbSize').value); });
     $('thumbSize').addEventListener('change', function () { saveSettings({ ui: { thumb_size: Number($('thumbSize').value) } }); maybeMore(); });
-    $('btnAi').onclick = function () { show('aiModal'); if (!S.ai.src) call('ai_pick'); };
+    bindVisual();
+    $('btnAiOpenAI').onclick = function () { hide('settingsModal'); show('aiModal'); if (!S.ai.src) call('ai_pick'); };
     $('btnUpdate').onclick = function () { call('open_updater'); };
     $('btnSettings').onclick = function () { openSettings('lib'); };
     $('btnAddRoot').onclick = $('btnAddRoot2').onclick = function () { call('add_root'); };
@@ -464,7 +565,7 @@
     document.querySelectorAll('.modal').forEach(function (m) { m.addEventListener('mousedown', function (e) { if (e.target === m) { m.hidden = true; if (m.id === 'detailModal') S.detailKey = null; } }); });
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape' || e.target === q) return;
-      ['detailModal', 'catModal', 'aiModal', 'newerModal', 'settingsModal', 'tokenModal', 'blenderModal'].forEach(function (id) { if (!$(id).hidden) { hide(id); if (id === 'detailModal') S.detailKey = null; } });
+      ['detailModal', 'catModal', 'aiModal', 'newerModal', 'settingsModal', 'tokenModal', 'blenderModal', 'cropModal', 'vsInstallModal', 'supportModal'].forEach(function (id) { if (!$(id).hidden) { hide(id); if (id === 'detailModal') S.detailKey = null; } });
     });
     $('foundIns').onclick = function () { $('foundBar').hidden = true; call('insert_found'); };
     $('foundX').onclick = function () { $('foundBar').hidden = true; call('found_dismiss'); };

@@ -1,0 +1,32 @@
+{
+  "_ghi_chu": "Bộ AI tìm bằng ảnh — tải 1 lần sau khi người dùng đồng ý, lưu ở %LOCALAPPDATA%\\MT_Smart_Library\\ai_runtime (không mất khi cập nhật plugin).",
+  "version": 1,
+  "model": {
+    "id": "clip-vit-b32",
+    "name": "CLIP ViT-B/32 (OpenAI, MIT) — bản ONNX lượng tử hóa của Xenova/clip-vit-base-patch32",
+    "license": "MIT (OpenAI CLIP)",
+    "page": "https://huggingface.co/Xenova/clip-vit-base-patch32",
+    "vision_file": "vision_model.onnx",
+    "text_file": "text_model.onnx",
+    "min_score": 0.55,
+    "spread": 0.18,
+    "files": [
+      { "name": "vision_model.onnx", "url": "https://huggingface.co/Xenova/clip-vit-base-patch32/resolve/main/onnx/vision_model_quantized.onnx",
+        "size": 89117001, "sha256": "583fd1110a514667812fee7d684952aaf82a99b959760c8d7dca7e0ab9839299" },
+      { "name": "text_model.onnx", "url": "https://huggingface.co/Xenova/clip-vit-base-patch32/resolve/main/onnx/text_model_quantized.onnx",
+        "size": 64504507, "sha256": "73baab855d406190da9faa498cfedf65f15cf309f4cc7385b7b032e6d08e5c3a" },
+      { "name": "vocab.json", "url": "https://huggingface.co/Xenova/clip-vit-base-patch32/resolve/main/vocab.json",
+        "size": 862328, "git_sha1": "182766ce89b439768edadda342519f33802f5364" },
+      { "name": "merges.txt", "url": "https://huggingface.co/Xenova/clip-vit-base-patch32/resolve/main/merges.txt",
+        "size": 524619, "git_sha1": "76e821f1b6f0a9709293c3b6b51ed90980b3166b" }
+    ]
+  },
+  "runtime": {
+    "python_zip": "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip",
+    "python_pth": "python311._pth",
+    "get_pip": "https://bootstrap.pypa.io/get-pip.py",
+    "packages": ["onnxruntime-directml", "numpy", "pillow"],
+    "packages_fallback": ["onnxruntime", "numpy", "pillow"],
+    "download_mb": 330
+  }
+}

@@ -26,6 +26,7 @@ import time
 import hashlib
 import traceback
 import urllib.request
+import urllib.error
 import urllib.parse
 
 
@@ -241,6 +242,7 @@ def l2n(v):
 
 # --------------------------------------------------------------------------- Bộ máy
 class Engine:
+    THREADS = 0
     def __init__(self, model_dir, data_dir, device='cpu'):
         import onnxruntime as ort
         self.want_device = device
@@ -250,7 +252,7 @@ class Engine:
         cfg_path = os.path.join(model_dir, 'model_config.json')
         self.cfg = json.load(open(cfg_path, encoding='utf-8')) if os.path.exists(cfg_path) else {}
         so = ort.SessionOptions()
-        so.intra_op_num_threads = max(1, min(4, (os.cpu_count() or 2) - 1))  # chừa CPU cho SketchUp
+        so.intra_op_num_threads = self.THREADS or max(1, min(4, (os.cpu_count() or 2) - 1))  # chừa CPU cho SketchUp
         self.device = 'CPU'
         self.vision = self._session(os.path.join(model_dir, self.cfg.get('vision_file', 'vision_model.onnx')), so)
         self.text = None
@@ -339,9 +341,14 @@ class Engine:
 
     # ---- chỉ mục thư viện máy tính
     def index(self):
+        mp = os.path.join(self.index_dir, 'ids.json')
+        # Làn tìm kiếm đọc chỉ mục do làn lập chỉ mục ghi: nạp lại khi file đổi.
+        mt = os.path.getmtime(mp) if os.path.exists(mp) else 0
+        if self._index is not None and getattr(self, '_index_mtime', None) != mt and not getattr(self, '_index_owner', False):
+            self._index = None
+        self._index_mtime = mt
         if self._index is None:
             vp = os.path.join(self.index_dir, 'vectors.npy')
-            mp = os.path.join(self.index_dir, 'ids.json')
             if os.path.exists(vp) and os.path.exists(mp):
                 meta = json.load(open(mp, encoding='utf-8'))
                 vec = np.load(vp)
@@ -428,6 +435,7 @@ def library_items(job):
 
 
 def job_index_sync(eng, job, prog):
+    eng._index_owner = True  # làn lập chỉ mục giữ bản trong bộ nhớ
     ix = eng.index()
     items = library_items(job)
     want = {it['id']: it for it in items}
@@ -504,7 +512,7 @@ def job_rank_urls(eng, job, prog):
     q = np.load(job['vec']).astype(np.float32)
     hosts = set(h.lower() for h in job['hosts'])
     cache = os.path.join(eng.data_dir, 'online_thumbs')
-    out, batch, keys, failed = [], [], [], 0
+    out, batch, keys, failed, vecs = [], [], [], 0, []
     items = job['items']
     for n, it in enumerate(items):
         prog({'done': n, 'total': len(items)})
@@ -519,12 +527,201 @@ def job_rank_urls(eng, job, prog):
             v = eng.embed_images(batch)
             for k, s in zip(keys, v @ q):
                 out.append({'key': k, 'score': round(float(s), 4)})
+            vecs.extend(zip(keys, v))
             batch, keys = [], []
-    return {'scores': out, 'failed': failed}
+    dups = 0
+    if job.get('store') and vecs:  # kho dữ liệu: lưu metadata + vector để lần sau tìm lại không cần tải ảnh
+        try:
+            cat = catalog(eng)
+            cat.upsert(job['store'])
+            dups = cat.set_vectors(vecs)
+        except Exception as e:
+            log('lưu kho dữ liệu lỗi: %s' % e)
+    return {'scores': out, 'failed': failed, 'dups': dups}
+
+
+# --------------------------------------------------------------------------- Kho dữ liệu tích lũy (SQLite)
+# Lưu metadata kết quả online đã thấy (không tải file SKP), vector ảnh xem trước, trạng thái link, trùng lặp.
+CAT_FIELDS = ('source', 'source_label', 'uid', 'title', 'thumb', 'thumb_large', 'author', 'author_url', 'license', 'url',
+              'downloadable', 'free', 'insertable', 'web_only', 'download_note', 'format', 'formats', 'likes', 'faces')
+DUP_COS = 0.97
+
+
+class Catalog:
+    def __init__(self, path):
+        import sqlite3
+        self.path = path
+        self.db = sqlite3.connect(path, timeout=10)
+        self.db.execute('PRAGMA journal_mode=WAL')
+        self.db.execute('''CREATE TABLE IF NOT EXISTS items(
+            key TEXT PRIMARY KEY, source TEXT, title TEXT, url TEXT, thumb TEXT, data TEXT,
+            first_seen INTEGER, last_seen INTEGER, link_status TEXT, link_checked INTEGER DEFAULT 0,
+            vec BLOB, dup_of TEXT)''')
+        self.db.execute('CREATE INDEX IF NOT EXISTS ix_src ON items(source)')
+        self.db.commit()
+        self._mat = None
+
+    def upsert(self, items):
+        now = int(time.time())
+        n = 0
+        for it in items:
+            k = it.get('key')
+            if not k or not it.get('title'):
+                continue
+            data = json.dumps({f: it.get(f) for f in CAT_FIELDS if it.get(f) is not None}, ensure_ascii=False)
+            cur = self.db.execute('UPDATE items SET title=?, url=?, thumb=?, data=?, last_seen=? WHERE key=?',
+                                  (it.get('title'), it.get('url'), it.get('thumb'), data, now, k))
+            if cur.rowcount == 0:
+                self.db.execute('INSERT INTO items(key, source, title, url, thumb, data, first_seen, last_seen) VALUES(?,?,?,?,?,?,?,?)',
+                                (k, it.get('source'), it.get('title'), it.get('url'), it.get('thumb'), data, now, now))
+                n += 1
+        self.db.commit()
+        return n
+
+    def matrix(self):
+        if self._mat is None:
+            rows = self.db.execute('SELECT key, vec FROM items WHERE vec IS NOT NULL AND dup_of IS NULL').fetchall()
+            keys = [r[0] for r in rows]
+            mat = np.stack([np.frombuffer(r[1], dtype=np.float16).astype(np.float32) for r in rows]) if rows else None
+            self._mat = (keys, mat)
+        return self._mat
+
+    def set_vectors(self, pairs):
+        # pairs: [(key, vec float32)] → lưu vector + đánh dấu trùng (ảnh gần như giống hệt một mục đã có từ nguồn khác)
+        keys, mat = self.matrix()
+        keys = list(keys)
+        dups = 0
+        for k, v in pairs:
+            dup = None
+            if mat is not None and len(keys):
+                sims = mat @ v
+                for i in np.argsort(-sims)[:3]:
+                    if sims[i] >= DUP_COS and keys[int(i)] != k:
+                        dup = keys[int(i)]
+                        dups += 1
+                        break
+            self.db.execute('UPDATE items SET vec=?, dup_of=? WHERE key=?', (v.astype(np.float16).tobytes(), dup, k))
+            if dup is None and k not in keys:  # so sánh cả với các mục mới trong cùng đợt
+                keys.append(k)
+                row = v.astype(np.float16).astype(np.float32)[None, :]
+                mat = row if mat is None else np.concatenate([mat, row])
+        self.db.commit()
+        self._mat = None
+        return dups
+
+    def search(self, q, k, exclude_sources=()):
+        keys, mat = self.matrix()
+        if mat is None:
+            return []
+        sims = mat @ q
+        order = np.argsort(-sims)[: k * 2]
+        out = []
+        for i in order:
+            row = self.db.execute('SELECT data, link_status FROM items WHERE key=?', (keys[int(i)],)).fetchone()
+            if not row or row[1] == 'dead':
+                continue
+            d = json.loads(row[0])
+            if d.get('source') in exclude_sources:
+                continue
+            d['key'] = keys[int(i)]
+            d['vscore'] = round(float(sims[i]), 4)
+            d['from_catalog'] = True
+            out.append(d)
+            if len(out) >= k:
+                break
+        return out
+
+    def stats(self):
+        q = lambda sql: self.db.execute(sql).fetchone()[0]
+        return {'total': q('SELECT COUNT(*) FROM items'), 'with_vec': q('SELECT COUNT(*) FROM items WHERE vec IS NOT NULL'),
+                'dup': q('SELECT COUNT(*) FROM items WHERE dup_of IS NOT NULL'),
+                'dead': q("SELECT COUNT(*) FROM items WHERE link_status='dead'"),
+                'checked': q('SELECT COUNT(*) FROM items WHERE link_checked > 0')}
+
+    def clear(self):
+        self.db.execute('DELETE FROM items')
+        self.db.commit()
+        self.db.execute('VACUUM')
+        self._mat = None
+
+
+def catalog(eng):
+    if getattr(eng, '_catalog', None) is None:
+        eng._catalog = Catalog(os.path.join(eng.data_dir, 'catalog.sqlite'))
+    return eng._catalog
+
+
+def job_catalog_upsert(eng, job, prog):
+    return {'added': catalog(eng).upsert(job.get('items', []))}
+
+
+def job_catalog_search(eng, job, prog):
+    q = np.load(job['vec']).astype(np.float32)
+    return {'items': catalog(eng).search(q, int(job.get('k', 60)), tuple(job.get('exclude_sources', [])))}
+
+
+def job_catalog_stats(eng, job, prog):
+    return catalog(eng).stats()
+
+
+def job_catalog_clear(eng, job, prog):
+    catalog(eng).clear()
+    cache = os.path.join(eng.data_dir, 'online_thumbs')
+    n = 0
+    if os.path.isdir(cache):
+        for f in os.listdir(cache):
+            try:
+                os.remove(os.path.join(cache, f))
+                n += 1
+            except OSError:
+                pass
+    return {'cleared': True, 'thumbs_removed': n}
+
+
+def check_url(url, hosts):
+    u = urllib.parse.urlparse(url or '')
+    if u.scheme != 'https':
+        return 'error', 0
+    for method in ('HEAD', 'GET'):
+        try:
+            req = urllib.request.Request(url, method=method, headers={'User-Agent': UA, 'Range': 'bytes=0-0'})
+            with urllib.request.urlopen(req, timeout=10) as r:
+                return 'ok', r.status
+        except urllib.error.HTTPError as e:
+            if e.code in (404, 410):
+                return 'dead', e.code
+            if method == 'GET':
+                return 'error', e.code
+        except Exception:
+            if method == 'GET':
+                return 'error', 0
+    return 'error', 0
+
+
+def job_catalog_check_links(eng, job, prog):
+    from concurrent.futures import ThreadPoolExecutor
+    cat = catalog(eng)
+    limit = int(job.get('limit', 100))
+    rows = cat.db.execute('SELECT key, url FROM items ORDER BY link_checked ASC LIMIT ?', (limit,)).fetchall()
+    res = {'ok': 0, 'dead': 0, 'error': 0}
+    done = 0
+    with ThreadPoolExecutor(max_workers=int(job.get('concurrency', 4))) as ex:  # giới hạn đồng thời
+        futs = {ex.submit(check_url, url, None): key for key, url in rows}
+        for f in futs:
+            st, code = f.result()
+            res[st] += 1
+            cat.db.execute('UPDATE items SET link_status=?, link_checked=? WHERE key=?', (st, int(time.time()), futs[f]))
+            done += 1
+            prog({'done': done, 'total': len(rows)})
+    cat.db.commit()
+    res['checked'] = len(rows)
+    return res
 
 
 JOBS = {'probe': job_probe, 'embed_query': job_embed_query, 'search_local': job_search_local,
-        'index_sync': job_index_sync, 'rank_urls': job_rank_urls}
+        'index_sync': job_index_sync, 'rank_urls': job_rank_urls,
+        'catalog_upsert': job_catalog_upsert, 'catalog_search': job_catalog_search, 'catalog_stats': job_catalog_stats,
+        'catalog_clear': job_catalog_clear, 'catalog_check_links': job_catalog_check_links}
 
 
 def probe_gpu(model_dir, data_dir, out):
@@ -545,8 +742,10 @@ def main():
     model_dir = args[args.index('--models') + 1]
     data_dir = args[args.index('--data') + 1]
     device = args[args.index('--device') + 1] if '--device' in args else 'cpu'
-    jobs = os.path.join(data_dir, 'jobs')
+    jobs = args[args.index('--jobs') + 1] if '--jobs' in args else os.path.join(data_dir, 'jobs')
     os.makedirs(jobs, exist_ok=True)
+    if '--threads' in args:
+        Engine.THREADS = max(1, int(args[args.index('--threads') + 1]))
     if _IMPORT_ERR:
         write_json(os.path.join(jobs, 'worker.error.json'), {'error': 'Thiếu thư viện AI (numpy/Pillow).', 'kind': 'import',
                                                               'detail': _IMPORT_ERR[-1500:]})

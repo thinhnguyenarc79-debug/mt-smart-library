@@ -1,5 +1,24 @@
 # Báo cáo kiểm thử — MT SMART LIBRARY PRO
 
+## V1.0.11 (25/11/2026) — SMART SOURCE MANAGER
+
+| Module | Đã kiểm thử (dữ liệu/tiến trình thật trong máy test) | Kết quả |
+|---|---|---|
+| Quản lý nguồn | 9 loại nguồn, tự nhận diện loại, trùng/link sai/thư mục không có, bật/tắt, sửa, xóa, lưu & nạp lại, xuất/nhập JSON (bỏ id/trường lạ, không trùng, JSON hỏng) | ✅ |
+| Kiểm tra website | robots.txt (Allow/Disallow, `*`, `/`), REST API đạt → tiếng Việt + tên miền ảnh; robots chặn; 403 → cần đăng nhập; HTML → không có API; mất kết nối | ✅ (HTTP giả lập) |
+| Nguồn website người dùng | Thêm → kiểm tra → thành provider tìm thật, ảnh tên miền con nhận, ảnh host lạ bỏ, tắt nguồn thì ngừng tìm | ✅ (HTTP giả lập) |
+| Facebook | Giữ nguồn, trạng thái cần đăng nhập, Mở nguồn mở trình duyệt + bật nhận file vừa tải | ✅ |
+| Nhập link | Dropbox dl=1, link file trực tiếp, Facebook/Drive/Mega/MediaFire → mở trình duyệt; nhận diện ZIP/SKP/HTML theo nội dung; tải → chèn | ✅ (HTTP giả lập) |
+| Kho dữ liệu SQLite | Chạy THẬT trong tiến trình Python + ONNX Runtime: lưu, không trùng bản ghi, vector từ ảnh xem trước, đánh dấu trùng khác nguồn, tìm lại theo ảnh không cần mạng, bỏ bản trùng/nguồn tắt, thống kê, kiểm tra link (4 luồng), xóa cache + ảnh | ✅ |
+| Tìm bằng ảnh + kho | Lần 2 không có kết quả online: model đã thấy vẫn trả về từ kho, xếp theo ảnh | ✅ |
+| 2 làn AI | Làn tìm kiếm và làn lập chỉ mục chạy 2 tiến trình đồng thời | ✅ |
+| Giao diện | Danh sách nguồn từ dữ liệu, loại nguồn không cố định, Facebook hiển thị đúng, thêm nguồn/nhập link gửi đúng lệnh, thống kê kho | ✅ |
+
+**Chưa kiểm thử với mạng thật** (máy test không có mạng ra ngoài): gọi robots.txt/REST API của website người dùng thêm, tải link Dropbox thật,
+kiểm tra link thật (trong máy test các link trả “không xác định”), SQLite trong Python nhúng trên Windows (Python nhúng của python.org có kèm sqlite3 — cần xác nhận trên máy).
+
+---
+
 ## V1.0.10 (25/11/2026)
 
 | Bộ test | Nội dung | Kết quả |

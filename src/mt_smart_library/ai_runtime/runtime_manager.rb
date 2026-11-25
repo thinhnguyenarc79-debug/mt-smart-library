@@ -22,15 +22,10 @@ module MTDesign
         @cfg = JSON.parse(File.read(File.join(code_dir, 'ai_runtime', 'model_config.json'), encoding: 'UTF-8'))
         @state = :idle
         @error = nil
-        @pending = {}
-        @seq = 0
-        @worker = nil
-        @last_hb = 0
         @device = nil
         @device_pref = 'cpu'
-        @crashes = []
-        @broken = nil
         @probe = nil
+        @lanes = {}
       end
 
       def cfg
@@ -79,12 +74,12 @@ module MTDesign
       end
 
       def busy?
-        installing? || !@pending.empty? || !@probe.nil?
+        installing? || !@probe.nil? || lanes.any?(&:busy?)
       end
 
       def status
         { 'installed' => installed?, 'installing' => installing?, 'step' => @step_label, 'progress' => progress,
-          'error' => @error || @broken, 'device' => @device, 'device_pref' => @device_pref, 'gpu_probe' => gpu_probe, 'download_mb' => @cfg['runtime']['download_mb'],
+          'error' => @error || broken, 'device' => lane('search').device, 'device_pref' => @device_pref, 'gpu_probe' => gpu_probe, 'download_mb' => @cfg['runtime']['download_mb'],
           'model' => @cfg['model']['name'], 'license' => @cfg['model']['license'] }
       end
 
@@ -228,12 +223,34 @@ module MTDesign
         end
       end
 
-      # ================================================================ Tiến trình AI
-      # Thiết bị: 'cpu' (mặc định, ổn định) | 'gpu' (DirectML — chỉ dùng sau khi kiểm tra trong tiến trình riêng).
+      # ================================================================ Tiến trình AI (theo làn)
+      # Hai làn độc lập: 'search' (tìm bằng ảnh, so sánh online, kho dữ liệu) và 'index' (lập chỉ mục thư viện máy tính)
+      # — lập chỉ mục dài không làm chậm câu tìm kiếm. Mỗi làn 1 tiến trình, 1 thư mục công việc.
+      # Thiết bị: 'cpu' mặc định; 'gpu' (DirectML) chỉ sau khi kiểm tra trong tiến trình riêng.
       CRASH_WINDOW = 300
       CRASH_LIMIT = 2
+      LANES = { 'search' => 2, 'index' => 1 }.freeze # số luồng CPU mỗi làn (chừa CPU cho SketchUp)
 
-      attr_reader :broken, :device_pref
+      attr_reader :device_pref
+
+      def lane(name = 'search')
+        @lanes ||= {}
+        @lanes[name] ||= WorkerLane.new(self, name, LANES.fetch(name, 1))
+      end
+
+      def lanes
+        @lanes ||= {}
+        LANES.keys.each { |n| lane(n) }
+        @lanes.values
+      end
+
+      def jobs_dir
+        lane('search').dir
+      end
+
+      def broken
+        lane('search').broken
+      end
 
       def device_pref=(v)
         v = v.to_s == 'gpu' ? 'gpu' : 'cpu'
@@ -241,7 +258,7 @@ module MTDesign
         old = @device_pref
         @device_pref = v
         FileUtils.rm_f(gpu_probe_file) if v == 'gpu' && old # người dùng chọn lại GPU: cho kiểm tra lại
-        restart_worker if @worker # áp dụng thiết bị mới ở lần chạy sau
+        lanes.each(&:restart) if old
       end
 
       def gpu_probe_file
@@ -252,62 +269,43 @@ module MTDesign
         read_json(gpu_probe_file)
       end
 
-      # Thiết bị thực dùng: GPU chỉ khi người dùng chọn VÀ bài kiểm tra GPU đã đạt.
       def effective_device
         return 'cpu' unless @device_pref == 'gpu'
         pr = gpu_probe
         pr && pr['ok'] ? 'gpu' : 'cpu'
       end
 
+      def need_probe?
+        @device_pref == 'gpu' && gpu_probe.nil?
+      end
+
+      def probing?
+        !@probe.nil?
+      end
+
       def available?
-        installed? && !@broken
+        installed? && !lane('search').broken
       end
 
       def worker_log
         File.join(work_dir, 'worker.log')
       end
 
-      def worker_alive?
-        return false unless @worker
-        j = @runner.poll(@worker)
-        j && j.state == :running
+      def worker_alive?(name = 'search')
+        lane(name).alive?
       end
 
-      # Bỏ trạng thái lỗi khi người dùng chủ động tìm lại (chỉ thử lại 1 lần).
       def reset_broken
-        return unless @broken
-        @broken = nil
-        @crashes = []
-      end
-
-      def ensure_worker
-        return true if worker_alive? || @probe
-        return false if @broken
-        FileUtils.mkdir_p(jobs_dir)
-        clean_jobs_dir unless @worker # phiên mới: dọn việc tồn đọng của lần chạy trước
-        %w[worker.ready.json worker.error.json].each { |n| FileUtils.rm_f(File.join(jobs_dir, n)) }
-        touch_heartbeat(true)
-        if @device_pref == 'gpu' && gpu_probe.nil?
-          start_probe
-        else
-          start_worker(effective_device)
-        end
-        true
+        lanes.each(&:reset_broken)
       end
 
       def script
         File.join(@code_dir, 'ai_runtime', 'inference_worker.py')
       end
 
-      def start_worker(dev)
-        @worker_device = dev
-        rlog("Khởi động tiến trình AI (#{dev.upcase})")
-        @worker = @runner.start([python_exe, '-B', script, '--models', models_dir, '--data', work_dir, '--device', dev,
-                                 '--log', worker_log], timeout: 0, log_path: File.join(work_dir, 'worker.out.log'), cwd: work_dir)
-      end
-
-      # Kiểm tra GPU trong tiến trình riêng; sập thì chỉ tiến trình kiểm tra chết.
       def start_probe
+        return if @probe
+        FileUtils.mkdir_p(work_dir)
         FileUtils.rm_f(gpu_probe_file + '.out')
         rlog('Kiểm tra GPU (DirectML) trong tiến trình riêng')
         @probe = @runner.start([python_exe, '-B', script, '--models', models_dir, '--data', work_dir,
@@ -329,141 +327,43 @@ module MTDesign
         @runner.forget(@probe)
         @probe = nil
         @notice = res['reason'] unless ok
-        start_worker(effective_device)
       end
 
-      # Thông báo 1 lần cho giao diện (ví dụ: GPU không tương thích → đã dùng CPU).
+      def mark_gpu_failed(code)
+        Util.atomic_write(gpu_probe_file, JSON.generate('ok' => false, 'exit_code' => code, 'code' => fmt_code(code),
+                                                        'reason' => "GPU làm dừng tiến trình AI (mã #{fmt_code(code)}) — đã chuyển sang CPU.",
+                                                        'at' => Time.now.to_i))
+        @notice = "GPU không ổn định (mã #{fmt_code(code)}) — đã tự chuyển sang CPU."
+      end
+
       def take_notice
         n = @notice
         @notice = nil
         n
       end
 
-      def restart_worker
-        @runner.cancel(@worker) if @worker && worker_alive?
-        @worker = nil
+      def runner
+        @runner
       end
 
-      def submit(type, payload = {}, on_progress: nil, &done)
-        unless installed? && ensure_worker
-          done&.call('ok' => false, 'error' => @broken || 'Bộ AI chưa sẵn sàng.', 'broken' => true)
+      # lane: 'search' (mặc định) | 'index'
+      def submit(type, payload = {}, lane: 'search', on_progress: nil, &done)
+        unless installed?
+          done&.call('ok' => false, 'error' => 'Bộ AI chưa được cài.', 'broken' => true)
           return nil
         end
-        @seq += 1
-        id = format('%<t>012d_%<s>06d', t: (Time.now.to_f * 1000).to_i, s: @seq)
-        job = payload.merge('type' => type)
-        write_job(id, job)
-        @pending[id] = { done: done, prog: on_progress, t: Time.now.to_f, job: job, retried: false }
-        id
-      end
-
-      def write_job(id, job)
-        Util.atomic_write(File.join(jobs_dir, "#{id}.job.json"), JSON.generate(job))
+        self.lane(lane).submit(type, payload, on_progress: on_progress, &done)
       end
 
       def cancel(id)
-        return unless id && @pending.key?(id)
-        File.write(File.join(jobs_dir, "#{id}.cancel"), '1')
-      rescue SystemCallError
-        nil
-      end
-
-      def touch_heartbeat(force = false)
-        now = Time.now.to_f
-        return if !force && now - @last_hb < 5
-        @last_hb = now
-        FileUtils.mkdir_p(jobs_dir)
-        File.write(File.join(jobs_dir, 'heartbeat'), now.to_s)
-      rescue SystemCallError
-        nil
+        return unless id
+        lanes.each { |l| l.cancel(id) }
       end
 
       def poll
         poll_install
         poll_probe
-        return if @pending.empty? && !@worker
-        touch_heartbeat
-        if (r = read_json(File.join(jobs_dir, 'worker.ready.json')))
-          @device = r['device']
-        end
-        @pending.keys.each do |id|
-          h = @pending[id]
-          next unless h
-          out = read_json(File.join(jobs_dir, "#{id}.out.json"))
-          if out
-            @pending.delete(id)
-            FileUtils.rm_f(File.join(jobs_dir, "#{id}.out.json"))
-            h[:done]&.call(out)
-          elsif h[:prog] && (pr = read_json(File.join(jobs_dir, "#{id}.prog.json")))
-            h[:prog].call(pr)
-          end
-        end
-        handle_death if @worker && !@probe && !worker_alive?
-      end
-
-      # Tiến trình AI chết: ghi exit code, GPU sập → chạy lại bằng CPU và gửi lại việc dở; CPU sập liên tiếp → dừng hẳn
-      # (không tạo vòng lặp việc lỗi), báo lỗi rõ kèm log.
-      def handle_death
-        j = @runner.poll(@worker)
-        code = j && j.exit_code
-        err = read_json(File.join(jobs_dir, 'worker.error.json'))
-        dev = @worker_device
-        @runner.forget(@worker)
-        @worker = nil
-        if code.to_i.zero? && err.nil? # tự thoát bình thường (rảnh lâu / SketchUp không còn heartbeat)
-          rlog('Tiến trình AI tự thoát (rảnh)')
-          return @pending.empty? ? nil : resubmit_pending
-        end
-        rlog("Tiến trình AI (#{dev.to_s.upcase}) dừng, mã thoát #{fmt_code(code)}#{err ? " — #{err['error']}" : ''}")
-        if dev == 'gpu'
-          Util.atomic_write(gpu_probe_file, JSON.generate('ok' => false, 'exit_code' => code, 'code' => fmt_code(code),
-                                                          'reason' => "GPU làm dừng tiến trình AI (mã #{fmt_code(code)}) — đã chuyển sang CPU.",
-                                                          'at' => Time.now.to_i))
-          @notice = "GPU không ổn định (mã #{fmt_code(code)}) — đã tự chuyển sang CPU."
-          return resubmit_pending
-        end
-        @crashes = (@crashes || []).select { |t| Time.now.to_f - t < CRASH_WINDOW } << Time.now.to_f
-        if @crashes.size < CRASH_LIMIT && err.nil?
-          return resubmit_pending # sập 1 lần: thử lại 1 lần
-        end
-        msg = if err
-                hint = case err['kind']
-                       when 'dll' then ' Cần cài Microsoft Visual C++ Redistributable (x64).'
-                       when 'import' then ' Thư viện AI bị thiếu — mở Hỗ trợ kỹ thuật › Cài lại bộ AI.'
-                       else ''
-                       end
-                "#{err['error']}#{hint}"
-              else
-                "Tiến trình AI dừng bất thường (mã #{fmt_code(code)}). #{log_tail(4)}".strip
-              end
-        @broken = msg
-        clean_jobs_dir
-        fail_all(msg)
-      end
-
-      def resubmit_pending
-        ensure_worker
-        @pending.each do |id, h|
-          if h[:retried]
-            @pending.delete(id)
-            h[:done]&.call('ok' => false, 'error' => 'Tiến trình AI dừng khi đang xử lý việc này.')
-          else
-            h[:retried] = true
-            write_job(id, h[:job]) unless File.file?(File.join(jobs_dir, "#{id}.job.json"))
-          end
-        end
-      end
-
-      def fail_all(msg)
-        pend = @pending
-        @pending = {}
-        pend.each_value { |h| h[:done]&.call('ok' => false, 'error' => msg, 'broken' => true) }
-      end
-
-      def clean_jobs_dir
-        Dir.glob(File.join(jobs_dir, '*.{job,out,prog}.json')).each { |f| FileUtils.rm_f(f) }
-        Dir.glob(File.join(jobs_dir, '*.cancel')).each { |f| FileUtils.rm_f(f) }
-        Dir.glob(File.join(jobs_dir, '*.tmp*')).each { |f| FileUtils.rm_f(f) }
+        lanes.each(&:poll)
       end
 
       def log_tail(n = 6)
@@ -478,7 +378,7 @@ module MTDesign
       def fmt_code(code)
         return '?' if code.nil?
         c = code.to_i
-        c = c & 0xFFFFFFFF if c.negative?
+        c &= 0xFFFFFFFF if c.negative?
         c > 0x7FFFFFFF ? format('0x%08X', c) : c.to_s
       end
 
@@ -500,10 +400,16 @@ module MTDesign
       end
 
       def stop
-        @runner.cancel(@worker) if @worker
+        lanes.each(&:stop)
         @runner.cancel(@probe) if @probe
-        @worker = nil
         @probe = nil
+      end
+
+      def read_json(path)
+        return nil unless File.file?(path)
+        JSON.parse(File.read(path, encoding: 'UTF-8'))
+      rescue JSON::ParserError, SystemCallError
+        nil
       end
 
       private
@@ -530,12 +436,6 @@ module MTDesign
         end
       end
 
-      def read_json(path)
-        return nil unless File.file?(path)
-        JSON.parse(File.read(path, encoding: 'UTF-8'))
-      rescue JSON::ParserError, SystemCallError
-        nil
-      end
     end
   end
 end

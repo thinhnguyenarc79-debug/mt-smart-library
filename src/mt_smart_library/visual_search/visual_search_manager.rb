@@ -31,11 +31,17 @@ module MTDesign
         @store = {}
         @filter = 'all'
         @payload = nil
-        @osearch = SearchManager.new(providers: online_providers, settings: settings, logger: logger,
-                                     emit: ->(t, pl) { @payload = pl if t == 'sr_update' && @cur && pl['sid'] == @cur[:sid] })
+        @online_providers = online_providers # mảng hoặc lambda (nguồn người dùng thêm thay đổi lúc chạy)
+        @osearch = new_osearch
         @index_job = nil
         @synced_gen = nil
         @index_state = nil
+      end
+
+      def new_osearch
+        list = @online_providers.respond_to?(:call) ? @online_providers.call : @online_providers
+        SearchManager.new(providers: list, settings: @settings, logger: @log,
+                          emit: ->(t, pl) { @payload = pl if t == 'sr_update' && @cur && pl['sid'] == @cur[:sid] })
       end
 
       def active?
@@ -61,8 +67,9 @@ module MTDesign
         sid = SID_BASE + @seq
         vec = File.join(@rt.work_dir, 'query', "q#{@seq}.npy")
         FileUtils.mkdir_p(File.dirname(vec))
-        @cur = { sid: sid, image: image_path, crop: crop, vec: vec, stage: :recognizing, local: nil, online: nil,
+        @cur = { sid: sid, image: image_path, crop: crop, vec: vec, stage: :recognizing, local: nil, online: nil, catalog: nil,
                  cats: [], jobs: [], started: Time.now.to_f }
+        @osearch = new_osearch
         @store = {}
         @payload = nil
         unless @rt.installed?
@@ -114,7 +121,7 @@ module MTDesign
           Util.atomic_write(file, JSON.generate(items))
           @lib_gen = gen
         end
-        @index_job = @rt.submit('index_sync', { 'items_file' => file, 'limit' => INDEX_BATCH },
+        @index_job = @rt.submit('index_sync', { 'items_file' => file, 'limit' => INDEX_BATCH }, lane: 'index',
                                 on_progress: ->(p) { @emit.call('vs_index', p.merge('running' => true, 'base' => (@index_state || {})['indexed'].to_i)) }) do |r|
           @index_job = nil
           if r['ok']
@@ -141,6 +148,12 @@ module MTDesign
         names = c[:cats].first(2).map { |x| x['vi'] }
         state('searching', 'msg' => 'Đang tìm model…', 'categories' => c[:cats].first(3))
         c[:jobs] << @rt.submit('search_local', { 'vec' => c[:vec], 'k' => 300 }) { |res| on_local(sid, res) }
+        # Kho dữ liệu tích lũy: model online đã thấy trước đây (có vector) — có ngay, không cần mạng.
+        c[:jobs] << @rt.submit('catalog_search', { 'vec' => c[:vec], 'k' => 60, 'exclude_sources' => disabled_sources }) do |res|
+          next unless @cur && @cur[:sid] == sid
+          c[:catalog] = res['ok'] ? Array(res['result']['items']) : []
+          maybe_finish(sid)
+        end
         kw = keywords(c[:cats])
         if kw.empty? || !@settings['sources'].values.any?
           c[:online] = []
@@ -191,7 +204,8 @@ module MTDesign
         pl = @payload
         waited = Time.now.to_f - c[:online_started]
         return unless (pl && !pl['loading']) || waited > ONLINE_WAIT
-        cands = Array(pl && pl['items']).select { |i| i['thumb'].is_a?(String) && IMG_HOSTS.include?(host(i['thumb'])) }
+        # Ảnh đã được từng nguồn kiểm tra host khi đọc kết quả; ở đây chỉ nhận https.
+        cands = Array(pl && pl['items']).select { |i| i['thumb'].is_a?(String) && i['thumb'].start_with?('https://') && !host(i['thumb']).empty? }
         cands = cands.first(MAX_ONLINE)
         c[:sources] = pl ? Array(pl['sources']) : []
         @osearch.cancel_current
@@ -202,8 +216,9 @@ module MTDesign
         c[:stage] = :comparing
         state('comparing', 'msg' => "Đang so sánh hình ảnh #{cands.size} model online…")
         by_key = cands.map { |i| [i['key'], i] }.to_h
-        c[:jobs] << @rt.submit('rank_urls', { 'vec' => c[:vec], 'hosts' => IMG_HOSTS,
-                                              'items' => cands.map { |i| { 'key' => i['key'], 'url' => i['thumb'] } } },
+        c[:jobs] << @rt.submit('rank_urls', { 'vec' => c[:vec], 'hosts' => cands.map { |i| host(i['thumb']) }.uniq,
+                                              'items' => cands.map { |i| { 'key' => i['key'], 'url' => i['thumb'] } },
+                                              'store' => cands.map { |i| i.reject { |k, _| %w[score fav].include?(k) } } },
                                on_progress: ->(p) { state('comparing', 'msg' => "Đang so sánh hình ảnh… #{p['done']}/#{p['total']}") }) do |r|
           next unless @cur && @cur[:sid] == c[:sid]
           if r['ok']
@@ -218,7 +233,7 @@ module MTDesign
 
       def maybe_finish(sid)
         c = @cur
-        return unless c && c[:sid] == sid && !c[:local].nil? && !c[:online].nil?
+        return unless c && c[:sid] == sid && !c[:local].nil? && !c[:online].nil? && !c[:catalog].nil?
         state('done', 'msg' => 'Đang hiển thị kết quả…')
         emit_results(sid, false)
         state('done', 'msg' => done_msg(c))
@@ -235,7 +250,9 @@ module MTDesign
 
       # ================================================================ Xếp hạng & gửi lưới
       def ranked(c)
-        list = Array(c[:local]) + Array(c[:online])
+        live = Array(c[:online])
+        keys = live.map { |i| i['key'] }
+        list = Array(c[:local]) + live + Array(c[:catalog]).reject { |i| keys.include?(i['key']) }
         return [] if list.empty?
         list = list.sort_by { |i| -i['vscore'] }
         best = list.first['vscore']
@@ -266,6 +283,10 @@ module MTDesign
         @emit.call('sr_update', { 'sid' => sid, 'items' => items, 'counts' => counts, 'filter' => @filter, 'loading' => loading,
                                   'has_more' => false, 'sources' => c ? Array(c[:sources]) : [], 'hidden' => 0, 'truncated' => false,
                                   'visual' => true })
+      end
+
+      def disabled_sources
+        @settings['sources'].select { |_, v| v == false }.keys
       end
 
       private

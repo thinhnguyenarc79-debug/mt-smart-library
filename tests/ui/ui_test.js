@@ -40,7 +40,9 @@ function items() {
     secrets: { openai: { session: true }, sketchfab: {} }, data_root: 'C:/Users/Thinh/AppData/Local/MT_Smart_Library', secret_store: true, roots_state: { 'D:/Thư viện 3D': 'ok' },
     loaded: true, library_size: 3, scan: { running: false }, categories: cats,
     sources_status: [{ id: 'local', name: 'Máy tính', integrated: true, enabled: true, note: '1 thư mục' }, { id: 'sketchfab', name: 'Sketchfab', integrated: true, enabled: true, note: 'API chính thức' },
-      { id: 'warehouse', name: '3D Warehouse', integrated: false, enabled: false, note: 'Chưa có API công khai' }] }), [SETTINGS, CATS]);
+      { id: 'warehouse', name: '3D Warehouse', integrated: false, enabled: false, note: 'Chưa có API công khai' }],
+    src: { types: { website: 'Website' }, list: [{ id: 'sketchfab', name: 'Sketchfab', builtin: true, integrated: true, enabled: true, url: 'https://sketchfab.com' },
+      { id: 'warehouse', name: '3D Warehouse', builtin: true, integrated: false, enabled: false, note: 'Chưa có API công khai', url: 'https://3dwarehouse.sketchup.com' }] } }), [SETTINGS, CATS]);
   const starts = () => page.evaluate(() => window.__calls.filter(c => c[0] === 'sr_start').map(c => JSON.parse(c[1][0])));
   check('Khởi động tự tìm (1 lần)', (await starts()).length === 1);
   check('Thanh danh mục đủ 13 mặc định + tùy chỉnh + 3 mục cá nhân', (await page.locator('#cats .cat').count()) === 17);
@@ -175,15 +177,26 @@ function items() {
   const tabs = await page.$$eval('#stabs [data-s]', b => b.map(x => x.textContent.trim()));
   check('Cài đặt chỉ còn 4 tab', JSON.stringify(tabs) === JSON.stringify(['Thư viện', 'Nguồn tìm kiếm', 'AI', 'Tài khoản thư viện']), tabs);
   check('Không còn ô thông số kỹ thuật', (await page.$$('#sTimeout, #cTimeout, #cGltf')).length === 0);
-  await page.evaluate(() => MT.receive('sources_status', [
-    { id: 'local', name: 'Máy tính', enabled: true, integrated: true, note: '' },
-    { id: 'polyhaven', name: 'Poly Haven', enabled: true, integrated: true, note: 'API chính thức' },
-    { id: 'warehouse', name: '3D Warehouse', enabled: false, integrated: false, note: 'Chưa tích hợp' }]));
+  await page.evaluate(() => MT.receive('src_list', { types: { website: 'Website', facebook_group: 'Facebook Group', dropbox: 'Dropbox' }, list: [
+    { id: 'local', name: 'Thư viện máy tính', type: 'local', builtin: true, integrated: true, enabled: true, type_label: 'Thư mục máy tính', method_label: 'Đọc thư mục máy tính', url: '' },
+    { id: 'polyhaven', name: 'Poly Haven', type: 'website', builtin: true, integrated: true, enabled: true, url: 'https://polyhaven.com', type_label: 'Website', method_label: 'API chính thức' },
+    { id: 'warehouse', name: '3D Warehouse', type: 'website', builtin: true, integrated: false, enabled: false, url: 'https://3dwarehouse.sketchup.com', type_label: 'Website', method_label: 'Chưa xác minh' },
+    { id: 'u_0123456789', name: 'Nhóm thư viện 3D', type: 'facebook_group', builtin: false, integrated: false, enabled: true, status: 'login', url: 'https://www.facebook.com/groups/x', type_label: 'Facebook Group', method_label: 'Mở nguồn + nhập link thủ công', note: 'Meta đã gỡ Groups API' }] }));
   await page.evaluate(() => { document.querySelector('#stabs [data-s=src]').click(); document.querySelector('#settingsModal').hidden = false; });
   await page.evaluate(() => { window.__calls.length = 0; const c = document.querySelector('#srcList input[data-src=polyhaven]'); c.click(); });
-  const sv = await page.evaluate(() => window.__calls.filter(c => c[0] === 'save_settings').map(c => JSON.parse(c[1][0])));
-  check('Bật/tắt từng nguồn ngay trong danh sách và lưu lại', sv.length === 1 && sv[0].sources && sv[0].sources.polyhaven === false, sv);
+  const sv = await page.evaluate(() => window.__calls.filter(c => c[0] === 'src_toggle').map(c => c[1]));
+  check('Bật/tắt từng nguồn ngay trong danh sách và lưu lại', sv.length === 1 && sv[0][0] === 'polyhaven' && sv[0][1] === false, sv);
   check('Nguồn chưa tích hợp không có ô bật', (await page.$$('#srcList input[data-src=warehouse]')).length === 0);
+  check('Loại nguồn lấy từ dữ liệu (không cố định trong giao diện)', (await page.$$eval('#srcType option', o => o.length)) === 4);
+  check('Nguồn Facebook giữ lại, ghi rõ cần đăng nhập + có nút Mở/Sửa/Xóa', (await page.textContent('#srcList')).includes('Cần đăng nhập trên trình duyệt') &&
+    (await page.$$('#srcList .item.src')).length === 4);
+  await page.evaluate(() => { window.__calls.length = 0; document.querySelector('#srcUrl').value = 'https://myskp.vn'; document.querySelector('#srcAddBtn').click();
+    document.querySelector('#linkUrl').value = 'https://www.dropbox.com/s/a/x.zip?dl=0'; document.querySelector('#linkGo').click(); });
+  const sc = await page.evaluate(() => window.__calls.map(c => c[0]));
+  check('Thêm nguồn + nhập link gửi đúng lệnh', sc.includes('src_add') && sc.includes('link_import'), sc);
+  await page.evaluate(() => MT.receive('cat_stats', { available: true, total: 120, with_vec: 80, dup: 3, dead: 2, checked: 50 }));
+  check('Hiện thống kê kho dữ liệu', (await page.textContent('#catInfo')).includes('120 model'));
+  await page.screenshot({ path: OUT + '/v110_sources.png' });
   await page.evaluate(() => { document.querySelector('#settingsModal').hidden = true; });
   await page.evaluate(() => MT.receive('accounts', [
     { id: 'sketchfab', name: 'Sketchfab', status: 'not_logged_in', status_label: 'Chưa đăng nhập', note: '', actions: ['login', 'open'] },

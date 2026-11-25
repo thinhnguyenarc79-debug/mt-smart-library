@@ -64,7 +64,11 @@ module MTDesign
         end
         @runtime = RuntimeManager.new(http: @http, runner: BlenderRunner.new(@log), data_root: Paths.data_root,
                                       code_dir: Paths.code_dir, logger: @log)
-        @visual = VisualSearchManager.new(runtime: @runtime, index: @index, thumbs: @thumbs, online_providers: @providers.select(&:online?),
+        @sources = SourceRegistry.new(Paths.sub('sources.json'), builtins: builtin_sources)
+        add_custom_providers
+        @cat_buf = {}
+        @cat_last = Time.now.to_f
+        @visual = VisualSearchManager.new(runtime: @runtime, index: @index, thumbs: @thumbs, online_providers: -> { @providers.select(&:online?) },
                                           settings: @settings, emit: ->(t, pl) { emit(t, pl) }, logger: @log)
         @runtime.device_pref = @settings['ai']['device']
         @vs_image = nil
@@ -73,7 +77,7 @@ module MTDesign
         @found = nil
         @sf_expired = false
         @converter = ConverterManager.new(settings: @settings, data_root: Paths.data_root, logger: @log)
-        @search = SearchManager.new(providers: @providers, settings: @settings, emit: ->(t, pl) { emit(t, pl) }, logger: @log)
+        @search = SearchManager.new(providers: @providers, settings: @settings, emit: ->(t, pl) { collect_catalog(t, pl); emit(t, pl) }, logger: @log)
       end
 
       attr_reader :search
@@ -126,6 +130,18 @@ module MTDesign
         cb(d, 'vs_cancel') { |*| @visual.cancel }
         cb(d, 'vs_clear') { |*| @visual.cancel(silent: true); @vs_image = nil }
         cb(d, 'vs_install') { |*| vs_install }
+        cb(d, 'src_add') { |json| src_add(parse(json)) }
+        cb(d, 'src_update') { |json| src_update(parse(json)) }
+        cb(d, 'src_toggle') { |id, on| src_toggle(id.to_s, on == true || on.to_s == 'true') }
+        cb(d, 'src_delete') { |id| src_delete(id.to_s) }
+        cb(d, 'src_check') { |id| src_check(id.to_s) }
+        cb(d, 'src_open') { |id| src_open(id.to_s) }
+        cb(d, 'src_export') { |*| src_export }
+        cb(d, 'src_import') { |*| src_import }
+        cb(d, 'link_import') { |url| link_import(url.to_s) }
+        cb(d, 'cat_stats') { |*| cat_stats }
+        cb(d, 'cat_check_links') { |*| cat_check_links }
+        cb(d, 'cat_clear') { |*| cat_clear }
         cb(d, 'vs_repair') { |*| vs_repair }
         cb(d, 'vs_open_log') { |*| UI.openURL(Util.file_url(@runtime.work_dir)) }
         cb(d, 'insert_item') { |key| insert_any(key.to_s) }
@@ -214,7 +230,8 @@ module MTDesign
                'pending_restart' => @updater.pending_restart_version,
                'categories' => Categories.all(@settings['categories_custom']),
                'sources_status' => @providers.map { |p| p.status_info(@settings) },
-               'blender' => @converter.blender_status, 'accounts' => accounts_state, 'visual' => @runtime.status
+               'blender' => @converter.blender_status, 'accounts' => accounts_state, 'visual' => @runtime.status,
+               'src' => sources_payload
              })
         flush_support
       end
@@ -406,9 +423,225 @@ module MTDesign
         ensure_timer
       end
 
+      # ================================================================ SMART SOURCE MANAGER
+      def builtin_sources
+        integrated = { 'local' => %w[local local], 'sketchfab' => %w[website api], 'polyhaven' => %w[website api],
+                       'cgtips' => %w[website wp_rest], 'sketchupfree' => %w[website wp_rest], 'thuviensketchup' => %w[website wp_rest] }
+        list = [{ 'id' => 'local', 'name' => 'Thư viện máy tính', 'type' => 'local', 'method' => 'local', 'url' => '' }]
+        AccountManager::SOURCES.each do |a|
+          t, m = integrated[a['id']] || %w[website unverified]
+          list << { 'id' => a['id'], 'name' => a['name'], 'type' => t, 'method' => m, 'url' => a['site'], 'note' => a['note'] }
+        end
+        list
+      end
+
+      # Nguồn website người dùng thêm, đã xác minh WordPress REST API → provider tìm kiếm thật.
+      def add_custom_providers
+        @providers.reject! { |p| p.is_a?(Providers::WpProvider) && p.site['custom'] }
+        @sources.enabled_wp.each do |s|
+          @providers << Providers::WpProvider.new(WpSources.from_custom(s).merge('custom' => true, 'enabled' => s['enabled']), @http, @result_cache, @log)
+        end
+      end
+
+      def site_for(source_id)
+        p = @providers.find { |x| x.is_a?(Providers::WpProvider) && x.id == source_id.to_s }
+        p && p.site
+      end
+
+      def sources_payload
+        state = {}
+        @providers.each { |p| state[p.id] = { 'enabled' => p.id == 'local' ? true : p.enabled?(@settings), 'integrated' => p.status_info(@settings)['integrated'] } }
+        list = @sources.list(state).map do |s|
+          integrated = s['builtin'] ? (s['integrated'] ? true : false) : s['method'] == 'wp_rest'
+          s.merge('type_label' => SourceRegistry::TYPES[s['type']], 'method_label' => SourceRegistry::METHODS[s['method']],
+                  'integrated' => integrated,
+                  'note' => s['note'] || SourceRegistry::NOTES[s['type']] || '',
+                  'enabled' => s['builtin'] ? s['enabled'] != false : s['enabled'])
+        end
+        { 'list' => list, 'types' => SourceRegistry::TYPES }
+      end
+
+      def emit_sources
+        emit('src_list', sources_payload)
+      end
+
+      def src_add(o)
+        s = @sources.add(o)
+        emit_sources
+        status("Đã thêm nguồn “#{s['name']}”.", 'ok')
+        src_check(s['id'])
+      rescue StandardError => e
+        status(e.message, 'warn')
+      end
+
+      def src_update(o)
+        @sources.update(o['id'], o)
+        add_custom_providers
+        emit_sources
+        status('Đã lưu nguồn.', 'ok')
+      rescue StandardError => e
+        status(e.message, 'warn')
+      end
+
+      def src_toggle(id, on)
+        if @sources.find(id)
+          @sources.toggle(id, on)
+          add_custom_providers
+        else
+          save_settings('sources' => { id => on })
+        end
+        emit_sources
+      end
+
+      def src_delete(id)
+        @sources.delete(id)
+        add_custom_providers
+        emit_sources
+        status('Đã xóa nguồn.', 'ok')
+      end
+
+      # Kiểm tra phương thức truy cập: website → robots.txt + WordPress REST API; dịch vụ khác → phương thức cố định.
+      def src_check(id)
+        s = @sources.find(id)
+        return unless s
+        if s['type'] == 'website'
+          @sources.set_status(id, 'status' => 'checking')
+          emit_sources
+          SiteProbe.probe(@http, s['url']) do |r|
+            @sources.set_status(id, r)
+            add_custom_providers
+            emit_sources
+            status("#{s['name']}: #{r['note']}", r['method'] == 'wp_rest' ? 'ok' : 'warn')
+          end
+          ensure_timer
+        elsif s['type'] == 'local'
+          ok = File.directory?(s['url'])
+          @sources.set_status(id, 'status' => ok ? 'ok' : 'error', 'note' => ok ? 'Thư mục đã thêm vào thư viện máy tính.' : 'Không thấy thư mục.')
+          add_root_path(s['url']) if ok
+          emit_sources
+        else
+          @sources.set_status(id, 'status' => s['type'].start_with?('facebook') ? 'login' : 'ok', 'note' => SourceRegistry::NOTES[s['type']])
+          emit_sources
+        end
+      end
+
+      def add_root_path(path)
+        return if @settings.roots.any? { |r| Util.path_key(r) == Util.path_key(path) }
+        @settings.add_root(path)
+        @settings.save
+        emit('settings', @settings.public_hash)
+        start_scan(false)
+      end
+
+      def src_open(id)
+        s = @sources.find(id) || @sources.list.find { |x| x['id'] == id.to_s }
+        return unless s && s['url'].to_s.start_with?('https://')
+        UI.openURL(s['url'])
+        @watcher.start(source: s['name'], title: s['name'], passwords: []) && ensure_timer
+        status("Đã mở #{s['name']}. Tải file trên trang — plugin sẽ tự nhận file vừa tải để chèn.", 'info')
+      end
+
+      def src_export
+        path = UI.savepanel('Xuất danh sách nguồn', '', 'mt_sources.json')
+        return unless path
+        File.write(Util.utf8(path), @sources.export_json, mode: 'w:UTF-8')
+        status('Đã xuất danh sách nguồn.', 'ok')
+      end
+
+      def src_import
+        path = UI.openpanel('Nhập danh sách nguồn (JSON)', '', 'JSON|*.json||')
+        return unless path
+        raise 'File quá lớn.' if File.size(path) > 2 * 1024 * 1024
+        n = @sources.import_json(File.read(Util.utf8(path), encoding: 'UTF-8'))
+        emit_sources
+        status("Đã nhập #{n} nguồn.", 'ok')
+        @sources.custom.select { |s| s['status'] == 'unchecked' }.first(10).each { |s| src_check(s['id']) }
+      rescue StandardError => e
+        status("Không nhập được: #{e.message}", 'error')
+      end
+
+      # “Nhập link model”: tải trực tiếp khi link cho phép, còn lại mở trang + tự nhận file vừa tải.
+      def link_import(raw)
+        r = LinkImport.classify(raw)
+        if r[:kind] == :open
+          UI.openURL(r[:url])
+          @watcher.start(source: SourceRegistry::TYPES[r[:service]] || 'trang nguồn', title: 'model từ link', passwords: []) && ensure_timer
+          return status('Đã mở link trên trình duyệt. Tải file trên trang — plugin sẽ tự nhận file vừa tải để chèn.', 'info')
+        end
+        dir = Paths.sub('downloads', 'links', Time.now.strftime('%Y%m%d_%H%M%S'))
+        FileUtils.mkdir_p(dir)
+        dest = File.join(dir, LinkImport.filename_for(r[:url]))
+        prog = { 'bytes' => 0, 'total' => 0 }
+        status('Đang tải từ link…')
+        @http.request(url: r[:url], dest: dest, timeout: 120, progress: prog) do |res|
+          next status("Không tải được: #{HttpClient.friendly(res)}", 'error') unless res.ok
+          ext = LinkImport.sniff(dest)
+          if ext.nil? # trang HTML (cần đăng nhập/xác minh) → mở trên trình duyệt
+            File.delete(dest)
+            UI.openURL(r[:url])
+            @watcher.start(source: 'link', title: 'model từ link', passwords: []) && ensure_timer
+            next status('Link không phải file tải trực tiếp — đã mở trên trình duyệt; tải xong plugin tự nhận file.', 'warn')
+          end
+          final = dest.sub(/\.[^.\/\\]*\z/, '') + ext
+          File.rename(dest, final) unless final == dest
+          smart_insert(final, name: File.basename(final, '.*'))
+        end
+        ensure_timer
+      rescue StandardError => e
+        status(e.message, 'warn')
+      end
+
+      # Kho dữ liệu: ghi lại metadata kết quả online đã thấy (không tải file).
+      def collect_catalog(type, pl)
+        return unless type == 'sr_update' && pl['items']
+        pl['items'].each do |i|
+          next if i['source'] == 'local' || i['key'].to_s.empty? || @cat_buf.size > 2000
+          @cat_buf[i['key']] = i.reject { |k, _| %w[fav score].include?(k) }
+        end
+      end
+
+      def flush_catalog
+        return if @cat_buf.empty? || Time.now.to_f - @cat_last < 10 || !@runtime.available?
+        @cat_last = Time.now.to_f
+        items = @cat_buf.values.first(400)
+        items.each { |i| @cat_buf.delete(i['key']) }
+        @runtime.submit('catalog_upsert', { 'items' => items }) { |_r| nil }
+      end
+
+      def cat_stats
+        return emit('cat_stats', { 'available' => false }) unless @runtime.available?
+        @runtime.submit('catalog_stats', {}) { |r| emit('cat_stats', r['ok'] ? r['result'].merge('available' => true) : { 'error' => r['error'] }) }
+        ensure_timer
+      end
+
+      def cat_check_links
+        return status('Cần cài bộ AI tìm bằng ảnh để dùng kho dữ liệu.', 'warn') unless @runtime.available?
+        status('Đang kiểm tra link trong kho dữ liệu (tối đa 4 kết nối cùng lúc)…')
+        @runtime.submit('catalog_check_links', { 'limit' => 150, 'concurrency' => 4 },
+                        on_progress: ->(p) { emit('cat_progress', p) }) do |r|
+          if r['ok']
+            x = r['result']
+            status("Đã kiểm tra #{x['checked']} link: #{x['ok']} còn hoạt động, #{x['dead']} đã mất, #{x['error']} không xác định.", 'ok')
+          else
+            status("Kiểm tra link lỗi: #{r['error']}", 'error')
+          end
+          cat_stats
+        end
+        ensure_timer
+      end
+
+      def cat_clear
+        return unless @runtime.available?
+        @runtime.submit('catalog_clear', {}) do |r|
+          status(r['ok'] ? 'Đã xóa dữ liệu cache của kho (metadata, vector, ảnh xem trước).' : "Xóa lỗi: #{r['error']}", r['ok'] ? 'ok' : 'error')
+          cat_stats
+        end
+        ensure_timer
+      end
+
       def insert_web(it)
-        site = WpSources::SITES[it['source'].to_s]
-        url = WpSources.safe_https(it['url'], site ? site['hosts'] : [])
+        site = site_for(it['source']) || WpSources::SITES[it['source'].to_s]
+        url = site ? WpSources.safe_url_for(it['url'], site) : nil
         return status('Liên kết nguồn không hợp lệ.', 'warn') unless url
         UI.openURL(url)
         ok = @watcher.start(source: it['source_label'], title: it['title'], passwords: site['zip_passwords'])
@@ -951,6 +1184,7 @@ module MTDesign
         emit('settings', @settings.public_hash)
         @runtime.device_pref = @settings['ai']['device']
         emit('sources_status', @providers.map { |p| p.status_info(@settings) }) if patch.key?('sources')
+        emit_sources if patch.key?('sources')
         status('Đã lưu cài đặt.', 'ok') if patch['_notify']
         @log.info('Đổi chế độ quét nhanh') if before_quick != @settings['quick_scan']
       end
@@ -1417,6 +1651,7 @@ module MTDesign
             status(n, 'warn')
           end
           @visual.poll
+          flush_catalog
           vs_progress
           if Time.now.to_f - @vs_last_sync > 30 && @library_loaded && !@indexer.running?
             @vs_last_sync = Time.now.to_f

@@ -165,6 +165,13 @@ class TestVisualSearch < Minitest::Test
     all = res['items'].map { |i| i['vscore'] }
     assert_equal all.sort.reverse, all, 'online và máy tính trộn chung theo điểm ảnh'
     assert events('vs_state').any? { |s| s['state'] == 'comparing' }
+    # Lần sau, nguồn online không trả gì (mất mạng): model đã thấy vẫn có từ kho dữ liệu tích lũy, xếp theo ảnh.
+    @events.clear
+    vm2 = manager([])
+    vm2.start(q)
+    pump(vm2) { events('vs_state').any? { |s| s['state'] == 'done' } }
+    from_cat = events('sr_update').last['items'].select { |i| i['from_catalog'] }
+    assert_equal ['Round thing', 'Long thing'], from_cat.map { |i| i['title'] }, 'kho dữ liệu: tái sử dụng kết quả đã lập chỉ mục'
   end
 
   def test_cancel_midway_and_runtime_missing
@@ -325,7 +332,7 @@ class TestVisualCrash < Minitest::Test
     log = File.read(@rt.worker_log)
     assert_match(/Fatal Python error|Segmentation fault/, log, 'faulthandler ghi lỗi native')
     assert_match(/Kết quả kiểm tra GPU/, log)
-    assert_match(/Khởi động tiến trình AI \(CPU\)/, log)
+    assert_match(/Khởi động tiến trình AI làn search \(CPU\)/, log)
     assert_match(/GPU/, @rt.take_notice.to_s)
     assert_equal 'cpu', @rt.effective_device, 'đã ghi nhận GPU lỗi: lần sau dùng CPU ngay'
   end

@@ -1,5 +1,21 @@
 # CHANGELOG — MT SMART LIBRARY PRO
 
+## V1.0.11 — 25/11/2026 (SMART SOURCE MANAGER)
+- `sources/source_registry.rb`: danh sách nguồn của người dùng ở `<dữ liệu>/sources.json` (không nằm trong mã, giữ qua cập nhật): 9 loại
+  (website, Facebook Group, Facebook Fanpage, Google Drive, MediaFire, Mega, Dropbox, OneDrive, thư mục máy tính), tự nhận diện loại theo link,
+  thêm/sửa/xóa/bật-tắt, xuất/nhập JSON (chỉ nhận trường an toàn, bỏ trùng). Nguồn có sẵn trộn vào danh sách (chỉ bật/tắt).
+- `sources/site_probe.rb`: website mới → đọc robots.txt (nhóm `*`, Allow/Disallow dài nhất thắng) → thử WordPress REST API lõi; đạt thì thành
+  nguồn tìm kiếm thật (WpProvider dùng chung, ảnh chỉ nhận tên miền của trang + tên miền con); 401/403 → “cần đăng nhập”; không có API → mở nguồn + nhập link.
+- Facebook: Meta đã gỡ Groups API (22/04/2024) và đọc Fanpage cần quyền Meta duyệt → nguồn được giữ, trạng thái “Cần đăng nhập trên trình duyệt”, có Mở nguồn + nhập link.
+- `sources/link_import.rb` (“Nhập link model”): Dropbox (`dl=1` theo hướng dẫn chính thức) và link file trực tiếp → tải, nhận diện loại file thật theo nội dung
+  (ZIP/SKP/GLB/RAR/7z; trang HTML bị loại) → chèn; Facebook/Drive/MediaFire/Mega/OneDrive → mở trình duyệt + tự nhận file vừa tải.
+- Kho dữ liệu tích lũy (SQLite trong tiến trình AI, `catalog.sqlite`): lưu metadata kết quả online (không tải file SKP), vector ảnh xem trước,
+  đánh dấu trùng (ảnh gần như giống hệt từ nguồn khác, cosine ≥ 0.97), kiểm tra link (tối đa 4 kết nối), thống kê, xóa cache (kèm ảnh xem trước).
+  Tìm bằng ảnh dùng lại kho ngay (không cần mạng), bỏ nguồn đang tắt và link đã mất.
+- `ai_runtime/worker_lane.rb`: 2 làn tiến trình AI độc lập — `search` (tìm bằng ảnh, so sánh online, kho dữ liệu; 2 luồng) và `index` (lập chỉ mục thư viện; 1 luồng);
+  mỗi làn có hàng đợi, log, chống vòng lặp lỗi riêng; làn tìm kiếm tự nạp lại chỉ mục khi làn lập chỉ mục cập nhật.
+- CSP ảnh cho phép https; giao diện chỉ hiển thị ảnh từ host nguồn có sẵn hoặc tên miền của nguồn người dùng đã xác minh.
+
 ## V1.0.10 — 25/11/2026 (Sửa tiến trình AI tìm bằng ảnh)
 - Nguyên nhân (người dùng kiểm tra trên máy): Vision model gây Windows fatal exception (access violation) khi nạp bằng DirectML
   (`_create_inference_session`); worker sập → việc tồn đọng, báo lỗi mỗi 30 giây.

@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file: 'unsafe-eval'; style-src 'self' file: 'unsafe-inline'; img-src data: https://media.sketchfab.com https://cdn.polyhaven.com https://sketchup.cgtips.org https://img.sketchupfree.com https://sketchupfree.com https://thuviensketchup.vn; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file: 'unsafe-eval'; style-src 'self' file: 'unsafe-inline'; img-src data: https:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>MT SMART LIBRARY PRO</title>
 <link rel="stylesheet" href="app.css">
@@ -116,8 +116,25 @@
       <p id="verInfo" class="muted small"></p>
     </section>
     <section data-p="src" hidden>
-      <p class="muted small">Một ô tìm kiếm tìm đồng thời trong máy tính và mọi nguồn online đang bật. Bật/tắt từng nguồn bằng ô đánh dấu (được ghi nhớ). Nguồn chưa có phương thức truy cập hợp lệ ghi rõ giới hạn.</p>
+      <p class="muted small">Một ô tìm kiếm tìm đồng thời trên mọi nguồn đang bật. Thêm website, Facebook Group/Fanpage, Google Drive, MediaFire, Mega, Dropbox, OneDrive hoặc thư mục máy tính — plugin tự kiểm tra phương thức truy cập hợp lệ.</p>
+      <h4 class="small">Quản lý nguồn</h4>
+      <div class="row srcadd">
+        <input id="srcName" placeholder="Tên nguồn (tùy chọn)" spellcheck="false">
+        <select id="srcType"></select>
+        <input id="srcUrl" class="grow" placeholder="Link website / group / fanpage / thư mục chia sẻ / đường dẫn thư mục" spellcheck="false">
+        <button id="srcAddBtn" class="primary">Thêm nguồn</button><button id="srcCancelEdit" hidden>Hủy sửa</button>
+      </div>
       <div id="srcList" class="list"></div>
+      <div class="row"><button id="srcExport">Xuất danh sách (JSON)</button><button id="srcImport">Nhập danh sách (JSON)</button></div>
+      <h4 class="small">Nhập link model</h4>
+      <div class="row">
+        <input id="linkUrl" class="grow" placeholder="Dán link bài viết hoặc link tải (Facebook, Drive, Dropbox, MediaFire, Mega, OneDrive, website…)" spellcheck="false">
+        <button id="linkGo" class="primary">Tải &amp; chèn</button>
+      </div>
+      <p class="muted small">Link tải trực tiếp / Dropbox: plugin tải và chèn. Trang cần đăng nhập hoặc xác minh: plugin mở trên trình duyệt, anh tải xong plugin tự nhận file.</p>
+      <h4 class="small">Kho dữ liệu tích lũy</h4>
+      <p id="catInfo" class="small muted">—</p>
+      <div class="row"><button id="catCheck">Kiểm tra link</button><button id="catClear">Xóa dữ liệu cache</button></div>
       <div class="row">
         <label class="check"><input id="sfDownloadable" type="checkbox"> Chỉ hiện model được phép tải</label>
         <label class="check"><input id="sAutoSave" type="checkbox"> Tự lưu model tải về vào Thư viện cá nhân</label>

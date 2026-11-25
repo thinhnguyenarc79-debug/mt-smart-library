@@ -13,21 +13,21 @@ module MTDesign
       SITES = {
         'cgtips' => {
           'name' => 'SketchUp CGTips', 'base' => 'https://sketchup.cgtips.org', 'hosts' => %w[sketchup.cgtips.org],
-          'img_hosts' => %w[sketchup.cgtips.org], 'lang' => 'en', 'free' => true,
+          'img_hosts' => %w[sketchup.cgtips.org], 'domain' => 'cgtips.org', 'lang' => 'en', 'free' => true,
           'license' => 'Miễn phí — theo Terms of Use và Model License Agreement của sketchup.cgtips.org',
           'download_note' => 'Tải trên trang nguồn (link tải + mật khẩu giải nén do trang công bố). Plugin tự nhận file vừa tải và chèn.',
           'zip_passwords' => ['sketchup.cgtips.org']
         },
         'sketchupfree' => {
           'name' => 'SketchupFree', 'base' => 'https://sketchupfree.com', 'hosts' => %w[sketchupfree.com],
-          'img_hosts' => %w[img.sketchupfree.com sketchupfree.com], 'lang' => 'en', 'free' => true,
+          'img_hosts' => %w[img.sketchupfree.com sketchupfree.com], 'domain' => 'sketchupfree.com', 'lang' => 'en', 'free' => true,
           'license' => 'Miễn phí — theo Terms of Service của sketchupfree.com',
           'download_note' => 'Tải trên trang nguồn (trang yêu cầu xác minh chống bot trước khi hiện link). Plugin tự nhận file vừa tải và chèn.',
           'zip_passwords' => []
         },
         'thuviensketchup' => {
           'name' => 'Thư viện SketchUp', 'base' => 'https://thuviensketchup.vn', 'hosts' => %w[thuviensketchup.vn],
-          'img_hosts' => %w[thuviensketchup.vn], 'lang' => 'vi', 'free' => false,
+          'img_hosts' => %w[thuviensketchup.vn], 'domain' => 'thuviensketchup.vn', 'lang' => 'vi', 'free' => false,
           'license' => 'Trả phí — mua trên thuviensketchup.vn',
           'download_note' => 'Gói trả phí: mua và tải trên trang (link Google Drive sau khi mua). Plugin tự nhận file vừa tải và chèn.',
           'zip_passwords' => []
@@ -37,8 +37,36 @@ module MTDesign
 
       module_function
 
+      # id nguồn có sẵn, hoặc hash nguồn người dùng thêm (đã qua SiteProbe: method wp_rest).
       def site(id)
+        return id if id.is_a?(Hash)
         SITES[id.to_s] || raise("Nguồn không hợp lệ: #{id}")
+      end
+
+      # Nguồn người dùng → cấu hình giống SITES.
+      def from_custom(s)
+        u = URI.parse(s['url'])
+        host = u.host.downcase
+        dom = s['img_domain'].to_s.empty? ? host : s['img_domain'].to_s
+        { 'id' => s['id'], 'name' => s['name'], 'base' => "https://#{host}#{u.path.to_s.sub(%r{/+\z}, '')}", 'hosts' => [host],
+          'domain' => dom, 'img_hosts' => [host], 'lang' => s['lang'] || 'en', 'free' => nil,
+          'license' => 'Theo điều khoản của trang nguồn', 'zip_passwords' => [],
+          'download_note' => 'Tải trên trang nguồn. Plugin tự nhận file vừa tải và chèn.' }
+      end
+
+      # Host ảnh hợp lệ: danh sách cố định hoặc cùng tên miền (kể cả tên miền con, ví dụ img.<trang>).
+      def host_ok?(host, s)
+        h = host.to_s.downcase
+        return true if s['img_hosts'].include?(h) || s['hosts'].include?(h)
+        d = s['domain'].to_s
+        !d.empty? && (h == d || h.end_with?(".#{d}"))
+      end
+
+      def safe_url_for(url, s)
+        u = URI.parse(url.to_s)
+        u.is_a?(URI::HTTPS) && host_ok?(u.host, s) ? u.to_s : nil
+      rescue URI::InvalidURIError
+        nil
       end
 
       def search_url(id, query, page)
@@ -74,7 +102,7 @@ module MTDesign
         raise 'Dữ liệu WordPress không đúng định dạng.' unless data.is_a?(Array)
         data.map do |p|
           next unless p.is_a?(Hash)
-          link = safe_https(p['link'], s['hosts'])
+          link = safe_url_for(p['link'], s)
           title = clean_title(p['title'].is_a?(Hash) ? p['title']['rendered'] : p['title'])
           next if link.nil? || title.empty? || p['id'].to_i <= 0
           { 'wp_id' => p['id'].to_i, 'title' => title, 'link' => link, 'media' => p['featured_media'].to_i }
@@ -89,8 +117,8 @@ module MTDesign
         data.each_with_object({}) do |m, h|
           next unless m.is_a?(Hash)
           sizes = (m['media_details'].is_a?(Hash) && m['media_details']['sizes'].is_a?(Hash)) ? m['media_details']['sizes'] : {}
-          pick = ->(*keys) { keys.map { |k| sizes[k].is_a?(Hash) ? safe_https(sizes[k]['source_url'], s['img_hosts']) : nil }.compact.first }
-          full = safe_https(m['source_url'], s['img_hosts'])
+          pick = ->(*keys) { keys.map { |k| sizes[k].is_a?(Hash) ? safe_url_for(sizes[k]['source_url'], s) : nil }.compact.first }
+          full = safe_url_for(m['source_url'], s)
           small = pick.call('medium_large', 'medium', 'publisher-lg') || full
           large = pick.call('large', '1536x1536', 'medium_large') || full
           h[m['id'].to_i] = [small, large] if small

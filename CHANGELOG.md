@@ -1,5 +1,9 @@
 # CHANGELOG — MT SMART LIBRARY PRO
 
+## V1.0.5 — 25/11/2026
+- Sửa: bật/tắt nguồn Sketchfab cập nhật nhãn trạng thái ngay (trước đây vẫn hiện “Đang dùng” khi đã tắt → khó nhận ra vì sao không có kết quả online).
+- Ô “Tìm trên Sketchfab” → “Bật nguồn Sketchfab (tìm online)”; mô tả nguồn Sketchfab cập nhật theo V1.0.4.
+
 ## V1.0.4 — 25/11/2026 (MT AUTO CONVERT ENGINE)
 - Module `convert/`: `converter_manager.rb`, `blender_detector.rb`, `blender_runner.rb`, `convert_model.py`, `import_manager.rb`, `model_cache.rb`.
 - Một nút CHÈN cho mọi định dạng: SKP (nạp trực tiếp), GLB/glTF (bộ đọc tích hợp; lỗi/nén Draco → Blender), DAE (`DefinitionList#import`),

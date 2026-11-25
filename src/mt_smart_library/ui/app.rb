@@ -711,6 +711,7 @@ module MTDesign
         @settings.save
         @index.bump
         emit('settings', @settings.public_hash)
+        emit('sources_status', @providers.map { |p| p.status_info(@settings) }) if patch.key?('sources')
         status('Đã lưu cài đặt.', 'ok') if patch['_notify']
         @log.info('Đổi chế độ quét nhanh') if before_quick != @settings['quick_scan']
       end

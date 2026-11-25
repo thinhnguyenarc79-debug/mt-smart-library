@@ -75,8 +75,8 @@ module MTDesign
         end
 
         def status_info(settings)
-          super.merge('note' => 'Tích hợp qua Sketchfab Data API chính thức. Tải về cần Sketchfab API token; định dạng glTF/GLB ' \
-                                '(không phải SKP) — cần chuyển đổi trước khi dùng trong SketchUp 2022.')
+          super.merge('note' => 'Tích hợp qua Sketchfab Data API chính thức. Tải về cần Sketchfab API token. ' \
+                                'GLB chèn thẳng; định dạng khác tự chuyển đổi bằng Blender khi bấm CHÈN.')
         end
       end
 

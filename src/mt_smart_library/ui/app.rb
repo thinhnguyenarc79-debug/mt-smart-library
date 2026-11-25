@@ -66,6 +66,7 @@ module MTDesign
                                       code_dir: Paths.code_dir, logger: @log)
         @visual = VisualSearchManager.new(runtime: @runtime, index: @index, thumbs: @thumbs, online_providers: @providers.select(&:online?),
                                           settings: @settings, emit: ->(t, pl) { emit(t, pl) }, logger: @log)
+        @runtime.device_pref = @settings['ai']['device']
         @vs_image = nil
         @vs_last_sync = 0
         @watcher = DownloadWatcher.new
@@ -125,6 +126,8 @@ module MTDesign
         cb(d, 'vs_cancel') { |*| @visual.cancel }
         cb(d, 'vs_clear') { |*| @visual.cancel(silent: true); @vs_image = nil }
         cb(d, 'vs_install') { |*| vs_install }
+        cb(d, 'vs_repair') { |*| vs_repair }
+        cb(d, 'vs_open_log') { |*| UI.openURL(Util.file_url(@runtime.work_dir)) }
         cb(d, 'insert_item') { |key| insert_any(key.to_s) }
         cb(d, 'fav_item') { |key| fav_any(key.to_s) }
         cb(d, 'open_source') { |key| open_source(key.to_s) }
@@ -390,6 +393,15 @@ module MTDesign
           else
             emit('vs_state', { 'state' => 'error', 'msg' => "Chưa cài được bộ AI: #{err}" })
           end
+        end
+        ensure_timer
+      end
+
+      def vs_repair
+        emit('vs_state', { 'state' => 'installing', 'msg' => 'Đang cài lại thành phần AI (giữ nguyên mô hình đã tải)…' })
+        @runtime.repair do |ok, err|
+          status(ok ? 'Đã cài lại thành phần AI.' : "Cài lại thành phần AI lỗi: #{err}", ok ? 'ok' : 'error')
+          emit('vs_state', { 'state' => ok ? 'installed' : 'error', 'msg' => ok ? 'Bộ AI sẵn sàng.' : err.to_s })
         end
         ensure_timer
       end
@@ -937,6 +949,7 @@ module MTDesign
         @settings.save
         @index.bump
         emit('settings', @settings.public_hash)
+        @runtime.device_pref = @settings['ai']['device']
         emit('sources_status', @providers.map { |p| p.status_info(@settings) }) if patch.key?('sources')
         status('Đã lưu cài đặt.', 'ok') if patch['_notify']
         @log.info('Đổi chế độ quét nhanh') if before_quick != @settings['quick_scan']
@@ -1400,6 +1413,9 @@ module MTDesign
           poll_zip
           poll_watcher
           @runtime.poll
+          if (n = @runtime.take_notice)
+            status(n, 'warn')
+          end
           @visual.poll
           vs_progress
           if Time.now.to_f - @vs_last_sync > 30 && @library_loaded && !@indexer.running?

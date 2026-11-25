@@ -5,7 +5,7 @@ module MTDesign
   module SmartLibrary
     PLUGIN_ID = 'mtdesign.smart_library_pro' unless const_defined?(:PLUGIN_ID)
     PRODUCT_NAME = 'MT SMART LIBRARY PRO' unless const_defined?(:PRODUCT_NAME)
-    VERSION = '1.0.9' unless const_defined?(:VERSION)
+    VERSION = '1.0.10' unless const_defined?(:VERSION)
     BUILD_DATE = '2026-11-25' unless const_defined?(:BUILD_DATE)
     MIN_SKETCHUP = 22 unless const_defined?(:MIN_SKETCHUP) # SketchUp 2022
     MIN_RUBY = '2.7.0' unless const_defined?(:MIN_RUBY)

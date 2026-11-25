@@ -24,7 +24,7 @@ module MTDesign
         'auto_save_downloads' => true,
         'converter' => { 'blender_path' => '', 'blender_version' => '', 'blender_ok' => false, 'blender_reason' => '',
                          'timeout' => 600, 'gltf_engine' => 'auto' },
-        'ai' => { 'model' => DEFAULT_MODEL, 'base_url' => 'https://api.openai.com/v1', 'detail' => 'low', 'remember_key' => false },
+        'ai' => { 'model' => DEFAULT_MODEL, 'base_url' => 'https://api.openai.com/v1', 'detail' => 'low', 'remember_key' => false, 'device' => 'cpu' },
         'sketchfab' => { 'downloadable_only' => true, 'token_type' => 'token', 'remember_token' => false },
         'net' => { 'timeout' => 30 },
         'update' => { 'source' => 'none', 'manifest_url' => '', 'github_repo' => '', 'check_on_start' => false }
@@ -211,6 +211,7 @@ module MTDesign
         out['ai']['base_url'] = b =~ %r{\Ahttps://[^\s]+\z} ? b : DEFAULTS['ai']['base_url']
         out['ai']['detail'] = %w[low high auto].include?(ai['detail']) ? ai['detail'] : 'low'
         out['ai']['remember_key'] = bool(ai['remember_key'], false)
+        out['ai']['device'] = %w[cpu gpu].include?(ai['device']) ? ai['device'] : 'cpu'
         sf = raw['sketchfab'].is_a?(Hash) ? raw['sketchfab'] : {}
         out['sketchfab']['downloadable_only'] = bool(sf['downloadable_only'], true)
         out['sketchfab']['token_type'] = %w[token bearer].include?(sf['token_type']) ? sf['token_type'] : 'token'

@@ -139,6 +139,8 @@
       </div>
       <p id="aiCheck" class="small"></p>
       <p class="muted small">Key không ghi vào settings.json hay log. Ảnh chỉ gửi khi bạn bấm xác nhận.</p>
+      <div class="row"><label>Tìm bằng ảnh chạy trên <select id="sDevice"><option value="cpu">CPU (ổn định — khuyên dùng)</option>
+        <option value="gpu">GPU DirectML (thử nghiệm, tự kiểm tra trước)</option></select></label><span id="gpuState" class="small muted"></span></div>
       <p class="muted small">Nút 📷 Tìm bằng ảnh dùng AI chạy trên máy (không cần key). OpenAI chỉ là tùy chọn bổ sung:
         <button id="btnAiOpenAI" type="button" class="link">phân tích ảnh bằng OpenAI</button></p>
     </section>
@@ -166,6 +168,7 @@
     <p id="bStatus" class="small"></p>
     <p class="small muted">Blender: <code id="bPath">—</code></p>
     <div class="row"><button id="bDetect">Tìm lại Blender</button><button id="bPick">Chọn blender.exe…</button><button id="bGet">Tải Blender 4.5 LTS</button><button id="cClear">Xóa cache chuyển đổi</button></div>
+    <div class="row"><button id="vsRepair">Cài lại thành phần AI (giữ mô hình)</button><button id="vsLog">Mở log AI</button></div>
     <div class="row"><button id="btnCheckNet">Kiểm tra kết nối</button><span id="netText" class="small"></span></div>
     <div class="row"><button id="btnOpenData">Mở thư mục dữ liệu</button><button id="btnOpenLog">Mở thư mục log</button><button id="btnClearThumbs">Xóa cache ảnh</button></div>
     <p class="small muted">Dữ liệu người dùng: <code id="dataRoot"></code></p>

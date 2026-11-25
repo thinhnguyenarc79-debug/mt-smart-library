@@ -1,5 +1,16 @@
 # Báo cáo kiểm thử — MT SMART LIBRARY PRO
 
+## V1.0.10 (25/11/2026)
+
+| Bộ test | Nội dung | Kết quả |
+|---|---|---|
+| `test_visual.rb` (+4) | Tiến trình Python + ONNX Runtime thật, giả lập lỗi native bằng `faulthandler._sigsegv()` (như access violation của DirectML): mặc định CPU; chọn GPU → bài kiểm tra GPU sập → ghi `gpu_probe.json` + log faulthandler → tìm vẫn chạy bằng CPU, báo 1 lần; worker GPU sập giữa chừng → tự chạy lại CPU, việc dở được gửi lại và hoàn tất; CPU sập liên tiếp → dừng hẳn, dọn việc tồn đọng (kể cả của phiên trước), việc mới trả lỗi ngay không khởi động lại; người dùng tìm lại → chạy được | ✅ |
+| Toàn bộ test cũ | 113 test Ruby, 53 kiểm tra giao diện, 27 kiểm tra ô nhập | ✅ |
+
+**Chưa kiểm thử:** DirectML thật (máy test không có GPU Windows); chất lượng nhận diện của mô hình CLIP thật và tìm online thật (máy test không tải được mô hình/không có mạng ra ngoài) — cần chạy trên máy người dùng.
+
+---
+
 ## V1.0.9 (25/11/2026) — MT VISUAL SEARCH ENGINE
 
 | Bộ test | Nội dung | Kết quả |

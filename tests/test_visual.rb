@@ -273,3 +273,89 @@ class TestRuntimeInstall < Minitest::Test
     refute rt2.installed?
   end
 end
+
+# V1.0.10: GPU (DirectML) sập khi nạp vision model → không ảnh hưởng tìm kiếm; CPU mặc định; chống vòng lặp lỗi.
+class TestVisualCrash < Minitest::Test
+  def setup
+    skip 'cần python3 + onnxruntime' unless ort_ok?
+    @data = Dir.mktmpdir('vc_')
+    @models = File.join(@data, 'm')
+    system(PY, File.join(__dir__, 'fixtures', 'make_tiny_clip.py'), @models) or raise 'tiny'
+    ENV['MT_AI_PYTHON'] = PY
+    ENV['MT_AI_MODELS'] = @models
+    @img = File.join(@data, 'q.png')
+    draw(@img, [{ 'shape' => 'circle', 'box' => [60, 60, 340, 340], 'color' => 'red' }])
+    @rt = SL::RuntimeManager.new(http: Object.new, runner: SL::BlenderRunner.new, data_root: @data, code_dir: File.join(SRC, 'mt_smart_library'))
+  end
+
+  def teardown
+    @rt&.stop
+    %w[MT_AI_PYTHON MT_AI_MODELS MT_AI_TEST_CRASH].each { |k| ENV.delete(k) }
+  end
+
+  def run_job(secs = 40)
+    res = nil
+    @rt.submit('embed_query', { 'image' => @img, 'out_vec' => File.join(@data, "v#{rand(1e6)}.npy") }) { |r| res = r }
+    t0 = Time.now
+    until res || Time.now - t0 > secs
+      @rt.poll
+      sleep 0.05
+    end
+    res
+  end
+
+  def test_default_is_cpu
+    assert_equal 'cpu', @rt.device_pref
+    assert_equal 'cpu', @rt.effective_device
+    st = SL::Settings.new(File.join(@data, 's.json'))
+    assert_equal 'cpu', st['ai']['device'], 'cài đặt mặc định CPU'
+    r = run_job
+    assert r['ok'], r.inspect
+    assert_match(/CPU/, File.read(@rt.worker_log))
+  end
+
+  def test_gpu_probe_crash_falls_back_to_cpu_and_logs
+    ENV['MT_AI_TEST_CRASH'] = 'gpu' # giả lập access violation của DirectML
+    @rt.device_pref = 'gpu'
+    r = run_job
+    assert r['ok'], "tìm vẫn chạy bằng CPU: #{r.inspect}"
+    pr = @rt.gpu_probe
+    refute pr['ok']
+    refute_equal '0', pr['code']
+    log = File.read(@rt.worker_log)
+    assert_match(/Fatal Python error|Segmentation fault/, log, 'faulthandler ghi lỗi native')
+    assert_match(/Kết quả kiểm tra GPU/, log)
+    assert_match(/Khởi động tiến trình AI \(CPU\)/, log)
+    assert_match(/GPU/, @rt.take_notice.to_s)
+    assert_equal 'cpu', @rt.effective_device, 'đã ghi nhận GPU lỗi: lần sau dùng CPU ngay'
+  end
+
+  def test_gpu_worker_crash_restarts_on_cpu_and_resubmits
+    ENV['MT_AI_TEST_CRASH'] = 'gpu'
+    @rt.device_pref = 'gpu'
+    FileUtils.mkdir_p(@rt.work_dir)
+    File.write(@rt.gpu_probe_file, JSON.generate('ok' => true)) # giả sử bài kiểm tra từng đạt
+    r = run_job
+    assert r['ok'], "việc dở được gửi lại và chạy bằng CPU: #{r.inspect}"
+    refute @rt.gpu_probe['ok']
+    assert_match(/đã tự chuyển sang CPU/, @rt.take_notice)
+  end
+
+  def test_cpu_crash_loop_stops_and_cleans_jobs
+    FileUtils.mkdir_p(@rt.jobs_dir)
+    File.write(File.join(@rt.jobs_dir, 'stale_1.job.json'), '{"type":"probe"}')
+    ENV['MT_AI_TEST_CRASH'] = 'cpu'
+    r = run_job
+    refute r['ok']
+    assert r['broken']
+    assert_match(/mã|0x|-?\d/, r['error'])
+    refute @rt.available?, 'dừng hẳn, không tự tạo lại'
+    assert_empty Dir.glob(File.join(@rt.jobs_dir, '*.job.json')), 'không còn việc tồn đọng'
+    calls = 0
+    @rt.submit('probe', {}) { |x| calls += 1; assert x['broken'] }
+    assert_equal 1, calls, 'việc mới trả lỗi ngay, không khởi động lại tiến trình'
+    ENV.delete('MT_AI_TEST_CRASH')
+    @rt.reset_broken
+    assert run_job['ok'], 'người dùng tìm lại sau khi sửa: chạy được'
+  end
+end

@@ -367,7 +367,7 @@
     $('sQuick').checked = !!s.quick_scan; $('sScanOpen').checked = !!s.scan_on_open;
     if (document.activeElement !== $('sModel')) $('sModel').value = s.ai.model;
     if (document.activeElement !== $('sBase')) $('sBase').value = s.ai.base_url;
-    $('sDetail').value = s.ai.detail; $('sSfType').value = s.sketchfab.token_type;
+    $('sDetail').value = s.ai.detail; $('sDevice').value = s.ai.device || 'cpu'; $('sSfType').value = s.sketchfab.token_type;
     $('sfDownloadable').checked = !!s.sketchfab.downloadable_only;
     $('sAutoSave').checked = !!s.auto_save_downloads;
     $('sRememberKey').checked = !!s.ai.remember_key; $('sRememberSf').checked = !!s.sketchfab.remember_token;
@@ -446,6 +446,7 @@
       $('rememberKeyWrap').hidden = $('rememberSfWrap').hidden = !d.secret_store;
       S.categories = d.categories || []; S.filter = d.settings.ui.filter || 'all';
       S.category = S.categories.some(function (c) { return c.id === d.settings.ui.category; }) ? d.settings.ui.category : 'all';
+      if (d.visual && d.visual.gpu_probe && d.visual.gpu_probe.ok === false) $('gpuState').textContent = d.visual.gpu_probe.reason || '';
       renderCats(); renderSources(d.sources_status || []); renderBlender(d.blender); renderAccounts(d.accounts);
       if (d.summary) renderSummary(d.summary);
       if (d.update_available) H.update_available(d.update_available);
@@ -599,6 +600,9 @@
     $('sModel').onchange = function () { saveSettings({ ai: { model: $('sModel').value.trim() }, _notify: true }); };
     $('sBase').onchange = function () { saveSettings({ ai: { base_url: $('sBase').value.trim() }, _notify: true }); };
     $('sDetail').onchange = function () { saveSettings({ ai: { detail: $('sDetail').value } }); };
+    $('sDevice').onchange = function () { saveSettings({ ai: { device: $('sDevice').value }, _notify: true }); };
+    $('vsRepair').onclick = function () { hide('supportModal'); vsShow(); call('vs_repair'); };
+    $('vsLog').onclick = function () { call('vs_open_log'); };
     $('sSfType').onchange = function () { saveSettings({ sketchfab: { token_type: $('sSfType').value } }); };
     $('btnSaveKey').onclick = function () { var v = $('sKey').value.trim(); if (!v) return; callJ('set_secret', { kind: 'openai', value: v, remember: $('sRememberKey').checked }); $('sKey').value = ''; };
     $('btnClearKey').onclick = function () { call('clear_secret', 'openai'); };

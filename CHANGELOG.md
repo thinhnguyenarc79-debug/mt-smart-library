@@ -1,5 +1,18 @@
 # CHANGELOG — MT SMART LIBRARY PRO
 
+## V1.0.10 — 25/11/2026 (Sửa tiến trình AI tìm bằng ảnh)
+- Nguyên nhân (người dùng kiểm tra trên máy): Vision model gây Windows fatal exception (access violation) khi nạp bằng DirectML
+  (`_create_inference_session`); worker sập → việc tồn đọng, báo lỗi mỗi 30 giây.
+- `inference_worker.py`: `_session` mặc định CPUExecutionProvider; DirectML chỉ khi người dùng chọn GPU (SessionOptions đúng yêu cầu DirectML:
+  tắt mem pattern, chạy tuần tự). Ghi stdout/stderr + faulthandler (mọi luồng) vào `worker.log` ngay từ đầu; lỗi import/DLL/mô hình ghi `worker.error.json` kèm traceback.
+  Chế độ `--probe-gpu`: nạp 2 mô hình bằng DirectML + chạy thử trong tiến trình riêng.
+- `runtime_manager.rb`: tùy chọn thiết bị (cài đặt `ai.device`, mặc định cpu); GPU phải qua bài kiểm tra riêng (kết quả lưu `gpu_probe.json`, chọn lại GPU thì kiểm tra lại);
+  worker GPU sập → ghi nhận, tự chạy lại bằng CPU và gửi lại việc dở; CPU sập 2 lần/5 phút hoặc lỗi nạp → dừng hẳn, dọn hàng đợi, báo lỗi 1 lần kèm mã thoát (0xC0000005…) và log;
+  tự thoát do rảnh không tính là lỗi; phiên mới dọn việc tồn đọng; mã thoát Windows hiển thị dạng hex.
+- Không tạo việc lặp: lập chỉ mục chỉ chạy khi bộ AI sẵn sàng; lỗi không thử lại liên tục; người dùng chủ động tìm lại thì thử lại 1 lần.
+- Cài đặt › AI: “Tìm bằng ảnh chạy trên CPU / GPU DirectML (thử nghiệm)”. Hỗ trợ kỹ thuật: “Cài lại thành phần AI (giữ mô hình)”, “Mở log AI”.
+- Giữ nguyên bộ AI đã tải (Python, thư viện, mô hình 330 MB) — không tải lại.
+
 ## V1.0.9 — 25/11/2026 (MT VISUAL SEARCH ENGINE)
 - `ai_runtime/inference_worker.py`: tiến trình AI độc lập (Python + ONNX Runtime, CPU; DirectML nếu GPU tương thích), mô hình CLIP ViT-B/32 ONNX
   (vision + text). Tiền xử lý ảnh chuẩn CLIP, nền trong suốt → trắng, cắt vùng; vector ảnh L2; tokenizer BPE của CLIP cho vector văn bản.

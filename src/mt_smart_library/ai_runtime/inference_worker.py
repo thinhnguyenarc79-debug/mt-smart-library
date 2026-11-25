@@ -16,6 +16,7 @@ Công việc:
   index_sync   cập nhật chỉ mục: chỉ tính model mới/đổi, xóa model không còn
   rank_urls    tải thumbnail kết quả online (chỉ host được phép), tính vector, xếp hạng
 """
+import faulthandler
 import io
 import json
 import os
@@ -23,14 +24,43 @@ import re
 import sys
 import time
 import hashlib
+import traceback
 import urllib.request
 import urllib.parse
 
-import numpy as np
-from PIL import Image
 
-MEAN = np.array([0.48145466, 0.4578275, 0.40821073], dtype=np.float32)
-STD = np.array([0.26862954, 0.26130258, 0.27577711], dtype=np.float32)
+def _early_log():
+    """Ghi stdout + stderr + faulthandler (lỗi native như access violation) ra file log ngay từ đầu,
+    vì trên Windows tiến trình chạy không cửa sổ, không có console."""
+    if '--log' not in sys.argv:
+        faulthandler.enable()
+        return None
+    try:
+        f = open(sys.argv[sys.argv.index('--log') + 1], 'a', encoding='utf-8', buffering=1)
+    except OSError:
+        faulthandler.enable()
+        return None
+    sys.stdout = f
+    sys.stderr = f
+    faulthandler.enable(file=f, all_threads=True)
+    f.write('\n=== worker start %s pid=%d argv=%s python=%s\n' % (time.strftime('%Y-%m-%d %H:%M:%S'), os.getpid(),
+                                                               sys.argv[1:], sys.version.split()[0]))
+    return f
+
+
+_LOGF = _early_log()
+
+try:
+    import numpy as np
+    from PIL import Image
+    _IMPORT_ERR = None
+except Exception:  # thiếu thư viện: báo rõ cho Ruby thay vì chết im lặng
+    _IMPORT_ERR = traceback.format_exc()
+    np = None
+    Image = None
+
+MEAN = np.array([0.48145466, 0.4578275, 0.40821073], dtype=np.float32) if np else None
+STD = np.array([0.26862954, 0.26130258, 0.27577711], dtype=np.float32) if np else None
 PNG_SIG = b'\x89PNG\r\n\x1a\n'
 PNG_END = b'IEND\xaeB`\x82'
 IMG_EXTS = ('.png', '.jpg', '.jpeg', '.webp')
@@ -211,8 +241,9 @@ def l2n(v):
 
 # --------------------------------------------------------------------------- Bộ máy
 class Engine:
-    def __init__(self, model_dir, data_dir):
+    def __init__(self, model_dir, data_dir, device='cpu'):
         import onnxruntime as ort
+        self.want_device = device
         self.ort = ort
         self.model_dir = model_dir
         self.data_dir = data_dir
@@ -232,15 +263,25 @@ class Engine:
         self._protos = None
 
     def _session(self, path, so):
-        avail = self.ort.get_available_providers()
-        if 'DmlExecutionProvider' in avail:
+        # Mặc định CPU. DirectML chỉ dùng khi người dùng chọn GPU VÀ đã qua bài kiểm tra trong tiến trình riêng
+        # (--probe-gpu): DirectML có thể làm sập cả tiến trình (access violation) khi nạp vision model — không bắt được bằng try.
+        if os.environ.get('MT_AI_TEST_CRASH') == self.want_device:  # chỉ dùng trong kiểm thử: giả lập lỗi native khi nạp mô hình
+            faulthandler._sigsegv()
+        if self.want_device == 'gpu' and 'DmlExecutionProvider' in self.ort.get_available_providers():
+            gso = self.ort.SessionOptions()
+            gso.enable_mem_pattern = False  # yêu cầu của DirectML
+            gso.execution_mode = self.ort.ExecutionMode.ORT_SEQUENTIAL
+            gso.intra_op_num_threads = so.intra_op_num_threads
             try:
-                s = self.ort.InferenceSession(path, so, providers=['DmlExecutionProvider', 'CPUExecutionProvider'])
+                s = self.ort.InferenceSession(path, gso, providers=['DmlExecutionProvider', 'CPUExecutionProvider'])
                 self.device = 'GPU (DirectML)'
+                log('nạp %s bằng DirectML' % os.path.basename(path))
                 return s
-            except Exception as e:  # GPU không tương thích → CPU
+            except Exception as e:  # lỗi Python thông thường → CPU
                 log('DirectML lỗi, dùng CPU: %s' % e)
-        return self.ort.InferenceSession(path, so, providers=['CPUExecutionProvider'])
+        s = self.ort.InferenceSession(path, so, providers=['CPUExecutionProvider'])
+        log('nạp %s bằng CPUExecutionProvider' % os.path.basename(path))
+        return s
 
     @staticmethod
     def _pick_out(sess, prefer):
@@ -486,24 +527,43 @@ JOBS = {'probe': job_probe, 'embed_query': job_embed_query, 'search_local': job_
         'index_sync': job_index_sync, 'rank_urls': job_rank_urls}
 
 
+def probe_gpu(model_dir, data_dir, out):
+    """Chạy trong tiến trình riêng: nạp cả 2 mô hình bằng DirectML và chạy thử 1 lần.
+    Nếu DirectML làm sập tiến trình, Ruby nhận exit code khác 0 và giữ CPU — worker chính không bị ảnh hưởng."""
+    eng = Engine(model_dir, data_dir, device='gpu')
+    if eng.device != 'GPU (DirectML)':
+        write_json(out, {'ok': False, 'reason': 'Máy không có DirectML khả dụng.'})
+        return 5
+    eng.embed_images([np.zeros((3, 224, 224), dtype=np.float32)])
+    eng.text_embed(['a chair'])
+    write_json(out, {'ok': True, 'device': eng.device})
+    return 0
+
+
 def main():
     args = sys.argv[1:]
     model_dir = args[args.index('--models') + 1]
     data_dir = args[args.index('--data') + 1]
-    if '--log' in args:  # Windows chạy không cửa sổ: ghi log ra file
-        try:
-            sys.stderr = open(args[args.index('--log') + 1], 'a', encoding='utf-8', buffering=1)
-        except OSError:
-            pass
+    device = args[args.index('--device') + 1] if '--device' in args else 'cpu'
     jobs = os.path.join(data_dir, 'jobs')
     os.makedirs(jobs, exist_ok=True)
+    if _IMPORT_ERR:
+        write_json(os.path.join(jobs, 'worker.error.json'), {'error': 'Thiếu thư viện AI (numpy/Pillow).', 'kind': 'import',
+                                                              'detail': _IMPORT_ERR[-1500:]})
+        log(_IMPORT_ERR)
+        return 4
+    if '--probe-gpu' in args:
+        return probe_gpu(model_dir, data_dir, args[args.index('--probe-gpu') + 1])
     idle_limit = 600
     hb = os.path.join(jobs, 'heartbeat')
     try:
-        eng = Engine(model_dir, data_dir)
+        eng = Engine(model_dir, data_dir, device=device)
     except Exception as e:
-        write_json(os.path.join(jobs, 'worker.error.json'), {'error': 'Không nạp được mô hình AI: %s' % e})
-        log('nạp mô hình lỗi: %s' % e)
+        tb = traceback.format_exc()
+        kind = 'dll' if 'DLL load failed' in tb else ('import' if 'No module named' in tb else 'model')
+        write_json(os.path.join(jobs, 'worker.error.json'), {'error': 'Không nạp được mô hình AI: %s' % e, 'kind': kind,
+                                                              'detail': tb[-1500:]})
+        log(tb)
         return 3
     write_json(os.path.join(jobs, 'worker.ready.json'), {'pid': os.getpid(), 'device': eng.device, 'time': time.time()})
     last = time.time()

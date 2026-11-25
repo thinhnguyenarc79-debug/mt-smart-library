@@ -2,15 +2,15 @@
   "schema": 1,
   "plugin_id": "mtdesign.smart_library_pro",
   "name": "MT SMART LIBRARY PRO",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "released_at": "2026-11-25",
   "min_sketchup": 22,
   "min_ruby": "2.7.0",
   "changelog": [
+    "Sửa lỗi “Tiến trình AI đã dừng bất thường”: tìm bằng ảnh mặc định chạy CPU (DirectML làm sập khi nạp mô hình ảnh).",
+    "Tùy chọn CPU/GPU trong Cài đặt › AI; GPU được kiểm tra trong tiến trình riêng, lỗi thì tự chuyển CPU.",
+    "Không còn báo lỗi lặp lại mỗi 30 giây; ghi log đầy đủ; giữ nguyên bộ AI đã tải (không tải lại).",
     "TÌM BẰNG ẢNH chạy AI ngay trên máy (CLIP), không cần OpenAI API Key: chọn ảnh, dán (Ctrl+V) hoặc kéo thả ảnh là tự tìm.",
-    "So sánh hình ảnh thật giữa ảnh mẫu và thumbnail model (thư viện máy tính + mọi nguồn online), giống nhất lên đầu; cắt vùng để tìm 1 món trong ảnh phối cảnh.",
-    "Lần đầu dùng: cài bộ AI một lần (~330 MB) sau khi đồng ý; không mất khi cập nhật plugin.",
-    "Thêm 3 thư viện SketchUp: SketchUp CGTips, SketchupFree, Thư viện SketchUp (thuviensketchup.vn) — tìm chung một lưới, có ảnh.",
-    "Nguồn không cho tải tự động: bấm XEM mở trang tải; tải xong plugin tự nhận file trong Downloads và hiện nút CHÈN (tự giải nén cả ZIP có mật khẩu của trang)."
+    "So sánh hình ảnh thật giữa ảnh mẫu và thumbnail model (thư viện máy tính + mọi nguồn online), giống nhất lên đầu; cắt vùng để tìm 1 món trong ảnh phối cảnh."
   ]
 }

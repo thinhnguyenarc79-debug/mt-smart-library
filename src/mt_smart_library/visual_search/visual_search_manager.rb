@@ -69,6 +69,7 @@ module MTDesign
           @cur[:stage] = :need_runtime
           return state('need_runtime', @rt.status)
         end
+        @rt.reset_broken # người dùng chủ động tìm: cho thử lại 1 lần sau lỗi
         sync_index
         state('recognizing', 'msg' => 'Đang nhận diện ảnh…')
         @cur[:jobs] << @rt.submit('embed_query', { 'image' => image_path, 'crop' => crop, 'out_vec' => vec }) { |r| on_embedded(sid, r) }
@@ -99,7 +100,7 @@ module MTDesign
 
       # ================================================================ Chỉ mục thư viện máy tính
       def sync_index(force: false)
-        return unless @rt.installed?
+        return unless @rt.available? # bộ AI lỗi: không tự tạo việc lặp lại (chờ người dùng tìm lại hoặc sửa)
         return if @index_job
         return if !force && @synced_gen == @index.generation && @index_state && @index_state['remaining'].to_i.zero?
         gen = @index.generation
@@ -124,6 +125,8 @@ module MTDesign
           else
             @log&.warn("Lập chỉ mục ảnh lỗi: #{r['error']}")
             @emit.call('vs_index', 'error' => r['error'].to_s, 'running' => false)
+            @synced_gen = gen # không thử lại liên tục; lần đồng bộ sau khi thư viện đổi hoặc người dùng tìm lại
+            @index_state = { 'remaining' => 0, 'indexed' => (@index_state || {})['indexed'].to_i }
           end
         end
       end

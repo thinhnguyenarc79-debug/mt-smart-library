@@ -66,6 +66,10 @@ module MTDesign
                                       code_dir: Paths.code_dir, logger: @log)
         @sources = SourceRegistry.new(Paths.sub('sources.json'), builtins: builtin_sources)
         add_custom_providers
+        @providers << Providers::CatalogProvider.new(@runtime, -> { disabled_source_ids })
+        @runtime.env_provider = ->(lane) { lane == 'crawl' ? { 'MT_SRC_GOOGLE_KEY' => secret('google'), 'MT_SRC_BRAVE_KEY' => secret('brave') } : {} }
+        @sync = {}
+        @src_stats = {}
         @cat_buf = {}
         @cat_last = Time.now.to_f
         @visual = VisualSearchManager.new(runtime: @runtime, index: @index, thumbs: @thumbs, online_providers: -> { @providers.select(&:online?) },
@@ -134,7 +138,11 @@ module MTDesign
         cb(d, 'src_update') { |json| src_update(parse(json)) }
         cb(d, 'src_toggle') { |id, on| src_toggle(id.to_s, on == true || on.to_s == 'true') }
         cb(d, 'src_delete') { |id| src_delete(id.to_s) }
-        cb(d, 'src_check') { |id| src_check(id.to_s) }
+        cb(d, 'src_check') { |id| src_check_deep(id.to_s) }
+        cb(d, 'src_scan') { |id, mode| src_scan(id.to_s, mode.to_s) }
+        cb(d, 'src_stop') { |id| src_stop(id.to_s) }
+        cb(d, 'src_log') { |id| src_log(id.to_s) }
+        cb(d, 'src_stats') { |*| src_stats }
         cb(d, 'src_open') { |id| src_open(id.to_s) }
         cb(d, 'src_export') { |*| src_export }
         cb(d, 'src_import') { |*| src_import }
@@ -252,6 +260,7 @@ module MTDesign
         return status('Không còn thông tin model — hãy tìm lại.', 'warn') unless it
         return insert_sketchfab(it) if it['source'] == 'sketchfab'
         return insert_polyhaven(it) if it['source'] == 'polyhaven'
+        return insert_catalog(it) if it['from_catalog'] || it['links']
         return insert_web(it) if it['web_only']
         status('Nguồn này chưa hỗ trợ chèn trực tiếp.', 'warn')
       end
@@ -443,6 +452,123 @@ module MTDesign
         end
       end
 
+      def disabled_source_ids
+        @settings['sources'].select { |_, v| v == false }.keys + @sources.custom.reject { |s| s['enabled'] }.map { |s| s['id'] }
+      end
+
+      # ================================================================ SMART SOURCE EXTRACTOR (quét / đồng bộ / dừng / nhật ký)
+      SCAN_LIMIT = { 'full' => 3000, 'sync' => 600 }.freeze
+
+      def source_spec(id)
+        if (s = @sources.find(id))
+          return s.slice('id', 'name', 'type', 'url', 'method').merge('free' => nil)
+        end
+        site = WpSources::SITES[id.to_s]
+        return nil unless site
+        { 'id' => id.to_s, 'name' => site['name'], 'type' => 'website', 'url' => site['base'], 'method' => 'wp_rest',
+          'free' => site['free'], 'license' => site['license'] }
+      end
+
+      def scannable?(s)
+        return false if s['type'] == 'local'
+        return WpSources::SITES.key?(s['id']) if s['builtin']
+        %w[website gdrive facebook_group facebook_page].include?(s['type'])
+      end
+
+      def src_scan(id, mode)
+        mode = mode == 'full' ? 'full' : 'sync'
+        spec = source_spec(id)
+        return status('Nguồn này không quét được.', 'warn') unless spec
+        return status('Cần cài bộ AI (Python) để quét nguồn — bấm 📷 Tìm bằng ảnh để cài một lần.', 'warn') unless @runtime.available?
+        return status('Nguồn đang được quét.', 'warn') if @sync[id] && @sync[id]['running']
+        @sync[id] = { 'running' => true, 'phase' => 'Đang chuẩn bị…', 'done' => 0, 'total' => 0, 'mode' => mode }
+        emit('src_progress', @sync[id].merge('id' => id))
+        job = @runtime.submit('src_crawl', { 'source' => spec, 'mode' => mode, 'limit' => SCAN_LIMIT[mode] }, lane: 'crawl',
+                              on_progress: lambda { |p|
+                                @sync[id].merge!(p.slice('phase', 'done', 'total'))
+                                emit('src_progress', @sync[id].merge('id' => id))
+                              }) do |r|
+          @sync[id]['running'] = false
+          if r['ok']
+            x = r['result']
+            @sync[id].merge!('phase' => "Xong: #{x['found']} model, #{x['with_links']} có link tải", 'result' => x)
+            @sources.set_status(id, 'method' => x['method'], 'status' => 'ok') if @sources.find(id)
+            status("#{spec['name']}: đã trích xuất #{x['found']} model (#{x['with_links']} có link tải). Đang tạo vector ảnh…", 'ok')
+            @runtime.submit('catalog_embed', { 'source' => id, 'limit' => 600 }, lane: 'index') { |_e| src_stats }
+          elsif r['cancelled']
+            @sync[id]['phase'] = 'Đã dừng.'
+          else
+            @sync[id]['phase'] = "Lỗi: #{r['error']}"
+            @sources.set_status(id, 'status' => 'error', 'note' => r['error'].to_s[0, 300]) if @sources.find(id)
+            status("#{spec['name']}: #{r['error']}", 'error')
+          end
+          emit('src_progress', @sync[id].merge('id' => id))
+          src_stats
+        end
+        @sync[id]['job'] = job
+        ensure_timer
+      end
+
+      def src_stop(id)
+        j = @sync[id] && @sync[id]['job']
+        @runtime.cancel(j) if j
+        status('Đang dừng quét…')
+      end
+
+      def src_stats
+        return unless @runtime.available?
+        ids = @sources.list.map { |s| s['id'] }
+        @runtime.submit('catalog_source_stats', { 'ids' => ids }) do |r|
+          @src_stats = r['result'] if r['ok']
+          emit_sources
+        end
+        ensure_timer
+      end
+
+      def src_log(id)
+        path = File.join(@runtime.work_dir, 'crawl', "#{id.to_s.gsub(/[^A-Za-z0-9_-]/, '_')[0, 60]}.log")
+        text = File.file?(path) ? Util.utf8(File.binread(path)).lines.last(200).join : 'Chưa có nhật ký.'
+        emit('src_log', { 'id' => id, 'text' => text })
+      end
+
+      # Kiểm tra kết nối bằng bộ trích xuất (Python); chưa cài bộ AI thì dùng kiểm tra cơ bản.
+      def src_check_deep(id)
+        spec = source_spec(id)
+        return src_check(id) unless spec && @runtime.available? && @sources.find(id)
+        @sources.set_status(id, 'status' => 'checking')
+        emit_sources
+        @runtime.submit('src_check', { 'source' => spec }, lane: 'search') do |r|
+          x = r['ok'] ? r['result'] : { 'method' => 'unverified', 'status' => 'error', 'note' => r['error'] }
+          @sources.set_status(id, x.slice('method', 'status', 'note', 'sitemaps'))
+          add_custom_providers
+          emit_sources
+          status("#{spec['name']}: #{x['note']}", x['ok'] ? 'ok' : 'warn')
+        end
+        ensure_timer
+      end
+
+      # CHÈN model từ kho dữ liệu: link tải trực tiếp → tải & chèn; trang trung gian → mở trình duyệt + tự nhận file vừa tải.
+      def insert_catalog(it)
+        links = Array(it['links'])
+        pw = [it['password']].compact
+        best = links.find { |l| l['kind'] == 'gdrive_api' } || links.find { |l| %w[direct dropbox].include?(l['kind']) }
+        if best
+          url = best['url'].to_s
+          if best['kind'] == 'gdrive_api'
+            key = secret('google')
+            return status('Cần Google API key (Tài khoản thư viện) để tải từ Google Drive.', 'warn') unless key
+            url = url.sub('%7BGOOGLE_KEY%7D', URI.encode_www_form_component(key)).sub('{GOOGLE_KEY}', URI.encode_www_form_component(key))
+          end
+          return link_import(url, name: it['title'], passwords: pw, direct: true)
+        end
+        target = links.first ? links.first['url'] : it['url']
+        return status('Model này không có link hợp lệ.', 'warn') unless target.to_s =~ %r{\Ahttps://}
+        UI.openURL(target)
+        @watcher.start(source: it['source_label'], title: it['title'], passwords: pw) && ensure_timer
+        note = pw.empty? ? '' : " Mật khẩu giải nén (plugin tự dùng): #{pw.first}."
+        status("Đã mở link tải của “#{it['title']}”. Tải xong plugin tự nhận file để chèn.#{note}", 'info')
+      end
+
       def site_for(source_id)
         p = @providers.find { |x| x.is_a?(Providers::WpProvider) && x.id == source_id.to_s }
         p && p.site
@@ -452,11 +578,13 @@ module MTDesign
         state = {}
         @providers.each { |p| state[p.id] = { 'enabled' => p.id == 'local' ? true : p.enabled?(@settings), 'integrated' => p.status_info(@settings)['integrated'] } }
         list = @sources.list(state).map do |s|
-          integrated = s['builtin'] ? (s['integrated'] ? true : false) : s['method'] == 'wp_rest'
+          auto = %w[wp_rest sitemap gdrive index api].include?(s['method'])
+          integrated = s['builtin'] ? (s['integrated'] ? true : false) : auto
           s.merge('type_label' => SourceRegistry::TYPES[s['type']], 'method_label' => SourceRegistry::METHODS[s['method']],
                   'integrated' => integrated,
                   'note' => s['note'] || SourceRegistry::NOTES[s['type']] || '',
-                  'enabled' => s['builtin'] ? s['enabled'] != false : s['enabled'])
+                  'enabled' => s['builtin'] ? s['enabled'] != false : s['enabled'],
+                  'scannable' => scannable?(s), 'stats' => @src_stats[s['id']], 'sync' => (@sync[s['id']] || {}).reject { |k, _| k == 'job' })
         end
         { 'list' => list, 'types' => SourceRegistry::TYPES }
       end
@@ -469,7 +597,7 @@ module MTDesign
         s = @sources.add(o)
         emit_sources
         status("Đã thêm nguồn “#{s['name']}”.", 'ok')
-        src_check(s['id'])
+        src_check_deep(s['id'])
       rescue StandardError => e
         status(e.message, 'warn')
       end
@@ -561,8 +689,8 @@ module MTDesign
       end
 
       # “Nhập link model”: tải trực tiếp khi link cho phép, còn lại mở trang + tự nhận file vừa tải.
-      def link_import(raw)
-        r = LinkImport.classify(raw)
+      def link_import(raw, name: nil, passwords: [], direct: false)
+        r = direct ? { kind: :download, url: raw.to_s } : LinkImport.classify(raw)
         if r[:kind] == :open
           UI.openURL(r[:url])
           @watcher.start(source: SourceRegistry::TYPES[r[:service]] || 'trang nguồn', title: 'model từ link', passwords: []) && ensure_timer
@@ -570,7 +698,7 @@ module MTDesign
         end
         dir = Paths.sub('downloads', 'links', Time.now.strftime('%Y%m%d_%H%M%S'))
         FileUtils.mkdir_p(dir)
-        dest = File.join(dir, LinkImport.filename_for(r[:url]))
+        dest = File.join(dir, direct && name ? Util.safe_filename(name)[0, 60] + '.download' : LinkImport.filename_for(r[:url]))
         prog = { 'bytes' => 0, 'total' => 0 }
         status('Đang tải từ link…')
         @http.request(url: r[:url], dest: dest, timeout: 120, progress: prog) do |res|
@@ -584,7 +712,7 @@ module MTDesign
           end
           final = dest.sub(/\.[^.\/\\]*\z/, '') + ext
           File.rename(dest, final) unless final == dest
-          smart_insert(final, name: File.basename(final, '.*'))
+          smart_insert(final, name: name || File.basename(final, '.*'), passwords: passwords)
         end
         ensure_timer
       rescue StandardError => e
@@ -1091,9 +1219,16 @@ module MTDesign
       end
 
       # ================================================================ Bí mật & cài đặt
+      # Khóa/token: openai, sketchfab, google (Drive API), brave (Brave Search API). Cờ “ghi nhớ” trong settings; giá trị chỉ ở bộ nhớ hoặc DPAPI.
+      SECRET_FLAGS = { 'openai' => %w[ai remember_key], 'sketchfab' => %w[sketchfab remember_token],
+                       'google' => %w[keys google_remember], 'brave' => %w[keys brave_remember] }.freeze
+      SECRET_ENV = { 'openai' => 'OPENAI_API_KEY', 'sketchfab' => 'SKETCHFAB_API_TOKEN', 'google' => 'MT_GOOGLE_API_KEY',
+                     'brave' => 'MT_BRAVE_API_KEY' }.freeze
+
       def load_remembered_secrets
-        %w[openai sketchfab].each do |k|
-          remember = k == 'openai' ? @settings['ai']['remember_key'] : @settings['sketchfab']['remember_token']
+        SECRET_FLAGS.each_key do |k|
+          f = SECRET_FLAGS[k]
+          remember = @settings[f[0]][f[1]]
           next unless remember
           v = SecretStore.load(k)
           next unless v && !v.empty?
@@ -1105,7 +1240,7 @@ module MTDesign
       def secret(kind)
         v = @secrets[kind]
         return v if v && !v.empty?
-        env = kind == 'openai' ? Util.env_value('OPENAI_API_KEY') : Util.env_value('SKETCHFAB_API_TOKEN')
+        env = Util.env_value(SECRET_ENV[kind].to_s)
         @log.add_secret(env) if env && !env.empty?
         env && !env.empty? ? env : nil
       end
@@ -1130,20 +1265,22 @@ module MTDesign
           'openai' => { 'session' => !@secrets['openai'].to_s.empty?, 'env' => !Util.env_value('OPENAI_API_KEY').to_s.empty?,
                         'stored' => SecretStore.stored?('openai') },
           'sketchfab' => { 'session' => !@secrets['sketchfab'].to_s.empty?, 'env' => !Util.env_value('SKETCHFAB_API_TOKEN').to_s.empty?,
-                           'stored' => SecretStore.stored?('sketchfab') }
+                           'stored' => SecretStore.stored?('sketchfab') },
+          'google' => { 'session' => !@secrets['google'].to_s.empty?, 'stored' => SecretStore.stored?('google') },
+          'brave' => { 'session' => !@secrets['brave'].to_s.empty?, 'stored' => SecretStore.stored?('brave') }
         }
       end
 
       def set_secret(o)
         kind = o['kind'].to_s
-        return unless %w[openai sketchfab].include?(kind)
+        return unless SECRET_FLAGS.key?(kind)
         v = o['value'].to_s.strip
         return status('Giá trị trống.', 'warn') if v.empty?
         return status('Key/token chứa ký tự không hợp lệ.', 'error') unless v =~ /\A[\x21-\x7e]{8,400}\z/
         @secrets[kind] = v
         @sf_expired = false if kind == 'sketchfab'
         @log.add_secret(v)
-        flag = kind == 'openai' ? %w[ai remember_key] : %w[sketchfab remember_token]
+        flag = SECRET_FLAGS[kind]
         if o['remember'] == true
           if SecretStore.save(kind, v)
             @settings.data[flag[0]][flag[1]] = true
@@ -1160,15 +1297,17 @@ module MTDesign
         emit('secrets', secrets_state)
         emit('accounts', accounts_state)
         emit('settings', @settings.public_hash)
+        @runtime.lane('crawl').restart if %w[google brave].include?(kind) # khóa mới cho tiến trình trích xuất
       end
 
       def clear_secret(kind)
-        return unless %w[openai sketchfab].include?(kind)
+        return unless SECRET_FLAGS.key?(kind)
         @log.remove_secret(@secrets[kind]) if @secrets[kind]
         @secrets[kind] = nil
         SecretStore.delete(kind)
-        flag = kind == 'openai' ? %w[ai remember_key] : %w[sketchfab remember_token]
+        flag = SECRET_FLAGS[kind]
         @settings.data[flag[0]][flag[1]] = false
+        @runtime.lane('crawl').restart if %w[google brave].include?(kind)
         @settings.save
         @sf_expired = false if kind == 'sketchfab'
         emit('secrets', secrets_state)
@@ -1581,6 +1720,10 @@ module MTDesign
         @updater.events.each do |type, payload|
           case type
           when :install_done
+            if payload['hot']
+              ok = hot_apply(payload)
+              payload = payload.merge('hot' => ok)
+            end
             modified = begin
               Sketchup.active_model && Sketchup.active_model.modified?
             rescue StandardError
@@ -1590,12 +1733,37 @@ module MTDesign
                                              'backups' => @updater.backups.list.map { |b| b.reject { |k, _| k == 'path' } },
                                              'history' => @updater.history))
             emit('update_installed', payload['version'])
-            status("Đã cài phiên bản #{payload['version']} — khởi động lại SketchUp để áp dụng.", 'ok')
+            if payload['hot']
+              status("Đã cập nhật nhanh lên #{payload['version']} — đã áp dụng, không cần khởi động lại SketchUp.", 'ok')
+            else
+              status("Đã cài phiên bản #{payload['version']} — khởi động lại SketchUp để áp dụng.", 'ok')
+            end
             @pending_pkg = nil
           when :install_failed
             up_emit('up_failed', payload.merge('progress' => @updater.progress, 'history' => @updater.history))
           end
         end
+      end
+
+      # HYBRID HOT RELOAD (main thread): nạp lại module thuần hàm, tiến trình Python khi rảnh, cấu hình, giao diện.
+      # Không chạy lại main.rb, không tạo lại menu/toolbar/timer/callback; bản vẽ đang mở không bị động tới.
+      def hot_apply(payload)
+        changed = Array(payload['changed'])
+        reloaded = HotReload.reload_ruby(changed, Paths.code_dir)
+        if changed.any? { |r| r.end_with?('.py') || r.end_with?('model_config.json') }
+          @runtime.reload_cfg
+          @runtime.lanes.each(&:restart_when_idle)
+        end
+        if changed.any? { |r| r =~ %r{/ui/.*\.(html|css|js)\z} } && @dialog
+          @ready = false
+          @dialog.set_file(File.join(Paths.code_dir, 'ui', 'index.html')) # callback giữ nguyên trên dialog; giao diện gửi lại “ready”
+        end
+        @log.info("Cập nhật nhanh #{payload['version']}: #{changed.size} file, nạp lại Ruby: #{reloaded.join(', ')}")
+        true
+      rescue StandardError, ScriptError => e
+        @log.error('Áp dụng nóng lỗi — chuyển sang chờ khởi động lại', e)
+        @updater.mark_pending(payload['version'], 'Áp dụng nóng lỗi')
+        false
       end
 
       def schedule_startup_check

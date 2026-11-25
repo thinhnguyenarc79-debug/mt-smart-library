@@ -51,6 +51,12 @@ module MTDesign
         restart
       end
 
+      # Cập nhật nóng Python: khởi động lại tiến trình khi làn rảnh (không cắt ngang việc đang chạy).
+      def restart_when_idle
+        return restart if @pending.empty?
+        @restart_pending = true
+      end
+
       def submit(type, payload, on_progress: nil, &done)
         if @broken
           done&.call('ok' => false, 'error' => @broken, 'broken' => true)
@@ -74,6 +80,10 @@ module MTDesign
 
       def poll
         start_when_ready
+        if @restart_pending && @pending.empty?
+          @restart_pending = false
+          restart
+        end
         return if @pending.empty? && !@worker
         touch_heartbeat
         if (r = @rt.read_json(File.join(dir, 'worker.ready.json')))
@@ -123,9 +133,14 @@ module MTDesign
       def start(dev)
         @worker_device = dev
         @rt.rlog("Khởi động tiến trình AI làn #{@name} (#{dev.upcase})")
+        env = @rt.env_provider ? @rt.env_provider.call(@name) : {}
+        old = env.keys.map { |k| [k, ENV[k]] }.to_h
+        env.each { |k, v| ENV[k] = v.to_s.empty? ? nil : v.to_s } # tiến trình con kế thừa; khôi phục ngay sau khi tạo
         @worker = @rt.runner.start([@rt.python_exe, '-B', @rt.script, '--models', @rt.models_dir, '--data', @rt.work_dir,
                                     '--jobs', dir, '--device', dev, '--threads', @threads.to_s, '--log', @rt.worker_log],
                                    timeout: 0, log_path: File.join(dir, 'worker.out.log'), cwd: @rt.work_dir)
+      ensure
+        old&.each { |k, v| ENV[k] = v }
       end
 
       def touch_heartbeat(force = false)

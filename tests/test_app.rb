@@ -258,7 +258,7 @@ class TestApp < Minitest::Test
     init_src = d.messages('init').last[1]['sources_status'].map { |x| [x['id'], x['integrated']] }.to_h
     expect = { 'local' => true, 'sketchfab' => true, 'polyhaven' => true, 'cgtips' => true, 'sketchupfree' => true, 'thuviensketchup' => true,
                'cgtrader' => false, 'warehouse' => false, '3dsky' => false, '3dbox' => false, 'sketchshaper' => false,
-               'tailieukientruc' => false, 'sketchupvn' => false }
+               'tailieukientruc' => false, 'sketchupvn' => false, 'catalog' => true }
     assert_equal(expect, init_src)
     assert_equal 12, d.messages('init').last[1]['accounts'].size
   end

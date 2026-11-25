@@ -10,8 +10,9 @@ module MTDesign
     # - Cập nhật từ file RBZ/ZIP hoặc từ manifest online (URL riêng / GitHub Releases).
     # - Kiểm tra cấu trúc, PLUGIN_ID, phiên bản, tương thích, đường dẫn nguy hiểm, SHA256.
     # - Sao lưu bản đang chạy -> cài đè -> kiểm tra -> tự khôi phục nếu lỗi.
-    # - KHÔNG nạp lại mã nóng (không load/reload) => không trùng menu/toolbar/callback.
-    #   Bản mới có hiệu lực sau khi người dùng tự khởi động lại SketchUp.
+    # - HYBRID HOT RELOAD: bản chỉ đổi giao diện/Python/cấu hình/module thuần hàm → áp dụng ngay (HotReload);
+    #   bản đổi phần lõi → cài xong chờ người dùng tự khởi động lại SketchUp. Không chạy lại main.rb
+    #   => không trùng menu/toolbar/callback/timer/observer.
     # - Phần filesystem chạy luồng nền; mọi SketchUp API ở main thread (App truyền thông tin vào).
     class Updater
       CODE = Paths::CODE_DIR_NAME
@@ -81,6 +82,8 @@ module MTDesign
         version_src = Util.utf8(zip.read(install["#{CODE}/updater/version.rb"]))
         manifest = parse_manifest_json(zip.read(install["#{CODE}/updater/update_manifest.json"]), embedded: true)
         info = describe(loader_src, version_src, manifest, su_major)
+        shas = install.map { |rel, e| [rel, Digest::SHA256.hexdigest(zip.read(e))] }.to_h
+        info['update'] = HotReload.classify(@plugins_root, shas)
         info.merge('file' => path, 'prefix' => prefix, 'files' => install.size,
                    'bytes' => install.values.sum(&:usize), 'sha256' => Digest::SHA256.file(path).hexdigest, 'kind' => 'file')
       rescue ZipReader::Error => e
@@ -97,7 +100,8 @@ module MTDesign
         mf = File.join(dir, CODE, 'updater', 'update_manifest.json')
         manifest = File.file?(mf) ? parse_manifest_json(File.binread(mf), embedded: true) : {}
         describe(loader_src, version_src, manifest, su_major).merge('backup_id' => id, 'path' => dir, 'kind' => 'backup',
-                                                                    'created_at' => b['created_at'])
+                                                                    'created_at' => b['created_at'],
+                                                                    'update' => HotReload.classify(@plugins_root, HotReload.sha_map_dir(dir)))
       end
 
       def describe(loader_src, version_src, manifest, su_major)
@@ -178,11 +182,16 @@ module MTDesign
         installed = true
         set_progress(4, 'running', 'Đang kiểm tra file sau cài…')
         verify_tree!(source_dir)
-        write_state('pending_version' => info['version'], 'from' => VERSION, 'at' => Time.now.to_i, 'reason' => reason)
-        add_history('ok', reason, info['version'], backup, nil)
-        log_update("Thành công sau #{(Time.now - t0).round(1)}s")
-        set_progress(5, 'done', "Đã cài #{info['version']}. Khởi động lại SketchUp để áp dụng.")
-        push(:install_done, { 'version' => info['version'], 'backup' => File.basename(backup.to_s), 'reason' => reason })
+        up = info['update'] || { 'type' => 'system' }
+        hot = up['type'] == 'hot'
+        unless hot
+          write_state('pending_version' => info['version'], 'from' => VERSION, 'at' => Time.now.to_i, 'reason' => reason)
+        end
+        add_history('ok', hot ? "#{reason} (cập nhật nhanh)" : reason, info['version'], backup, nil)
+        log_update("Thành công sau #{(Time.now - t0).round(1)}s — loại: #{hot ? 'cập nhật nhanh' : 'hệ thống'} (#{up['changed'].to_a.size} file đổi)")
+        set_progress(5, 'done', hot ? "Đã cài #{info['version']} — đang áp dụng ngay." : "Đã cài #{info['version']}. Khởi động lại SketchUp để áp dụng.")
+        push(:install_done, { 'version' => info['version'], 'backup' => File.basename(backup.to_s), 'reason' => reason,
+                              'hot' => hot, 'changed' => up['changed'].to_a, 'update_reason' => up['reason'] })
       rescue Exception => e # rubocop:disable Lint/RescueException
         msg = e.message.to_s
         @log&.error("Cập nhật thất bại", e)
@@ -427,6 +436,11 @@ module MTDesign
         end
       rescue StandardError
         nil
+      end
+
+      # Áp dụng nóng thất bại → coi như bản hệ thống: chờ khởi động lại.
+      def mark_pending(version, reason)
+        write_state('pending_version' => version, 'from' => VERSION, 'at' => Time.now.to_i, 'reason' => reason)
       end
 
       def pending_restart_version

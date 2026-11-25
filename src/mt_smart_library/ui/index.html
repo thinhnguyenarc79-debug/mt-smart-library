@@ -164,6 +164,16 @@
     <section data-p="sf" hidden>
       <p class="muted small">Đăng nhập luôn diễn ra trên trang chính thức của từng website. Plugin không hỏi mật khẩu, không đọc cookie trình duyệt.</p>
       <div id="accList" class="list"></div>
+      <h4 class="small">Khóa API cho bộ trích xuất nguồn (tùy chọn)</h4>
+      <div class="row">
+        <input id="kGoogle" type="password" class="grow" placeholder="Google API key (đọc thư mục Google Drive công khai)" autocomplete="off" spellcheck="false">
+        <button id="kGoogleSave" class="primary">Lưu</button><button id="kGoogleClear">Xóa</button><span id="kGoogleState" class="small muted"></span>
+      </div>
+      <div class="row">
+        <input id="kBrave" type="password" class="grow" placeholder="Brave Search API key (tìm bài Facebook công khai đã được lập chỉ mục)" autocomplete="off" spellcheck="false">
+        <button id="kBraveSave" class="primary">Lưu</button><button id="kBraveClear">Xóa</button><span id="kBraveState" class="small muted"></span>
+      </div>
+      <p class="muted small">Khóa được ghi nhớ mã hóa bằng Windows DPAPI, không ghi vào settings/log. Lấy khóa: Google Cloud Console (bật Drive API) · api-dashboard.search.brave.com.</p>
       <h4 class="small">Sketchfab API token</h4>
       <p id="sfState" class="small"></p>
       <div class="row">
@@ -218,6 +228,15 @@
     <h3>Kéo chuột chọn món đồ cần tìm</h3>
     <div id="cropBox" class="cropbox"><img id="cropImg" alt=""><div id="cropSel" class="cropsel" hidden></div></div>
     <div class="row"><button id="cropOk" class="primary" disabled>Tìm vùng này</button><button id="cropAll">Dùng cả ảnh</button><button data-close="cropModal">Hủy</button></div>
+  </div>
+</div>
+
+<!-- Nhật ký quét nguồn -->
+<div id="srcLogModal" class="modal" hidden>
+  <div class="dialog wide">
+    <button class="x" data-close="srcLogModal">×</button>
+    <h3>Nhật ký trích xuất nguồn</h3>
+    <pre id="srcLogText" class="logbox"></pre>
   </div>
 </div>
 

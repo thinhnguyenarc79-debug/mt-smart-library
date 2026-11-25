@@ -196,6 +196,23 @@ function items() {
   check('Thêm nguồn + nhập link gửi đúng lệnh', sc.includes('src_add') && sc.includes('link_import'), sc);
   await page.evaluate(() => MT.receive('cat_stats', { available: true, total: 120, with_vec: 80, dup: 3, dead: 2, checked: 50 }));
   check('Hiện thống kê kho dữ liệu', (await page.textContent('#catInfo')).includes('120 model'));
+  await page.evaluate(() => MT.receive('src_list', { types: { website: 'Website' }, list: [
+    { id: 'u_aaaaaaaaaa', name: 'CGTips', type: 'website', builtin: false, integrated: true, enabled: true, scannable: true, status: 'ok', url: 'https://sketchup.cgtips.org',
+      type_label: 'Website', method_label: 'WordPress REST API công khai', stats: { indexed: 1240, with_links: 1180, with_vec: 900, last_sync: 1795560000 },
+      sync: { running: true, phase: 'Đang trích xuất bài viết', done: 150, total: 3000 } }] }));
+  const srcTxt2 = await page.textContent('#srcList');
+  check('Nguồn hiện số model đã lập chỉ mục / có link tải / thời gian đồng bộ / tiến trình', srcTxt2.includes('1240 model đã lập chỉ mục') && srcTxt2.includes('1180 có link tải') &&
+    srcTxt2.includes('đồng bộ') && srcTxt2.includes('(150/3000)'), srcTxt2);
+  await page.evaluate(() => { window.__calls.length = 0; [...document.querySelectorAll('#srcList button')].find(b => b.textContent === 'Dừng').click(); });
+  check('Đang quét: có nút Dừng', await page.evaluate(() => window.__calls.some(c => c[0] === 'src_stop')));
+  await page.evaluate(() => MT.receive('src_progress', { id: 'u_aaaaaaaaaa', running: false, phase: 'Xong: 1300 model, 1200 có link tải' }));
+  await page.evaluate(() => { window.__calls.length = 0; const bs = [...document.querySelectorAll('#srcList button')];
+    bs.find(b => b.textContent === 'Đồng bộ').click(); bs.find(b => b.textContent === 'Quét').click(); bs.find(b => b.textContent === 'Nhật ký').click(); });
+  const sc2 = await page.evaluate(() => window.__calls.map(c => c[0] + ':' + (c[1][1] || '')));
+  check('Đồng bộ / Quét / Nhật ký gửi đúng lệnh', sc2.includes('src_scan:sync') && sc2.includes('src_scan:full') && sc2.some(x => x.startsWith('src_log')), sc2);
+  await page.evaluate(() => MT.receive('src_log', { id: 'u_aaaaaaaaaa', text: '2026-11-25 11:00:00 Trang lỗi https://x: HTTP 500' }));
+  check('Nhật ký lỗi chi tiết hiển thị', (await page.textContent('#srcLogText')).includes('HTTP 500') && await page.locator('#srcLogModal').isVisible());
+  await page.evaluate(() => { document.querySelector('[data-close=srcLogModal]').click(); });
   await page.screenshot({ path: OUT + '/v110_sources.png' });
   await page.evaluate(() => { document.querySelector('#settingsModal').hidden = true; });
   await page.evaluate(() => MT.receive('accounts', [

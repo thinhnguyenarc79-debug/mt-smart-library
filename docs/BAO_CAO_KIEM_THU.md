@@ -1,5 +1,22 @@
 # Báo cáo kiểm thử — MT SMART LIBRARY PRO
 
+## V1.0.12 (25/11/2026) — SMART SOURCE EXTRACTOR + HYBRID HOT RELOAD
+
+| Module | Đã kiểm thử | Kết quả |
+|---|---|---|
+| Trích xuất WordPress REST | Chạy THẬT trong tiến trình Python với máy chủ cục bộ đúng giao thức WP REST: nhận diện, quét toàn bộ, tên (bỏ số thứ tự), danh mục, ảnh, link tải dạng chữ + thẻ a, bỏ link mạng xã hội, mật khẩu giải nén; đồng bộ tăng dần (không có bài mới → 0); tìm từ khóa có/không dấu; vector ảnh; thống kê + thời gian đồng bộ; nhật ký | ✅ |
+| Web crawler sitemap | sitemap index → urlset, robots.txt Disallow không bị truy cập, Crawl-delay, trang không có ảnh bị bỏ, og:title/og:image/article:section, link file trực tiếp, mật khẩu | ✅ |
+| Google Drive API | Thư mục + thư mục con, bỏ file không phải model, ảnh cùng tên, link tải không chứa khóa, khóa không có trong file SQLite | ✅ (API mô phỏng) |
+| Brave Search (Facebook) | Chỉ nhận kết quả đúng nhóm, link MediaFire trong mô tả; thiếu khóa → báo “cần key”, không tạo kết quả | ✅ (API mô phỏng) |
+| Hot Reload | Phân loại nhanh/hệ thống (giao diện+Python+version → nhanh; app.rb, loader, xóa file Ruby → hệ thống); cài nhanh không chờ khởi động lại, vẫn sao lưu; cài hệ thống chờ khởi động lại; nạp lại module trong tiến trình (module mới có hàm mới, chức năng cũ chạy, VERSION đổi); App: tải lại giao diện trên cùng dialog, Python khởi động lại khi rảnh, không thêm dialog/timer/callback | ✅ |
+| Giao diện | Số model/link/đồng bộ/tiến trình, Dừng, Đồng bộ/Quét/Nhật ký, hộp nhật ký | ✅ |
+
+**Chưa kiểm thử với nguồn thật trên Internet** (máy test không có mạng ra ngoài; máy chủ cục bộ mô phỏng đúng giao thức đã kiểm chứng):
+cần bấm Quét trên máy người dùng với sketchup.cgtips.org / sketchupfree.com / thuviensketchup.vn và gửi nhật ký. Hot reload chỉ có từ bản cài bằng 1.0.12 trở đi
+(1.0.11 → 1.0.12 vẫn là cập nhật hệ thống vì trình cập nhật cũ chưa có tính năng này). `HtmlDialog#set_file` giữ callback trên SketchUp thật — chưa kiểm thử trong SketchUp.
+
+---
+
 ## V1.0.11 (25/11/2026) — SMART SOURCE MANAGER
 
 | Module | Đã kiểm thử (dữ liệu/tiến trình thật trong máy test) | Kết quả |

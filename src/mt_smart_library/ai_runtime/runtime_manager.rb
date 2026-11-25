@@ -32,6 +32,10 @@ module MTDesign
         @cfg
       end
 
+      def reload_cfg
+        @cfg = JSON.parse(File.read(File.join(@code_dir, 'ai_runtime', 'model_config.json'), encoding: 'UTF-8'))
+      end
+
       def threads
         [@bg].compact
       end
@@ -229,7 +233,10 @@ module MTDesign
       # Thiết bị: 'cpu' mặc định; 'gpu' (DirectML) chỉ sau khi kiểm tra trong tiến trình riêng.
       CRASH_WINDOW = 300
       CRASH_LIMIT = 2
-      LANES = { 'search' => 2, 'index' => 1 }.freeze # số luồng CPU mỗi làn (chừa CPU cho SketchUp)
+      LANES = { 'search' => 2, 'index' => 1, 'crawl' => 1 }.freeze # crawl: trích xuất nguồn (mạng), tách khỏi tìm kiếm
+
+      # Khóa API người dùng (Google/Brave) chỉ truyền cho tiến trình qua biến môi trường lúc khởi động — không ghi ra đĩa.
+      attr_accessor :env_provider # số luồng CPU mỗi làn (chừa CPU cho SketchUp)
 
       attr_reader :device_pref
 

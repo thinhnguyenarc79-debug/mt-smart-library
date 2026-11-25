@@ -155,3 +155,8 @@ label.col{display:flex;flex-direction:column;gap:4px;margin:8px 0;font-size:12px
 .cropbox img{display:block;max-width:100%;max-height:60vh}
 .cropsel{position:absolute;border:2px solid #1570ef;background:#1570ef22;pointer-events:none}
 .dropping{outline:3px dashed #1570ef;outline-offset:-6px}
+
+.logbox{max-height:60vh;overflow:auto;background:#101828;color:#e4e7ec;padding:10px;border-radius:8px;font-size:12px;white-space:pre-wrap}
+.item.src .stat{display:block;font-size:12px;color:#344054;margin-top:2px}
+.item.src .prog2{display:block;font-size:12px;color:#175cd3}
+.item.src .acts{flex-wrap:wrap;justify-content:flex-end}

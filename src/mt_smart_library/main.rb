@@ -12,11 +12,11 @@ module MTDesign
       core/thumbs core/inserter core/secret_store
       net/http_client online/link_sources online/sketchfab online/polyhaven online/wp_sources sources/source_registry sources/site_probe sources/link_import accounts/account_manager core/download_watcher ai/vision
       search/query_normalizer search/categories search/result_cache search/result_ranker
-      search/providers/base_provider search/providers/local_provider search/providers/sketchfab_provider search/providers/polyhaven_provider search/providers/wp_provider
+      search/providers/base_provider search/providers/local_provider search/providers/sketchfab_provider search/providers/polyhaven_provider search/providers/wp_provider search/providers/catalog_provider
       search/search_manager importers/gltf_importer
       convert/blender_runner convert/blender_detector convert/model_cache convert/converter_manager convert/import_manager
       ai_runtime/worker_lane ai_runtime/runtime_manager visual_search/visual_search_manager
-      updater/zip_reader updater/backup_manager updater/updater
+      updater/zip_reader updater/backup_manager updater/hot_reload updater/updater
       ui/app
     ].each { |f| require File.join(CODE_DIR, f) }
 

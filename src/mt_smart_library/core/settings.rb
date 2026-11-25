@@ -26,6 +26,7 @@ module MTDesign
                          'timeout' => 600, 'gltf_engine' => 'auto' },
         'ai' => { 'model' => DEFAULT_MODEL, 'base_url' => 'https://api.openai.com/v1', 'detail' => 'low', 'remember_key' => false, 'device' => 'cpu' },
         'sketchfab' => { 'downloadable_only' => true, 'token_type' => 'token', 'remember_token' => false },
+        'keys' => { 'google_remember' => false, 'brave_remember' => false },
         'net' => { 'timeout' => 30 },
         'update' => { 'source' => 'none', 'manifest_url' => '', 'github_repo' => '', 'check_on_start' => false }
       }.freeze
@@ -212,6 +213,9 @@ module MTDesign
         out['ai']['detail'] = %w[low high auto].include?(ai['detail']) ? ai['detail'] : 'low'
         out['ai']['remember_key'] = bool(ai['remember_key'], false)
         out['ai']['device'] = %w[cpu gpu].include?(ai['device']) ? ai['device'] : 'cpu'
+        ks = raw['keys'].is_a?(Hash) ? raw['keys'] : {}
+        out['keys']['google_remember'] = bool(ks['google_remember'], false)
+        out['keys']['brave_remember'] = bool(ks['brave_remember'], false)
         sf = raw['sketchfab'].is_a?(Hash) ? raw['sketchfab'] : {}
         out['sketchfab']['downloadable_only'] = bool(sf['downloadable_only'], true)
         out['sketchfab']['token_type'] = %w[token bearer].include?(sf['token_type']) ? sf['token_type'] : 'token'

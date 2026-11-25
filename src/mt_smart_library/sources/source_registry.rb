@@ -17,6 +17,8 @@ module MTDesign
       # Phương thức truy cập thực tế plugin hỗ trợ.
       METHODS = {
         'api' => 'API chính thức', 'wp_rest' => 'WordPress REST API công khai', 'local' => 'Đọc thư mục máy tính',
+        'sitemap' => 'Web crawler theo sitemap (tuân thủ robots.txt)', 'gdrive' => 'Google Drive API (API key)',
+        'index' => 'Chỉ mục máy tìm kiếm (Brave Search API)',
         'direct_link' => 'Link tải trực tiếp (nhập link)', 'open_only' => 'Mở nguồn + nhập link thủ công',
         'unverified' => 'Chưa xác minh'
       }.freeze
@@ -85,7 +87,7 @@ module MTDesign
       def set_status(id, h)
         s = find(id)
         return unless s
-        s.merge!(h.select { |k, _| %w[method status note img_domain checked lang].include?(k) })
+        s.merge!(h.select { |k, _| %w[method status note img_domain checked lang sitemaps].include?(k) })
         s['checked'] = Time.now.to_i
         save
       end

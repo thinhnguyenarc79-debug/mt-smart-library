@@ -66,6 +66,11 @@
     up_package: function (p) {
       $('pkgErr').hidden = true; $('pkg').hidden = false;
       $('pVer').textContent = p.version; $('pRel').textContent = rel(p.relation);
+      var ut = p.update || {}; var tEl = $('pType');
+      if (tEl) {
+        tEl.textContent = ut.type === 'hot' ? '⚡ Cập nhật nhanh — áp dụng ngay, không cần khởi động lại' : (ut.type === 'none' ? 'Không có thay đổi' : '🔁 Cập nhật hệ thống — cần khởi động lại SketchUp sau khi cài');
+        tEl.title = ut.reason || ''; $('pTypeWhy').textContent = ut.reason || '';
+      }
       $('pCompat').textContent = (p.compatible ? '✓ ' : '✗ ') + p.compat_message; $('pCompat').style.color = p.compatible ? 'var(--ok)' : 'var(--err)';
       $('pId').textContent = p.plugin_id; $('pFiles').textContent = p.files + ' file · ' + size(p.bytes); $('pSha').textContent = p.sha256;
       list($('pLog'), p.changelog);
@@ -85,6 +90,12 @@
     up_downloading: function (d) { setBusy(true); $('progressPanel').hidden = false; $('result').hidden = true; $('dlBar').hidden = false; $('dlText').textContent = 'Đang tải phiên bản ' + d.version + '…'; },
     up_done: function (d) {
       setBusy(false); if (d.progress) renderSteps(d.progress); $('dlBar').hidden = true;
+      if (d.hot) {
+        result('ok', ['✓ Đã cập nhật nhanh lên phiên bản ' + d.version + ' (bản sao lưu: ' + d.backup + ').', '⚡ Đã áp dụng ngay — KHÔNG cần khởi động lại SketchUp. Bản vẽ đang mở không bị ảnh hưởng.',
+          d.update_reason || '', 'Có thể khôi phục bản cũ trong mục Sao lưu bên dưới.']);
+        var bh = $('banner'); bh.hidden = false; bh.className = 'result ok'; bh.textContent = 'Đang chạy phiên bản ' + d.version + ' (cập nhật nhanh).';
+        renderBackups(d.backups); renderHistory(d.history); $('pkg').hidden = true; return;
+      }
       result('ok', ['✓ Đã cài đặt thành công phiên bản ' + d.version + ' (bản sao lưu: ' + d.backup + ').',
         'Phiên SketchUp hiện tại vẫn chạy bản ' + U.cur + ' — bản mới có hiệu lực sau khi khởi động lại SketchUp.',
         d.model_modified ? '⚠ Bản vẽ hiện tại CHƯA LƯU. Hãy lưu bản vẽ trước, sau đó tự đóng và mở lại SketchUp. Plugin sẽ không tự khởi động lại.' : 'Bạn có thể đóng và mở lại SketchUp khi thuận tiện.',

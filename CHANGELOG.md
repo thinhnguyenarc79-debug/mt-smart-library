@@ -1,5 +1,24 @@
 # CHANGELOG — MT SMART LIBRARY PRO
 
+## V1.0.12 — 25/11/2026 (SMART SOURCE EXTRACTOR + HYBRID HOT RELOAD)
+- `ai_runtime/source_extractor.py` (làn tiến trình `crawl`, tách khỏi tìm kiếm và lập chỉ mục):
+  - `wp_rest`: liệt kê toàn bộ bài viết qua WordPress REST API (nội dung, danh mục, ảnh đại diện), đồng bộ tăng dần bằng `modified_after`;
+  - `sitemap`: web crawler theo sitemap.xml/sitemap index, tuân thủ robots.txt (`can_fetch`, `Crawl-delay`, tối thiểu 1,5 s/trang), chỉ lấy trang có og:title + ảnh xem trước;
+  - `gdrive`: Google Drive API v3 chính thức với API key người dùng — thư mục chia sẻ công khai, đệ quy 4 cấp, ảnh cùng tên làm ảnh xem trước, link tải `alt=media` (khóa không lưu vào kho);
+  - `index`: Brave Search API (key người dùng) — bài Facebook CÔNG KHAI đã được lập chỉ mục (Groups API đã bị Meta gỡ).
+  Trích xuất: tên, mô tả, danh mục, ảnh, link bài viết, link tải (thẻ `<a>` + URL dạng chữ; Drive/MediaFire/Mega/Dropbox/OneDrive/file trực tiếp/link rút gọn; bỏ link mạng xã hội), mật khẩu giải nén.
+  Nhật ký từng nguồn (`ai_runtime/work/crawl/<id>.log`), trạng thái đồng bộ, giới hạn số trang mỗi lần, dừng giữa chừng.
+- Kho dữ liệu (SQLite): thêm cột tìm kiếm không dấu + có link tải (nâng cấp bảng cũ, giữ dữ liệu); `catalog_text` (tìm từ khóa), `catalog_embed` (vector ảnh trên làn index), `catalog_source_stats`.
+- `Providers::CatalogProvider`: tìm từ khóa Việt/Anh trong kho, trộn vào lưới chung; tìm bằng ảnh dùng vector của model đã trích xuất.
+- CHÈN model từ kho: link Drive API/Dropbox/file trực tiếp → tải, nhận diện file thật, giải nén (kể cả mật khẩu đã trích xuất), chèn; trang trung gian → mở trình duyệt + tự nhận file vừa tải.
+- Cài đặt › Nguồn tìm kiếm: Kiểm tra kết nối, Quét (toàn bộ), Đồng bộ (phần mới), Dừng, Nhật ký; số model đã lập chỉ mục / có link tải / có vector, thời gian đồng bộ, tiến trình.
+- Tài khoản thư viện: Google API key, Brave Search API key (DPAPI, không ghi settings/log; chỉ truyền cho tiến trình trích xuất qua biến môi trường lúc khởi động).
+- `updater/hot_reload.rb` — HYBRID HOT RELOAD: tự phân loại gói (so SHA256 từng file với bản đang cài). Chỉ đổi giao diện, Python, cấu hình JSON, tài nguyên,
+  hoặc module Ruby thuần hàm được khai báo (version, wp_sources, site_probe, link_import, query_normalizer, categories, synonyms) → **cập nhật nhanh**:
+  sao lưu → cài → kiểm tra → nạp lại module, tiến trình Python khởi động lại khi rảnh, giao diện tải lại trên chính dialog (callback giữ nguyên);
+  không chạy lại main.rb nên không trùng menu/toolbar/callback/timer/observer. Đổi phần lõi, loader hoặc xóa file Ruby → **cập nhật hệ thống**: chờ người dùng tự khởi động lại.
+  Áp dụng nóng lỗi → tự chuyển sang chờ khởi động lại. Hộp cập nhật hiển thị loại cập nhật + lý do trước khi cài.
+
 ## V1.0.11 — 25/11/2026 (SMART SOURCE MANAGER)
 - `sources/source_registry.rb`: danh sách nguồn của người dùng ở `<dữ liệu>/sources.json` (không nằm trong mã, giữ qua cập nhật): 9 loại
   (website, Facebook Group, Facebook Fanpage, Google Drive, MediaFire, Mega, Dropbox, OneDrive, thư mục máy tính), tự nhận diện loại theo link,

@@ -491,7 +491,8 @@ def job_index_sync(eng, job, prog):
 
 def fetch(url, hosts, cache_dir):
     u = urllib.parse.urlparse(url)
-    if u.scheme != 'https' or (u.hostname or '').lower() not in hosts:
+    test_http = os.environ.get('MT_TEST_ALLOW_HTTP') == '1' and u.scheme == 'http' and u.hostname in ('127.0.0.1', 'localhost')
+    if (u.scheme != 'https' and not test_http) or (u.hostname or '').lower() not in hosts:
         raise ValueError('host không được phép')
     os.makedirs(cache_dir, exist_ok=True)
     cp = os.path.join(cache_dir, hashlib.sha1(url.encode('utf-8')).hexdigest() + '.img')
@@ -543,7 +544,8 @@ def job_rank_urls(eng, job, prog):
 # --------------------------------------------------------------------------- Kho dữ liệu tích lũy (SQLite)
 # Lưu metadata kết quả online đã thấy (không tải file SKP), vector ảnh xem trước, trạng thái link, trùng lặp.
 CAT_FIELDS = ('source', 'source_label', 'uid', 'title', 'thumb', 'thumb_large', 'author', 'author_url', 'license', 'url',
-              'downloadable', 'free', 'insertable', 'web_only', 'download_note', 'format', 'formats', 'likes', 'faces')
+              'downloadable', 'free', 'insertable', 'web_only', 'download_note', 'format', 'formats', 'likes', 'faces',
+              'description', 'categories', 'links', 'password', 'size')
 DUP_COS = 0.97
 
 
@@ -558,6 +560,10 @@ class Catalog:
             first_seen INTEGER, last_seen INTEGER, link_status TEXT, link_checked INTEGER DEFAULT 0,
             vec BLOB, dup_of TEXT)''')
         self.db.execute('CREATE INDEX IF NOT EXISTS ix_src ON items(source)')
+        cols = [r[1] for r in self.db.execute('PRAGMA table_info(items)')]
+        for c, t in (('hay', 'TEXT'), ('has_links', 'INTEGER DEFAULT 0')):  # nâng cấp bảng cũ, giữ dữ liệu
+            if c not in cols:
+                self.db.execute('ALTER TABLE items ADD COLUMN %s %s' % (c, t))
         self.db.commit()
         self._mat = None
 
@@ -569,11 +575,13 @@ class Catalog:
             if not k or not it.get('title'):
                 continue
             data = json.dumps({f: it.get(f) for f in CAT_FIELDS if it.get(f) is not None}, ensure_ascii=False)
-            cur = self.db.execute('UPDATE items SET title=?, url=?, thumb=?, data=?, last_seen=? WHERE key=?',
-                                  (it.get('title'), it.get('url'), it.get('thumb'), data, now, k))
+            hay = it.get('hay') or fold_text(' '.join([it.get('title') or '', it.get('description') or '', ' '.join(it.get('categories') or [])]))
+            hl = 1 if it.get('links') else 0
+            cur = self.db.execute('UPDATE items SET title=?, url=?, thumb=?, data=?, last_seen=?, hay=?, has_links=? WHERE key=?',
+                                  (it.get('title'), it.get('url'), it.get('thumb'), data, now, hay, hl, k))
             if cur.rowcount == 0:
-                self.db.execute('INSERT INTO items(key, source, title, url, thumb, data, first_seen, last_seen) VALUES(?,?,?,?,?,?,?,?)',
-                                (k, it.get('source'), it.get('title'), it.get('url'), it.get('thumb'), data, now, now))
+                self.db.execute('INSERT INTO items(key, source, title, url, thumb, data, first_seen, last_seen, hay, has_links) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                                (k, it.get('source'), it.get('title'), it.get('url'), it.get('thumb'), data, now, now, hay, hl))
                 n += 1
         self.db.commit()
         return n
@@ -631,6 +639,39 @@ class Catalog:
                 break
         return out
 
+    def text_search(self, groups, limit, exclude_sources=()):
+        # groups: [[alt, alt…], …] (đã bỏ dấu) — mỗi nhóm phải khớp ít nhất 1 cách viết
+        sql, args = 'SELECT key, data FROM items WHERE dup_of IS NULL AND (link_status IS NULL OR link_status != ?)', ['dead']
+        for g in groups[:6]:
+            alts = [a for a in g if a][:8]
+            if alts:
+                sql += ' AND (' + ' OR '.join(['hay LIKE ?'] * len(alts)) + ')'
+                args += ['%' + a + '%' for a in alts]
+        if exclude_sources:
+            sql += ' AND source NOT IN (%s)' % ','.join('?' * len(exclude_sources))
+            args += list(exclude_sources)
+        sql += ' ORDER BY has_links DESC, last_seen DESC LIMIT ?'
+        args.append(int(limit))
+        out = []
+        for k, data in self.db.execute(sql, args).fetchall():
+            d = json.loads(data)
+            d['key'] = k
+            d['from_catalog'] = True
+            out.append(d)
+        return out
+
+    def source_stats(self):
+        rows = self.db.execute('SELECT source, COUNT(*), SUM(has_links), SUM(vec IS NOT NULL) FROM items GROUP BY source').fetchall()
+        return {r[0]: {'indexed': r[1], 'with_links': r[2] or 0, 'with_vec': r[3] or 0} for r in rows}
+
+    def pending_vectors(self, source, limit):
+        q = 'SELECT key, thumb FROM items WHERE vec IS NULL AND thumb LIKE ?'
+        args = ['http%']  # fetch() chỉ nhận https (http chỉ khi kiểm thử cục bộ)
+        if source:
+            q += ' AND source = ?'
+            args.append(source)
+        return self.db.execute(q + ' LIMIT ?', args + [int(limit)]).fetchall()
+
     def stats(self):
         q = lambda sql: self.db.execute(sql).fetchone()[0]
         return {'total': q('SELECT COUNT(*) FROM items'), 'with_vec': q('SELECT COUNT(*) FROM items WHERE vec IS NOT NULL'),
@@ -643,6 +684,115 @@ class Catalog:
         self.db.commit()
         self.db.execute('VACUUM')
         self._mat = None
+
+
+def fold_text(s):
+    import unicodedata
+    s = unicodedata.normalize('NFD', s or '').replace('đ', 'd').replace('Đ', 'D')
+    s = ''.join(c for c in s if unicodedata.category(c) != 'Mn').lower()
+    return re.sub(r'\s+', ' ', re.sub(r'[^a-z0-9]+', ' ', s)).strip()
+
+
+def extractor():
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # Python nhúng không tự thêm thư mục script
+    import source_extractor
+    return source_extractor
+
+
+def src_keys():
+    return {'google': os.environ.get('MT_SRC_GOOGLE_KEY', ''), 'brave': os.environ.get('MT_SRC_BRAVE_KEY', '')}
+
+
+def crawl_paths(eng, sid):
+    d = os.path.join(eng.data_dir, 'crawl')
+    os.makedirs(d, exist_ok=True)
+    safe = re.sub(r'[^A-Za-z0-9_-]', '_', sid)[:60]
+    return os.path.join(d, safe + '.log'), os.path.join(d, safe + '.state.json')
+
+
+def job_src_check(eng, job, prog):
+    ex = extractor()
+    logp, _ = crawl_paths(eng, job['source']['id'])
+    f = ex.Fetcher(lambda m: None, delay=0.3)
+    try:
+        return ex.check(job['source'], f, src_keys())
+    except Exception as e:
+        with open(logp, 'a', encoding='utf-8') as fp:
+            fp.write('%s KIỂM TRA LỖI: %s\n' % (time.strftime('%Y-%m-%d %H:%M:%S'), e))
+        return {'method': 'unverified', 'ok': False, 'status': 'error', 'note': 'Không kết nối được: %s' % e}
+
+
+def job_src_crawl(eng, job, prog):
+    ex = extractor()
+    src = job['source']
+    logp, statep = crawl_paths(eng, src['id'])
+    errors = []
+
+    def log(msg):
+        errors.append(msg)
+        with open(logp, 'a', encoding='utf-8') as fp:
+            fp.write('%s %s\n' % (time.strftime('%Y-%m-%d %H:%M:%S'), msg))
+
+    log('BẮT ĐẦU %s (%s) %s' % ('quét toàn bộ' if job.get('mode') == 'full' else 'đồng bộ', src.get('method'), src.get('url')))
+    cat = catalog(eng)
+    try:
+        res = ex.crawl(src, job.get('mode', 'sync'), int(job.get('limit', 500)), src_keys(), prog, log, statep, cat.upsert)
+    except Cancelled:
+        log('ĐÃ DỪNG theo yêu cầu')
+        raise
+    except Exception as e:
+        log('LỖI: %s' % e)
+        raise
+    res['errors'] = len(errors) - 1
+    log('XONG: %d model, %d có link tải, %d yêu cầu mạng' % (res['found'], res['with_links'], res['requests']))
+    return res
+
+
+def job_catalog_embed(eng, job, prog):
+    cat = catalog(eng)
+    rows = cat.pending_vectors(job.get('source'), int(job.get('limit', 300)))
+    cache = os.path.join(eng.data_dir, 'online_thumbs')
+    pairs, failed, batch, keys = [], 0, [], []
+    for n, (k, url) in enumerate(rows):
+        prog({'done': n, 'total': len(rows)})
+        try:
+            host = urllib.parse.urlparse(url).hostname or ''
+            batch.append(preprocess(open_image(fetch(url, {host}, cache))))
+            keys.append(k)
+        except Cancelled:
+            raise
+        except Exception:
+            failed += 1
+        if len(batch) >= 16 or (n == len(rows) - 1 and batch):
+            pairs.extend(zip(keys, eng.embed_images(batch)))
+            batch, keys = [], []
+    dups = cat.set_vectors(pairs) if pairs else 0
+    return {'embedded': len(pairs), 'failed': failed, 'dups': dups}
+
+
+def job_catalog_text(eng, job, prog):
+    return {'items': catalog(eng).text_search(job.get('groups', []), int(job.get('limit', 120)), tuple(job.get('exclude_sources', [])))}
+
+
+def job_catalog_source_stats(eng, job, prog):
+    st = catalog(eng).source_stats()
+    d = os.path.join(eng.data_dir, 'crawl')
+    for sid in list(st.keys()) + list(job.get('ids', [])):
+        _, statep = crawl_paths(eng, sid)
+        if os.path.exists(statep):
+            try:
+                st.setdefault(sid, {'indexed': 0, 'with_links': 0, 'with_vec': 0})['last_sync'] = json.load(open(statep)).get('last_sync')
+            except Exception:
+                pass
+    return st
+
+
+def job_src_log(eng, job, prog):
+    logp, _ = crawl_paths(eng, job['id'])
+    if not os.path.exists(logp):
+        return {'text': ''}
+    with open(logp, encoding='utf-8', errors='replace') as fp:
+        return {'text': ''.join(fp.readlines()[-200:])}
 
 
 def catalog(eng):
@@ -721,7 +871,9 @@ def job_catalog_check_links(eng, job, prog):
 JOBS = {'probe': job_probe, 'embed_query': job_embed_query, 'search_local': job_search_local,
         'index_sync': job_index_sync, 'rank_urls': job_rank_urls,
         'catalog_upsert': job_catalog_upsert, 'catalog_search': job_catalog_search, 'catalog_stats': job_catalog_stats,
-        'catalog_clear': job_catalog_clear, 'catalog_check_links': job_catalog_check_links}
+        'catalog_clear': job_catalog_clear, 'catalog_check_links': job_catalog_check_links,
+        'src_check': job_src_check, 'src_crawl': job_src_crawl, 'catalog_embed': job_catalog_embed,
+        'catalog_text': job_catalog_text, 'catalog_source_stats': job_catalog_source_stats, 'src_log': job_src_log}
 
 
 def probe_gpu(model_dir, data_dir, out):

@@ -2,13 +2,15 @@
   "schema": 1,
   "plugin_id": "mtdesign.smart_library_pro",
   "name": "MT SMART LIBRARY PRO",
-  "version": "1.0.3",
-  "released_at": "2026-11-24",
+  "version": "1.0.4",
+  "released_at": "2026-11-25",
   "min_sketchup": 22,
   "min_ruby": "2.7.0",
   "changelog": [
-    "Bấm CHÈN model Sketchfab là tải và chèn thẳng vào SketchUp (tự đọc GLB/glTF, không cần chuyển đổi).",
-    "Chưa có token: hiện 1 ô dán token ngay tại chỗ, dán xong tự tải và chèn.",
-    "Nhập file 3D thủ công nhận thêm GLB/glTF."
+    "Bấm CHÈN là chèn được mọi định dạng: SKP, GLB/glTF, DAE, FBX, OBJ, USDZ, STL, PLY, BLEND, ZIP.",
+    "FBX/OBJ/USDZ… được chuyển đổi tự động bằng Blender chạy nền (không mở cửa sổ, có hủy và giới hạn thời gian).",
+    "Tự tìm Blender trên máy (bản cài, Steam, Portable); chặn Blender 5.x khi xuất DAE.",
+    "ZIP tự giải nén an toàn, nhận đúng file model và texture trong thư mục con.",
+    "Lưu bản đã chuyển đổi để lần sau chèn ngay; kiểm tra kích thước sau khi nhập."
   ]
 }

@@ -1,5 +1,22 @@
 # Báo cáo kiểm thử — MT SMART LIBRARY PRO
 
+## V1.0.4 (25/11/2026) — MT AUTO CONVERT ENGINE
+
+| Bộ test | Nội dung | Kết quả |
+|---|---|---|
+| `test_convert.rb` (14) | Nhận phiên bản Blender, ưu tiên 4.5 LTS, chặn 5.x/quá cũ; đối số kiểm tra dạng danh sách, đường dẫn Unicode/dấu ngoặc kép được trích dẫn an toàn; quy tắc trích dẫn Windows; **tên file độc (`; rm -rf $(…) \`id\` & del`) không chạy qua shell**; timeout và hủy giết tiến trình; dò Blender → chuyển đổi bằng **chính `convert_model.py`** → DAE + báo cáo (số mặt, kích thước, texture nhúng ghi ra file, cảnh báo texture thiếu) → cache (lần 2 không chạy Blender); Blender 5.x bị từ chối; không có Blender → yêu cầu chọn; file không có mặt / Blender crash / quá thời gian → báo lỗi, không rác cache; hủy; định tuyến 12 định dạng; ZIP: giữ texture thư mục con, ưu tiên GLB, chặn `../`; nhập DAE: `DefinitionList#import` → đổi tên → `place_component`, 1 Undo, lỗi thì hoàn tác, cảnh báo lệch kích thước; App: CHÈN file FBX đã tải → chuyển đổi → nhập → đặt | ✅ |
+| Toàn bộ test cũ + giao diện | Ruby, giao diện, bàn phím, khởi động từ RBZ | ✅ |
+
+**Quan trọng — chưa kiểm thử với Blender thật:** máy test không cài được Blender (không có mạng). Test dùng “Blender giả” + `bpy` giả lập để chạy
+toàn bộ luồng và chính script `convert_model.py`, nhưng các lệnh nhập/xuất thật của Blender 4.5 (`import_scene.fbx/gltf`, `wm.obj_import`, `wm.usd_import`,
+`wm.collada_export` và tham số của nó), chất lượng UV/texture trong DAE, và CreateProcessW ẩn cửa sổ trên Windows **cần kiểm tra trên máy thật**.
+
+Checklist trên máy thật: cài Blender 4.5 LTS → Cài đặt › Chuyển đổi › Tự tìm Blender (✓ 4.5.x) → CHÈN 1 model Sketchfab GLB, 1 file FBX có texture,
+1 file OBJ + MTL, 1 USDZ, 1 ZIP → model đặt được bằng chuột, đúng kích thước (Tape Measure), có texture, Ctrl+Z gỡ được; trong lúc chuyển đổi SketchUp không treo, không hiện cửa sổ đen; bấm “Hủy chuyển đổi” dừng được.
+
+---
+
+
 ## V1.0.3 (24/11/2026) — chèn thẳng model Sketchfab
 
 | Bộ test | Nội dung | Kết quả |

@@ -1,0 +1,25 @@
+#!/usr/bin/env python3
+# Blender GIẢ LẬP cho kiểm thử (máy test không có Blender thật). Hành vi điều khiển bằng FAKE_BLENDER_MODE.
+import os, sys, time, json
+here = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, here)
+mode = os.environ.get('FAKE_BLENDER_MODE', 'ok')
+log = os.environ.get('FAKE_BLENDER_ARGV_LOG')
+if log:
+    with open(log, 'w', encoding='utf-8') as f:
+        json.dump(sys.argv[1:], f, ensure_ascii=False)
+if mode == 'hang':
+    time.sleep(60)
+if mode == 'crash':
+    sys.exit(7)
+args = sys.argv[1:]
+if '--python-expr' in args:
+    exec(args[args.index('--python-expr') + 1])
+    sys.exit(0)
+if '--python' in args:
+    script = args[args.index('--python') + 1]
+    sys.argv = [sys.argv[0]] + args  # convert_model.py đọc phần sau '--'
+    code = open(script, encoding='utf-8').read()
+    g = {'__name__': '__main__', '__file__': script}
+    exec(compile(code, script, 'exec'), g)
+sys.exit(0)

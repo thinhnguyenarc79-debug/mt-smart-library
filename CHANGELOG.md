@@ -1,5 +1,18 @@
 # CHANGELOG — MT SMART LIBRARY PRO
 
+## V1.0.4 — 25/11/2026 (MT AUTO CONVERT ENGINE)
+- Module `convert/`: `converter_manager.rb`, `blender_detector.rb`, `blender_runner.rb`, `convert_model.py`, `import_manager.rb`, `model_cache.rb`.
+- Một nút CHÈN cho mọi định dạng: SKP (nạp trực tiếp), GLB/glTF (bộ đọc tích hợp; lỗi/nén Draco → Blender), DAE (`DefinitionList#import`),
+  FBX/OBJ/USD/USDZ/PLY/BLEND (Blender → DAE → `DefinitionList#import`), 3DS/KMZ/DWG/DXF/STL (importer SketchUp; STL lỗi → Blender), ZIP (giải nén an toàn, tự chọn file chính).
+- Blender nền: tự tìm (Program Files, Steam, Portable, PATH, đường dẫn người dùng chọn), kiểm tra phiên bản và khả năng xuất DAE trước khi dùng,
+  không dùng Blender 5.x để xuất DAE; chạy `--background --factory-startup --disable-autoexec --python-exit-code 1`; danh sách đối số (không shell);
+  Windows dùng CreateProcessW + CREATE_NO_WINDOW (không hiện cửa sổ), dự phòng `Process.spawn`; timeout, nút Hủy; không chặn SketchUp.
+- `convert_model.py`: nhập theo định dạng, chuyển chữ/đường cong thành lưới, kiểm tra hình học, ghi texture nhúng ra file, giữ texture thư mục con,
+  xuất DAE (Z-up, đơn vị mét, không giảm polygon), báo cáo JSON (số mặt, kích thước, texture, cảnh báo); mã thoát rõ ràng.
+- Kiểm tra exit code + báo cáo + file DAE trước khi nhập; nhập trong 1 thao tác Undo, lỗi thì hoàn tác (không rác); so kích thước với file gốc.
+- Cache kết quả chuyển đổi theo SHA256 file nguồn (tối đa 3 GB, tự dọn).
+- Cài đặt › Chuyển đổi: trạng thái Blender, Tự tìm / Chọn blender.exe / Tải Blender 4.5 LTS, thời gian chờ, cách đọc glTF, xóa cache.
+
 ## V1.0.3 — 24/11/2026
 - Bộ nhập glTF 2.0 tích hợp (`importers/gltf_importer.rb`): đọc GLB/glTF (node lồng nhau, ma trận/TRS, dữ liệu xen kẽ, dải/quạt tam giác,
   chỉ số uint8/16/32, vật liệu màu + texture PNG/JPG nhúng hoặc file rời), đổi mét→inch và trục Y-up→Z-up; đọc file ở luồng nền, dựng hình bằng

@@ -9,7 +9,7 @@ module MTDesign
     # Luồng nền (quét, HTTP, cập nhật) chỉ trao đổi qua Queue/Mutex và được poll bởi timer.
     class App
       TICK = 0.1
-      ALLOWED_OPEN_HOSTS = %w[sketchfab.com www.sketchfab.com platform.openai.com github.com].freeze
+      ALLOWED_OPEN_HOSTS = %w[sketchfab.com www.sketchfab.com platform.openai.com github.com www.blender.org].freeze
 
       def self.instance
         @instance ||= new
@@ -62,6 +62,7 @@ module MTDesign
           Providers::UnavailableProvider.new('3dsky', '3dsky',
                                              'Chưa tích hợp: 3dsky không công bố API tìm kiếm công khai; không thu thập dữ liệu trái điều khoản.')
         ]
+        @converter = ConverterManager.new(settings: @settings, data_root: Paths.data_root, logger: @log)
         @search = SearchManager.new(providers: @providers, settings: @settings, emit: ->(t, pl) { emit(t, pl) }, logger: @log)
       end
 
@@ -139,6 +140,10 @@ module MTDesign
         cb(d, 'open_data_dir') { |*| UI.openURL(Util.file_url(Paths.data_root)) }
         cb(d, 'open_log') { |*| UI.openURL(Util.file_url(File.dirname(@log.path.to_s))) }
         cb(d, 'open_updater') { |*| show_updater }
+        cb(d, 'convert_cancel') { |*| @converter.cancel_all; status('Đã hủy chuyển đổi.', 'warn'); emit('convert_state', { 'state' => 'cancelled' }) }
+        cb(d, 'blender_detect') { |*| blender_detect(nil) }
+        cb(d, 'blender_pick') { |*| blender_pick }
+        cb(d, 'convert_clear_cache') { |*| @converter.cache.clear; status('Đã xóa cache chuyển đổi.', 'ok') }
       end
 
       def cb(dialog, name)
@@ -171,7 +176,8 @@ module MTDesign
                'settings_warning' => @settings.load_warning, 'update_available' => @update_available,
                'pending_restart' => @updater.pending_restart_version,
                'categories' => Categories.all(@settings['categories_custom']),
-               'sources_status' => @providers.map { |p| p.status_info(@settings) }
+               'sources_status' => @providers.map { |p| p.status_info(@settings) },
+               'blender' => @converter.blender_status
              })
       end
 
@@ -203,8 +209,8 @@ module MTDesign
           return status('Dán Sketchfab token để tải model.', 'warn')
         end
         d = @downloads[it['uid']]
-        if d && d['state'] == 'done' && (f = Array(d['files']).find { |x| %w[skp gltf import].include?(x['kind']) })
-          return insert_path(f['path'])
+        if d && d['state'] == 'done' && (f = Array(d['files']).find { |x| %w[skp gltf import convert].include?(x['kind']) })
+          return smart_insert(f['path'], name: it['title'])
         end
         types = Array(it['formats']).map { |f| f['type'] }
         # GLB/glTF: plugin tự đọc và chèn được (từ V1.0.3); bản gốc (source) có thể là định dạng phần mềm khác.
@@ -412,24 +418,126 @@ module MTDesign
         end
       end
 
+      # Từ giao diện: chỉ cho phép file trong thư mục tải về của plugin.
       def insert_path(path)
         p = path.to_s
         allowed = [Paths.sub('downloads')].any? { |root| Util.under_root?(p, root) }
         return status('Đường dẫn không hợp lệ.', 'error') unless allowed
-        if p =~ /\.skp\z/i
-          defer { place_any_skp(p) }
-        elsif p =~ /\.(glb|gltf)\z/i
-          insert_gltf(p)
-        else
+        smart_insert(p)
+      end
+
+      # MỘT điểm vào cho mọi định dạng: chọn cách nhập phù hợp, tự chuyển đổi khi cần.
+      def smart_insert(path, name: nil)
+        name ||= File.basename(path, '.*')
+        case ImportManager.route(path)
+        when :skp then defer { place_any_skp(path) }
+        when :gltf
+          if @settings['converter']['gltf_engine'] == 'blender' && @settings['converter']['blender_ok']
+            convert_and_insert(path, name)
+          else
+            insert_gltf(path)
+          end
+        when :dae then defer { import_dae(path, name, nil) }
+        when :convert then convert_and_insert(path, name)
+        when :native
           defer do
             begin
-              Inserter.import_3d(p)
-              status('Đã nhập. Đặt model rồi kiểm tra lại kích thước (Tape Measure) và vật liệu.', 'ok')
+              Inserter.import_3d(path)
+              status('Đã nhập. Bấm vào công trình để đặt.', 'ok')
             rescue StandardError => ex
-              status("Không nhập được: #{ex.message}", 'error')
+              path =~ /\.stl\z/i ? convert_and_insert(path, name) : status("Không nhập được: #{ex.message}", 'error')
             end
           end
+        when :zip then prepare_zip(path, name)
+        else status("Định dạng #{File.extname(path)} chưa hỗ trợ.", 'error')
         end
+      end
+
+      # Giải nén ZIP ở luồng nền rồi chèn file model chính.
+      def prepare_zip(path, name)
+        return status('Đang xử lý một file khác, vui lòng đợi.', 'warn') if @zip_job
+        status('Đang giải nén…')
+        dest = path.sub(/\.zip\z/i, '') + '_extracted'
+        t = Thread.new do
+          Thread.current.report_on_exception = false
+          begin
+            ImportManager.extract_zip(path, dest) unless File.directory?(dest)
+            Thread.current[:pick] = ImportManager.pick_model(dest)
+          rescue StandardError => e
+            Thread.current[:error] = e.message
+          end
+        end
+        @zip_job = { thread: t, name: name }
+        ensure_timer
+      end
+
+      def poll_zip
+        job = @zip_job
+        return unless job && !job[:thread].alive?
+        @zip_job = nil
+        t = job[:thread]
+        return status("Không giải nén được: #{t[:error]}", 'error') if t[:error]
+        return status('Trong file ZIP không có model 3D nào chèn được.', 'error') unless t[:pick]
+        smart_insert(t[:pick], name: job[:name])
+      end
+
+      def convert_and_insert(path, name)
+        @pending_convert = [path, name]
+        emit('convert_state', { 'state' => 'running', 'name' => name })
+        r = @converter.convert(path) { |kind, a, b| on_converted(kind, a, b, name) }
+        status(r == :waiting ? 'Đang tìm Blender trên máy…' : "Đang chuyển đổi “#{name}”…", 'info')
+        ensure_timer
+      end
+
+      def on_converted(kind, a, b, name)
+        case kind
+        when :ok
+          @pending_convert = nil
+          emit('convert_state', { 'state' => 'done' })
+          status(b && b['cached'] ? "Dùng bản đã chuyển đổi của “#{name}”…" : "Đang nhập “#{name}” vào SketchUp…")
+          defer { import_dae(a, name, b && b['dimensions_m']) }
+        when :need_blender
+          emit('convert_state', { 'state' => 'error' })
+          emit('need_blender', { 'reason' => a, 'blender' => @converter.blender_status })
+          status(a.to_s, 'warn')
+        when :cancelled
+          @pending_convert = nil
+          emit('convert_state', { 'state' => 'cancelled' })
+        else
+          @pending_convert = nil
+          emit('convert_state', { 'state' => 'error' })
+          status(a.to_s, 'error')
+        end
+      end
+
+      def import_dae(path, name, expected_m)
+        _defn, warn = ImportManager.import_component(path, name: name, expected_m: expected_m)
+        msg = "Đã chèn “#{name}”. Bấm vào công trình để đặt (Esc để hủy)."
+        status(warn.empty? ? msg : "#{msg} Lưu ý: #{warn.join(' ')}", warn.empty? ? 'ok' : 'warn')
+      rescue StandardError => e
+        @log.error("Nhập DAE lỗi #{path}", e)
+        status("Không nhập được model: #{e.message}", 'error')
+      end
+
+      def blender_detect(preferred)
+        emit('blender', @converter.blender_status.merge('checking' => true))
+        @converter.detect(preferred: preferred) do |st|
+          emit('blender', st)
+          if st['ok']
+            status("Đã nhận Blender #{st['version']}.", 'ok')
+            p, n = @pending_convert
+            convert_and_insert(p, n) if p
+          else
+            status(st['reason'].to_s, 'warn')
+          end
+        end
+        ensure_timer
+      end
+
+      def blender_pick
+        path = UI.openpanel('Chọn blender.exe (Blender 4.5 LTS)', '', 'Blender|blender.exe;blender||')
+        return unless path
+        blender_detect(Util.norm_path(Util.utf8(path)))
       end
 
       # glTF/GLB: đọc file trong luồng nền (thuần Ruby), dựng hình ở main thread rồi cho người dùng đặt bằng chuột.
@@ -455,8 +563,8 @@ module MTDesign
         @gltf_job = nil
         t = job[:thread]
         if t[:error]
-          @log.warn("glTF lỗi #{job[:path]}: #{t[:error]}")
-          return status("Không chèn được model: #{t[:error]}", 'error')
+          @log.warn("glTF lỗi #{job[:path]}: #{t[:error]} — chuyển sang Blender")
+          return convert_and_insert(job[:path], File.basename(job[:path], '.*'))
         end
         data = t[:model]
         status("Đang dựng model (#{data.triangles} tam giác)…")
@@ -494,17 +602,9 @@ module MTDesign
       end
 
       def import_3d_dialog
-        path = UI.openpanel('Nhập file 3D (GLB/glTF/DAE/3DS/KMZ/STL…)', '', 'Mô hình 3D|*.glb;*.gltf;*.dae;*.3ds;*.kmz;*.dwg;*.dxf;*.stl;*.ifc;*.obj;*.fbx||')
+        path = UI.openpanel('Chèn file 3D', '', 'Mô hình 3D|*.skp;*.glb;*.gltf;*.fbx;*.obj;*.dae;*.usdz;*.usd;*.3ds;*.kmz;*.stl;*.ply;*.blend;*.zip||')
         return unless path
-        return insert_gltf(Util.utf8(path)) if path =~ /\.(glb|gltf)\z/i
-        defer do
-          begin
-            Inserter.import_3d(Util.utf8(path))
-            status('Đã nhập. Kiểm tra lại tỉ lệ (Tape Measure) và vật liệu sau khi đặt.', 'ok')
-          rescue StandardError => ex
-            status("Không nhập được: #{ex.message}", 'error')
-          end
-        end
+        smart_insert(Util.utf8(path))
       end
 
       def open_item_folder(id)
@@ -706,7 +806,7 @@ module MTDesign
           if res.ok
             File.write(File.join(folder, 'ATTRIBUTION.txt'), Sketchfab.attribution(item, fmt), mode: 'w:UTF-8')
             files = post_process_download(dest, folder)
-            importable = files.select { |f| %w[skp gltf import].include?(f['kind']) }
+            importable = files.select { |f| %w[skp gltf import convert].include?(f['kind']) }
             note = if importable.empty?
                      "Đã tải #{fmt.upcase} nhưng không có file chèn được vào SketchUp (định dạng #{fmt.upcase})."
                    else
@@ -738,7 +838,7 @@ module MTDesign
         return unless @downloads[uid] && @downloads[uid]['auto_insert']
         first = importable.first
         if first
-          insert_path(first['path'])
+          smart_insert(first['path'], name: @sf_items[uid] && @sf_items[uid]['name'])
         else
           status(note, 'warn', 'Mở chi tiết model › “Mở thư mục tải về” để chuyển đổi bằng phần mềm khác.')
         end
@@ -749,13 +849,8 @@ module MTDesign
         out = []
         if path =~ /\.zip\z/i
           begin
-            zip = ZipReader.new(path)
             ex_dir = File.join(folder, 'extracted')
-            zip.entries.reject(&:directory?).each do |e|
-              target = File.join(ex_dir, e.name)
-              FileUtils.mkdir_p(File.dirname(target))
-              File.open(target, 'wb') { |f| f.write(zip.read(e)) }
-            end
+            ImportManager.extract_zip(path, ex_dir)
             Dir.glob(File.join(ex_dir, '**', '*')).select { |f| File.file?(f) }.each { |f| out << classify(f) }
           rescue StandardError => e
             @log.warn("Không giải nén #{path}: #{e.message}")
@@ -764,16 +859,12 @@ module MTDesign
         else
           out << classify(path)
         end
-        out.sort_by { |f| { 'skp' => 0, 'gltf' => 1, 'import' => 2, 'other' => 3 }[f['kind']] }
+        out.sort_by { |f| [ImportManager::PRIORITY.index(File.extname(f['path']).downcase) || 99, -f['size'].to_i] }
       end
 
       def classify(f)
         ext = File.extname(f).downcase
-        kind = if ext == '.skp' then 'skp'
-               elsif %w[.glb .gltf].include?(ext) then 'gltf'
-               elsif %w[.dae .3ds .kmz .stl .dwg .dxf].include?(ext) then 'import'
-               else 'other'
-               end
+        kind = ext == '.zip' ? 'other' : ImportManager.kind_label(f)
         { 'path' => f, 'name' => File.basename(f), 'kind' => kind, 'size' => File.size(f) }
       end
 
@@ -1053,7 +1144,7 @@ module MTDesign
       end
 
       def busy?
-        !@cache_thread.nil? || !@gltf_job.nil? || @indexer.running? || @http.busy? ||
+        !@cache_thread.nil? || !@gltf_job.nil? || !@zip_job.nil? || @converter.busy? || @indexer.running? || @http.busy? ||
           @updater.busy? || @thumbs.pending?
       end
 
@@ -1064,6 +1155,8 @@ module MTDesign
           give_threads_time
           poll_cache_load
           poll_gltf
+          poll_zip
+          @converter.poll
           poll_indexer
           @http.poll
           poll_updater
@@ -1079,7 +1172,7 @@ module MTDesign
 
       # Nhường GVL cho luồng nền (SketchUp chỉ chạy Ruby khi có sự kiện).
       def give_threads_time
-        ts = [@cache_thread, @indexer.thread, @updater.thread, @gltf_job && @gltf_job[:thread]].compact + @http.threads
+        ts = [@cache_thread, @indexer.thread, @updater.thread, @gltf_job && @gltf_job[:thread], @zip_job && @zip_job[:thread]].compact + @http.threads
         ts = ts.select(&:alive?)
         return if ts.empty?
         slice = 0.03 / ts.size

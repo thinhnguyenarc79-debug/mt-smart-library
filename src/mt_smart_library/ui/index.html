@@ -46,7 +46,7 @@
   </main>
 </div>
 
-<footer class="status" id="statusBar"><span id="statusMsg"></span><span id="statusHint" class="hint"></span></footer>
+<footer class="status" id="statusBar"><span id="convSpin" class="spinner" hidden></span><span id="statusMsg"></span><span id="statusHint" class="hint"></span><button id="convCancel" class="link" hidden>Hủy chuyển đổi</button></footer>
 
 <!-- Chi tiết model -->
 <div id="detailModal" class="modal" hidden>
@@ -89,7 +89,7 @@
     <h3>Cài đặt</h3>
     <div class="stabs" id="stabs">
       <button data-s="lib" class="on">Thư viện</button><button data-s="src">Nguồn tìm kiếm</button><button data-s="ai">AI</button>
-      <button data-s="sf">Tài khoản Sketchfab</button><button data-s="sys">Mạng & dữ liệu</button>
+      <button data-s="sf">Tài khoản Sketchfab</button><button data-s="cv">Chuyển đổi</button><button data-s="sys">Mạng & dữ liệu</button>
     </div>
     <section data-p="lib">
       <div id="rootList" class="list"></div>
@@ -137,6 +137,17 @@
       </div>
       <p class="muted small">Token dùng để tải model được tác giả cho phép tải. Lấy token tại trang tài khoản Sketchfab <button id="btnSfTokenPage" class="link">(mở trang)</button>.</p>
     </section>
+    <section data-p="cv" hidden>
+      <p id="bStatus" class="small"></p>
+      <p class="small muted">Blender: <code id="bPath">—</code></p>
+      <div class="row"><button id="bDetect" class="primary">Tự tìm Blender</button><button id="bPick">Chọn blender.exe…</button><button id="bGet">Tải Blender 4.5 LTS</button></div>
+      <div class="row">
+        <label>Thời gian chờ tối đa (giây) <input id="cTimeout" type="number" min="60" max="3600" step="60"></label>
+        <label>Đọc GLB/glTF bằng <select id="cGltf"><option value="auto">Bộ đọc tích hợp (nhanh), lỗi thì dùng Blender</option><option value="blender">Luôn dùng Blender</option></select></label>
+        <button id="cClear">Xóa cache chuyển đổi</button>
+      </div>
+      <p class="muted small">FBX, OBJ, USDZ, PLY, BLEND (và GLB lỗi) được Blender chuyển sang DAE ở chế độ nền rồi chèn vào SketchUp. Blender 5.x không xuất được DAE — dùng 4.5 LTS (có thể dùng bản Portable).</p>
+    </section>
     <section data-p="sys" hidden>
       <div class="row"><label>Timeout (giây) <input id="sTimeout" type="number" min="5" max="180" step="5"></label><button id="btnCheckNet">Kiểm tra kết nối</button><span id="netText" class="small"></span></div>
       <p class="small">Dữ liệu người dùng lưu riêng tại <code id="dataRoot"></code> — không bị ảnh hưởng khi cập nhật plugin.</p>
@@ -183,6 +194,16 @@
     <p class="small">Chỉ cần làm 1 lần. <button id="tkOpen" class="link">Mở trang lấy token</button> → sao chép mục API Token → dán vào đây.</p>
     <div class="row"><input id="tkInput" type="password" class="grow" placeholder="Dán token tại đây" autocomplete="off" spellcheck="false"></div>
     <div class="row"><button id="tkSave" class="primary big">Lưu & chèn model</button></div>
+  </div>
+</div>
+
+<div id="blenderModal" class="modal" hidden>
+  <div class="dialog narrow">
+    <button class="x" data-close="blenderModal">×</button>
+    <h3>Cần Blender để chuyển đổi model này</h3>
+    <p id="bmReason" class="small"></p>
+    <div class="row"><button id="bmDetect" class="primary">Tự tìm lại</button><button id="bmPick">Chọn blender.exe…</button><button id="bmGet">Tải Blender 4.5 LTS</button></div>
+    <p class="muted small">Chỉ cần làm 1 lần. Sau khi có Blender, plugin tự chuyển đổi và chèn tiếp.</p>
   </div>
 </div>
 

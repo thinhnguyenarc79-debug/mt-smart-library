@@ -292,6 +292,7 @@
     $('sfDownloadable').checked = !!s.sketchfab.downloadable_only; $('sSfOn').checked = s.sources.sketchfab !== false;
     $('sAutoSave').checked = !!s.auto_save_downloads; $('sTimeout').value = s.net.timeout;
     $('sRememberKey').checked = !!s.ai.remember_key; $('sRememberSf').checked = !!s.sketchfab.remember_token;
+    if (s.converter) { $('cTimeout').value = s.converter.timeout; $('cGltf').value = s.converter.gltf_engine; }
     if (document.activeElement !== $('thumbSize')) setThumbSize(s.ui.thumb_size);
     renderRoots();
   }
@@ -329,6 +330,11 @@
     (sm.error_samples || []).forEach(function (e) { list.appendChild(el('div', e.path + ' — ' + e.msg)); });
     $('scanErrors').hidden = !(sm.error_samples && sm.error_samples.length);
   }
+  function renderBlender(b) {
+    if (!b) return;
+    $('bPath').textContent = b.path || '—';
+    $('bStatus').textContent = b.checking ? 'Đang kiểm tra Blender…' : (b.ok ? '✓ Sẵn sàng: Blender ' + b.version + ' (xuất được DAE).' : '✗ ' + (b.reason || 'Chưa kiểm tra Blender. Bấm “Tự tìm Blender”.'));
+  }
   function openSettings(tab) {
     show('settingsModal');
     document.querySelectorAll('#stabs [data-s]').forEach(function (b) { b.classList.toggle('on', b.dataset.s === tab); });
@@ -345,7 +351,7 @@
       $('rememberKeyWrap').hidden = $('rememberSfWrap').hidden = !d.secret_store;
       S.categories = d.categories || []; S.filter = d.settings.ui.filter || 'all';
       S.category = S.categories.some(function (c) { return c.id === d.settings.ui.category; }) ? d.settings.ui.category : 'all';
-      renderCats(); renderSources(d.sources_status || []);
+      renderCats(); renderSources(d.sources_status || []); renderBlender(d.blender);
       if (d.summary) renderSummary(d.summary);
       if (d.update_available) H.update_available(d.update_available);
       if (d.pending_restart) setStatus('Đã cài bản ' + d.pending_restart + ' — khởi động lại SketchUp để áp dụng.', 'ok');
@@ -380,6 +386,9 @@
     scan_done: function (d) { $('scanMini').hidden = true; renderSummary(d); },
     inserted: function () { if (S.category === 'history') startSearch(); },
     confirm_newer: function (d) { S.newerId = d.id; $('newerText').textContent = '“' + d.name + '”: ' + d.msg; show('newerModal'); },
+    blender: function (b) { renderBlender(b); if (b && b.ok) hide('blenderModal'); else if (b && !b.checking && !$('blenderModal').hidden) $('bmReason').textContent = b.reason || ''; },
+    need_blender: function (d) { $('bmReason').textContent = d.reason || ''; renderBlender(d.blender); show('blenderModal'); },
+    convert_state: function (d) { var on = d.state === 'running'; $('convCancel').hidden = !on; $('convSpin').hidden = !on; },
     need_token: function (d) { S.tokenKey = d && d.key; $('tkInput').value = ''; show('tokenModal'); $('tkInput').focus(); },
     net: function (d) { $('netText').textContent = d.state === 'online' ? '✓ Đang trực tuyến' + (d.ms ? ' (' + d.ms + ' ms)' : '') : d.state === 'checking' ? 'Đang kiểm tra…' : '✗ ' + (d.msg || 'Mất kết nối'); },
     dl_state: function (d) {
@@ -433,8 +442,15 @@
     document.querySelectorAll('.modal').forEach(function (m) { m.addEventListener('mousedown', function (e) { if (e.target === m) { m.hidden = true; if (m.id === 'detailModal') S.detailKey = null; } }); });
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape' || e.target === q) return;
-      ['detailModal', 'catModal', 'aiModal', 'newerModal', 'settingsModal', 'tokenModal'].forEach(function (id) { if (!$(id).hidden) { hide(id); if (id === 'detailModal') S.detailKey = null; } });
+      ['detailModal', 'catModal', 'aiModal', 'newerModal', 'settingsModal', 'tokenModal', 'blenderModal'].forEach(function (id) { if (!$(id).hidden) { hide(id); if (id === 'detailModal') S.detailKey = null; } });
     });
+    $('bDetect').onclick = $('bmDetect').onclick = function () { call('blender_detect'); };
+    $('bPick').onclick = $('bmPick').onclick = function () { call('blender_pick'); };
+    $('bGet').onclick = $('bmGet').onclick = function () { call('open_url', 'https://www.blender.org/download/'); };
+    $('cTimeout').onchange = function () { saveSettings({ converter: { timeout: Number($('cTimeout').value) } }); };
+    $('cGltf').onchange = function () { saveSettings({ converter: { gltf_engine: $('cGltf').value } }); };
+    $('cClear').onclick = function () { call('convert_clear_cache'); };
+    $('convCancel').onclick = function () { call('convert_cancel'); };
     $('tkOpen').onclick = function () { call('open_url', 'https://sketchfab.com/settings/password'); };
     function tkSave() {
       var v = $('tkInput').value.trim(); if (!v) { $('tkInput').focus(); return; }

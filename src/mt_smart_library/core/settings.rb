@@ -22,6 +22,8 @@ module MTDesign
         'online_favorites' => [],
         'sources' => { 'sketchfab' => true },
         'auto_save_downloads' => true,
+        'converter' => { 'blender_path' => '', 'blender_version' => '', 'blender_ok' => false, 'blender_reason' => '',
+                         'timeout' => 600, 'gltf_engine' => 'auto' },
         'ai' => { 'model' => DEFAULT_MODEL, 'base_url' => 'https://api.openai.com/v1', 'detail' => 'low', 'remember_key' => false },
         'sketchfab' => { 'downloadable_only' => true, 'token_type' => 'token', 'remember_token' => false },
         'net' => { 'timeout' => 30 },
@@ -112,6 +114,9 @@ module MTDesign
           next unless patch[sec].is_a?(Hash)
           patch[sec].each { |k, v| merged[sec][k] = v if DEFAULTS[sec].key?(k) }
         end
+        if patch['converter'].is_a?(Hash) # giao diện chỉ được đổi thời gian chờ và cách đọc glTF
+          %w[timeout gltf_engine].each { |k| merged['converter'][k] = patch['converter'][k] if patch['converter'].key?(k) }
+        end
         @data = sanitize(merged)
       end
 
@@ -189,6 +194,15 @@ module MTDesign
         src = raw['sources'].is_a?(Hash) ? raw['sources'] : {}
         out['sources']['sketchfab'] = bool(src['sketchfab'], true)
         out['auto_save_downloads'] = bool(raw['auto_save_downloads'], true)
+        cv = raw['converter'].is_a?(Hash) ? raw['converter'] : {}
+        bp = Util.utf8(cv['blender_path']).strip
+        out['converter']['blender_path'] = bp =~ /blender(\.exe)?\z/i ? Util.norm_path(bp) : ''
+        out['converter']['blender_version'] = Util.utf8(cv['blender_version'])[0, 40]
+        out['converter']['blender_ok'] = bool(cv['blender_ok'], false) && !out['converter']['blender_path'].empty?
+        out['converter']['blender_reason'] = Util.utf8(cv['blender_reason'])[0, 300]
+        to = cv['timeout'].to_i
+        out['converter']['timeout'] = to.between?(60, 3600) ? to : 600
+        out['converter']['gltf_engine'] = %w[auto blender].include?(cv['gltf_engine']) ? cv['gltf_engine'] : 'auto'
         ai = raw['ai'].is_a?(Hash) ? raw['ai'] : {}
         m = ai['model'].to_s.strip
         out['ai']['model'] = m =~ /\A[A-Za-z0-9._:\-\/]{2,80}\z/ ? m : DEFAULT_MODEL

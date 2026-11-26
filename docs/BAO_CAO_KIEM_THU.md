@@ -1,5 +1,43 @@
 # Báo cáo kiểm thử — MT SMART LIBRARY PRO
 
+## V1.0.15 (26/11/2026) — CẬP NHẬT ONLINE QUA GITHUB
+
+### Nền và sao lưu
+- Lấy mã V1.0.14 đang cài trong `%APPDATA%\SketchUp\SketchUp 2022\SketchUp\Plugins` (69 file, chỉ đọc), sao lưu nguyên trạng
+  (`releases/MT_SMART_LIBRARY_PRO_v1.0.14.rbz` trong repo). Đối chiếu V1.0.13: V1.0.14 chỉ thêm `core/team_config.rb`, cập nhật LAN,
+  xuất/nhập cấu hình công ty (main.rb, settings.rb, updater.rb, app.rb/js, index.html, update_dialog.*). Giữ nguyên toàn bộ, sửa trên nền này.
+- Dữ liệu máy anh trước và sau cập nhật: kho 530 model, 117 vector ảnh (không phải 316/84 của V1.0.13 — kho đã tăng); 4 khóa DPAPI
+  (google, serper, serpapi, sketchfab) còn nguyên.
+
+### Cập nhật THẬT trên máy anh (V1.0.14 → V1.0.15) — đạt
+SketchUp 2022 đang chạy V1.0.14, nguồn đã cấu hình: URL manifest nhánh main của repo. Thao tác trong cửa sổ Cập nhật của chính V1.0.14:
+Kiểm tra cập nhật online → “✓ Có phiên bản mới 1.0.15” (237 KB, tương thích SketchUp 2022/Ruby 2.7.2) → Tải, kiểm tra SHA256 & cài đặt →
+tất cả bước ✓, bản sao lưu `1.0.14_20261126_104037`, nhật ký: `1.0.14 → 1.0.15 ok`. Kiểm tra trên đĩa: `version.rb` = 1.0.15,
+`update_channel.rb` trùng mã nguồn; dữ liệu 530/117 giữ nguyên. Bản vẽ đang mở chưa lưu → KHÔNG khởi động lại SketchUp thay anh.
+
+### Đường dẫn công khai (Chrome của anh, `credentials: omit` — không dùng đăng nhập)
+- RBZ `raw.githubusercontent.com/<repo>/69d820d…/releases/MT_SMART_LIBRARY_PRO_v1.0.15.rbz`: HTTP 200, 243 160 byte, SHA256 20da20c8…b7b7 khớp.
+- Manifest `raw.githubusercontent.com/<repo>/main/releases/update_manifest.json`: HTTP 200, version 1.0.15 (CDN GitHub cập nhật sau ~5 phút).
+
+### GitHub Release — CHƯA tạo
+- Môi trường của Claude bị chặn tạo Release và đẩy tag (HTTP 403 “not permitted for this session type”); không ghi được file vào Downloads để tải lên qua trình duyệt.
+- Kênh cập nhật KHÔNG phụ thuộc Release: URL chính (`releases/latest/download/update_manifest.json`) chưa có → tự dùng manifest nhánh main (đã kiểm thật).
+  Khi anh tạo Release v1.0.15 với 2 file đính kèm, URL chính sẽ hoạt động.
+
+### Kiểm thử tự động (đều đạt)
+Ruby: core 28, indexer_http 9, search 14, gltf 6, polyhaven 5, sources 8, source_manager 20, extractor 17, hot_reload 4, visual 10, convert 14,
+updater 18 (thêm 5), team 1 (mới), app 10 (thêm 1), boot 1. UI 69, ô nhập liệu 27. verify_upgrade từ bản V1.0.14 đang cài → 1.0.15 + khôi phục: PASS.
+Máy mới mô phỏng (thư mục dữ liệu rỗng): kênh chính thức + tự kiểm tra khi mở, không cần URL/token; quy tắc chuyển đổi nguồn (raw main, URL ghim commit,
+repo chính thức → chính thức; URL/repo/LAN riêng giữ nguyên; người dùng tắt thì giữ). Lỗi: URL chính 404 → dự phòng; mất mạng/GitHub không kết nối → báo rõ,
+bản cũ chạy tiếp; manifest sai cú pháp/sai plugin_id/thiếu size/download_url ngoài repo → từ chối; SketchUp không tương thích → không cho cài;
+tải bị cắt giữa chừng, SHA256 sai, host ngoài GitHub → từ chối, xóa gói dở; cài thành công rồi khôi phục bản trước → đạt; dữ liệu người dùng nguyên vẹn.
+
+### Chưa kiểm thử
+- Máy nhân viên thật (Windows thứ hai): mới mô phỏng bằng thư mục dữ liệu rỗng + kiểm thử tự động.
+- Sau khi anh khởi động lại SketchUp: V1.0.15 tự chuyển nguồn sang “Kênh chính thức” và bật tự kiểm tra (đã kiểm bằng test, chưa thấy trên máy thật).
+- Cài bộ AI lần đầu trên máy mới, tải/chèn model trên máy mới: không đổi so với V1.0.13/14, chưa chạy lại trên máy thật.
+- Facebook trong cửa sổ SketchUp 2022: giữ nguyên, chưa nghiệm thu (như V1.0.13).
+
 ## V1.0.13 (25/11/2026) — TÌM BẰNG ẢNH: LỌC DANH MỤC CỨNG + HÌNH DÁNG · SMART SOURCE EXTRACTOR: NHIỀU CÔNG CỤ TÌM KIẾM, FACEBOOK
 
 ### Kiểm thử bằng DỮ LIỆU THẬT của máy người dùng (đọc qua cầu nối máy tính, chỉ đọc)

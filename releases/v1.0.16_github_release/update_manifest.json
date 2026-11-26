@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "plugin_id": "mtdesign.smart_library_pro",
+  "name": "MT SMART LIBRARY PRO",
+  "version": "1.0.16",
+  "released_at": "2026-11-26",
+  "min_sketchup": 22,
+  "min_ruby": "2.7.0",
+  "changelog": [
+    "TÌM MODEL TRÊN WEBSITE: gõ từ khóa trong thư viện → plugin tự tìm song song trên 3D Warehouse, 3dsky, 3DBox, Sketch Shaper, Tài liệu kiến trúc, SketchUp.vn qua công cụ tìm kiếm web (Serper/SerpApi/Brave nếu có key, Tavily không cần key).",
+    "Kết quả hiện ngay trên lưới: ảnh đại diện (nếu có), tên model, tên website, link trang chi tiết; nút MỞ TRANG mở bằng trình duyệt mặc định. Bộ lọc mới “Website”.",
+    "Tự dịch tiếng Việt → tiếng Anh (bàn thờ → altar, phào chỉ → moulding, vách CNC → cnc panel, đèn thả → pendant lamp…); website Việt tìm bằng tiếng Việt.",
+    "Chỉ giữ link chi tiết model thật; loại trùng, trang chủ, trang tìm kiếm/danh mục/tag và kết quả không liên quan. Website không có kết quả: nút tìm trực tiếp trên website đó.",
+    "Không gọi API nội bộ, không đăng nhập thay, không vượt bảo vệ; ảnh đại diện lấy từ og:image công khai, tôn trọng robots.txt.",
+    "Tải SKP xong: CHÈN hoặc LƯU VÀO THƯ VIỆN; nút “⤓ Nhập SKP đã tải” (SKP hoặc ZIP chứa SKP) → thư mục Thu_vien_tai_ve, tự thêm vào Thư viện máy tính.",
+    "Giữ nguyên toàn bộ chức năng V1.0.15, kho model, dữ liệu AI, cấu hình, API Key và hệ thống cập nhật."
+  ],
+  "restart_required": true,
+  "download_url": "https://github.com/thinhnguyenarc79-debug/mt-smart-library/releases/download/v1.0.16/MT_SMART_LIBRARY_PRO_v1.0.16.rbz",
+  "sha256": "d1291c1db55839c05889c41234f858ddfb9a9c3e6f0fa00798f75ed93a7a0271",
+  "size": 258677
+}

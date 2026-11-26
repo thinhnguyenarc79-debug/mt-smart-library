@@ -1,4 +1,4 @@
-# MT SMART LIBRARY PRO — V1.0.15
+# MT SMART LIBRARY PRO — V1.0.16
 
 Plugin SketchUp quản lý thư viện model 3D cho MT Design (Kiến trúc & Nội thất Mạnh Trường).
 Tương thích **SketchUp 2022 (Ruby 2.7.2) trên Windows**. Mã định danh plugin: `mtdesign.smart_library_pro`.
@@ -6,7 +6,7 @@ Tương thích **SketchUp 2022 (Ruby 2.7.2) trên Windows**. Mã định danh pl
 ## 1. Cài đặt (máy nhân viên — một lần duy nhất)
 
 1. Mở SketchUp 2022.
-2. **Extensions › Extension Manager › Install Extension** → chọn `MT_SMART_LIBRARY_PRO_v1.0.15.rbz` → **Yes**.
+2. **Extensions › Extension Manager › Install Extension** → chọn `MT_SMART_LIBRARY_PRO_v1.0.16.rbz` → **Yes**.
 3. Khởi động lại SketchUp, mở bằng nút **MT SMART LIBRARY PRO** trên toolbar.
 4. Lần đầu dùng **📷 Tìm bằng ảnh**: plugin hỏi cài bộ AI (tự tải, khoảng 330 MB, không cần CMD hay cài Python) → bấm **Cài đặt**.
 5. Nếu cần nguồn có key (Google Drive, Serper, SerpApi, Sketchfab…): **Cài đặt › Tài khoản thư viện** → dán key riêng của bạn → **Kiểm tra**.
@@ -15,6 +15,15 @@ Tương thích **SketchUp 2022 (Ruby 2.7.2) trên Windows**. Mã định danh pl
    Không cần tài khoản GitHub, không cần nhập URL; plugin tự tải từ kênh chính thức, kiểm tra SHA256, sao lưu rồi cài.
 
 Nguồn cập nhật chính thức: https://github.com/thinhnguyenarc79-debug/mt-smart-library/releases
+
+### Tìm model trên website (V1.0.16)
+- Gõ từ khóa (tiếng Việt hoặc Anh) như bình thường. Sau khoảng 1 giây plugin tự tìm trên 3D Warehouse, 3dsky, 3DBox, Sketch Shaper,
+  Tài liệu kiến trúc, SketchUp.vn; kết quả có nhãn website, bấm **MỞ TRANG** để mở trang model bằng trình duyệt mặc định.
+- Bộ lọc **Website** chỉ hiện kết quả từ các website này. Thanh **Website:** cho biết số link mỗi website; bấm tên website để tìm trực tiếp trên website đó.
+- Tự đăng nhập và tải SKP trên trang. Tải xong plugin hỏi **CHÈN** hoặc **LƯU VÀO THƯ VIỆN**; hoặc bấm **⤓ Nhập SKP đã tải** (cột trái) để chọn file SKP/ZIP.
+  File được chép vào `%LOCALAPPDATA%\MT_Smart_Library\Thu_vien_tai_ve` và có ngay trong Thư viện máy tính.
+- Không có key nào: dùng Tavily không cần key (giới hạn số lượt mỗi giờ). Nên dán key **Serper** (2.500 lượt miễn phí) hoặc **Tavily** (1.000 lượt/tháng)
+  trong **Cài đặt › Tài khoản thư viện › Công cụ tìm kiếm** — mỗi lần tìm dùng 6 lượt (1 lượt/website), cùng từ khóa trong 30 phút không tốn thêm.
 
 ## 2. Sử dụng nhanh (giao diện V1.0.2)
 

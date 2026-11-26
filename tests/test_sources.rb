@@ -155,7 +155,8 @@ class TestWpSources < Minitest::Test
     assert_equal 'no_login', by['polyhaven']
     assert_equal 'no_login', by['cgtips']
     assert_equal 'need_api', by['cgtrader']
-    assert_equal 'unverified', by['warehouse']
+    assert_equal 'web_search', by['warehouse'] # V1.0.16: tìm qua công cụ tìm kiếm web
+    assert_equal 'web_search', by['sketchupvn']
     assert_equal 12, l.size
     assert_equal 'connected', SL::AccountManager.list('sketchfab_token' => true)[0]['status']
     ex = SL::AccountManager.list('sketchfab_token' => true, 'sketchfab_expired' => true)[0]

@@ -13,7 +13,7 @@ module MTDesign
       ALLOWED_OPEN_HOSTS = (%w[sketchfab.com www.sketchfab.com platform.openai.com github.com www.blender.org polyhaven.com
                                app.tavily.com serper.dev serpapi.com api-dashboard.search.brave.com docs.searxng.org
                                console.cloud.google.com] +
-                            AccountManager.hosts).uniq.freeze
+                            AccountManager.hosts + WebModels::HOSTS + %w[www.google.com]).uniq.freeze
 
       def self.instance
         @instance ||= new
@@ -69,6 +69,12 @@ module MTDesign
         @sources = SourceRegistry.new(Paths.sub('sources.json'), builtins: builtin_sources)
         add_custom_providers
         @providers << Providers::CatalogProvider.new(@runtime, -> { disabled_source_ids })
+        # V1.0.16: model trên các website thư viện 3D qua công cụ tìm kiếm web (key chỉ giữ trong bộ nhớ, không ghi log).
+        @web_models = Providers::WebModelsProvider.new(@http, ResultCache.new(max: 300, ttl: 1800),
+                                                       -> { %w[tavily serper serpapi brave].map { |k| [k, secret(k)] }.to_h }, @log)
+        @web_models.on_sites = ->(pl) { emit('web_sites', pl) }
+        @web_models.on_report = ->(r) { Util.atomic_write(Paths.sub('web_last.json'), JSON.pretty_generate(r)) rescue nil } # rubocop:disable Style/RescueModifier
+        @providers << @web_models
         # Khóa chỉ đưa vào biến môi trường của tiến trình trích xuất (làn crawl) — không ghi vào file job/log.
         @runtime.env_provider = ->(lane) { lane == 'crawl' ? CRAWL_KEYS.map { |k| ["MT_SRC_#{k.upcase}_KEY", secret(k)] }.to_h : {} }
         @sync = {}
@@ -197,6 +203,10 @@ module MTDesign
         cb(d, 'open_updater') { |*| show_updater }
         cb(d, 'insert_found') { |*| insert_found }
         cb(d, 'found_dismiss') { |*| @found = nil; @watcher.stop }
+        cb(d, 'found_save') { |*| save_found }
+        cb(d, 'lib_import') { |*| lib_import_pick }
+        cb(d, 'web_search_site') { |id, q| web_search_site(id.to_s, q.to_s) }
+        cb(d, 'web_open') { |key| insert_any(key.to_s) }
         cb(d, 'acct_action') { |id, act| account_action(id.to_s, act.to_s) }
         cb(d, 'convert_cancel') { |*| @converter.cancel_all; status('Đã hủy chuyển đổi.', 'warn'); emit('convert_state', { 'state' => 'cancelled' }) }
         cb(d, 'blender_detect') { |*| blender_detect(nil) }
@@ -247,7 +257,7 @@ module MTDesign
                'settings_warning' => @settings.load_warning, 'update_available' => @update_available,
                'pending_restart' => @updater.pending_restart_version,
                'categories' => Categories.all(@settings['categories_custom']),
-               'sources_status' => @providers.map { |p| p.status_info(@settings) },
+               'sources_status' => sources_status,
                'blender' => @converter.blender_status, 'accounts' => accounts_state, 'visual' => @runtime.status,
                'src' => sources_payload
              })
@@ -272,6 +282,7 @@ module MTDesign
         return insert_polyhaven(it) if it['source'] == 'polyhaven'
         return insert_catalog(it) if it['from_catalog'] || it['links']
         return insert_web(it) if it['web_only']
+        return insert_webmodel(it) if it['web_model']
         status('Nguồn này chưa hỗ trợ chèn trực tiếp.', 'warn')
       end
 
@@ -446,6 +457,7 @@ module MTDesign
       def builtin_sources
         integrated = { 'local' => %w[local local], 'sketchfab' => %w[website api], 'polyhaven' => %w[website api],
                        'cgtips' => %w[website wp_rest], 'sketchupfree' => %w[website wp_rest], 'thuviensketchup' => %w[website wp_rest] }
+        WebModels::SITES.each { |w| integrated[w['id']] = %w[website web_search] }
         list = [{ 'id' => 'local', 'name' => 'Thư viện máy tính', 'type' => 'local', 'method' => 'local', 'url' => '' }]
         AccountManager::SOURCES.each do |a|
           t, m = integrated[a['id']] || %w[website unverified]
@@ -700,6 +712,7 @@ module MTDesign
       def sources_payload
         state = {}
         @providers.each { |p| state[p.id] = { 'enabled' => p.id == 'local' ? true : p.enabled?(@settings), 'integrated' => p.status_info(@settings)['integrated'] } }
+        WebModels::SITES.each { |w| state[w['id']] = { 'enabled' => @settings['sources'][w['id']] != false, 'integrated' => true } }
         list = @sources.list(state).map do |s|
           auto = %w[wp_rest sitemap gdrive index api].include?(s['method'])
           integrated = s['builtin'] ? (s['integrated'] ? true : false) : auto
@@ -927,6 +940,116 @@ module MTDesign
         msg = "Đã mở “#{it['title']}” trên #{it['source_label']}. Tải file trên trang"
         status(ok ? "#{msg} — plugin sẽ tự nhận file vừa tải để chèn." : "#{msg}, rồi dùng “Chèn file từ máy…”.", 'info')
         ensure_timer
+      end
+
+      # V1.0.16 — Model website: mở trang chi tiết bằng trình duyệt mặc định (Chrome nếu Chrome là mặc định).
+      # Người dùng tự đăng nhập và tải SKP; plugin theo dõi thư mục Tải về để chèn / lưu vào thư viện.
+      def insert_webmodel(it)
+        site = WebModels.site(it['site'])
+        url = it['url'].to_s
+        host = (URI.parse(url).host.to_s.downcase rescue '') # rubocop:disable Style/RescueModifier
+        return status('Liên kết model không hợp lệ.', 'warn') unless site && url.start_with?('https://') && site['hosts'].include?(host)
+        UI.openURL(url)
+        ok = @watcher.start(source: site['name'], title: it['title'], passwords: [])
+        msg = "Đã mở “#{it['title']}” trên #{site['name']}. Tự đăng nhập (nếu cần) và tải file SKP"
+        status(ok ? "#{msg} — tải xong plugin hỏi CHÈN hoặc LƯU VÀO THƯ VIỆN." : "#{msg}, rồi bấm “Nhập SKP đã tải”.", 'info')
+        ensure_timer
+      end
+
+      def sources_status
+        @providers.map { |p| p.status_info(@settings) } + WebModels::SITES.map do |w|
+          { 'id' => w['id'], 'name' => w['name'], 'enabled' => @settings['sources'][w['id']] != false, 'integrated' => true,
+            'note' => 'Tìm qua công cụ tìm kiếm web → link chi tiết model; tự đăng nhập/tải trên trang.' }
+        end
+      end
+
+      def web_search_site(id, q)
+        url = WebModels.search_url(id, q.strip.empty? ? (@search.session&.online_q || '') : q)
+        return status('Website không hợp lệ.', 'warn') unless url
+        UI.openURL(url)
+      end
+
+      # Thư mục thư viện chứa model người dùng tự tải từ website (tự thêm vào Thư viện máy tính lần đầu).
+      def web_lib_dir
+        dir = Util.norm_path(Paths.sub('Thu_vien_tai_ve'))
+        FileUtils.mkdir_p(dir)
+        dir
+      end
+
+      def lib_import_pick
+        path = UI.openpanel('Chọn file SKP (hoặc ZIP chứa SKP) đã tải để lưu vào thư viện', DownloadWatcher.default_dir.to_s,
+                            'SketchUp/ZIP|*.skp;*.zip||')
+        return unless path
+        lib_import(Util.norm_path(Util.utf8(path)))
+      end
+
+      def save_found
+        f = @found
+        return status('Không còn file vừa tải.', 'warn') unless f && File.file?(f[:path])
+        @found = nil
+        web = WebModels::SITES.any? { |w| w['name'] == f[:source] }
+        lib_import(f[:path], title: web ? f[:title] : nil, site: web ? f[:source] : nil, passwords: f[:passwords])
+      end
+
+      # Sao chép SKP (hoặc các SKP trong ZIP) vào thư mục thư viện → quét để dùng lần sau. File gốc giữ nguyên.
+      def lib_import(path, title: nil, site: nil, passwords: [])
+        ext = File.extname(path).downcase
+        return status('File không còn tồn tại.', 'warn') unless File.file?(path)
+        dir = web_lib_dir
+        saved = []
+        if ext == '.skp'
+          saved << copy_unique(path, dir, title || File.basename(path, '.*'), site)
+        elsif ext == '.zip'
+          pw = Array(passwords).compact.first
+          begin
+            zr = ZipReader.new(path, password: pw, lenient: true, max_total: 1024 * 1024 * 1024)
+          rescue ZipReader::Error => e
+            return status("Không đọc được ZIP: #{e.message}", 'error')
+          end
+          skps = zr.entries.reject(&:directory?).select { |e| e.name =~ /\.skp\z/i && ZipReader.unsafe_reason(e.name).nil? }
+          return status('ZIP không chứa file .skp — giải nén và chọn file SKP.', 'warn') if skps.empty?
+          return status('ZIP có mật khẩu — giải nén bằng WinRAR/7-Zip rồi chọn file SKP.', 'warn') if zr.encrypted? && pw.nil?
+          skps.first(50).each do |e|
+            data = zr.read(e)
+            base = skps.size == 1 && title ? title : File.basename(e.name, '.*')
+            dest = unique_dest(dir, base, site)
+            File.binwrite(dest, data)
+            saved << dest
+          end
+        else
+          return status('Chỉ nhận file .skp hoặc .zip chứa .skp (RAR/7z: giải nén trước).', 'warn')
+        end
+        if @settings.roots.any? { |r| Util.under_root?(dir, r) }
+          start_scan(false)
+        else
+          add_root_path(dir)
+        end
+        status("Đã lưu #{saved.size} model vào thư viện (#{File.basename(saved.first)}#{saved.size > 1 ? '…' : ''}). " \
+               'Lần sau tìm ngay trong Thư viện máy tính.', 'ok')
+        emit('lib_saved', { 'count' => saved.size, 'dir' => dir })
+        saved
+      rescue StandardError => e
+        @log.error("Lưu vào thư viện #{path}", e)
+        status("Không lưu được vào thư viện: #{e.message}", 'error')
+        nil
+      end
+
+      def unique_dest(dir, base, site)
+        name = Util.safe_filename(base.to_s.strip.empty? ? 'model' : base, 90)
+        name += " (#{Util.safe_filename(site, 30)})" if site && !site.to_s.empty? && !name.include?(site.to_s)
+        dest = File.join(dir, "#{name}.skp")
+        i = 2
+        while File.exist?(dest)
+          dest = File.join(dir, "#{name} #{i}.skp")
+          i += 1
+        end
+        dest
+      end
+
+      def copy_unique(src, dir, base, site)
+        dest = unique_dest(dir, base, site)
+        FileUtils.cp(src, dest)
+        dest
       end
 
       def poll_watcher
@@ -1480,7 +1603,7 @@ module MTDesign
         @index.bump
         emit('settings', @settings.public_hash)
         @runtime.device_pref = @settings['ai']['device']
-        emit('sources_status', @providers.map { |p| p.status_info(@settings) }) if patch.key?('sources')
+        emit('sources_status', sources_status) if patch.key?('sources')
         emit_sources if patch.key?('sources')
         status('Đã lưu cài đặt.', 'ok') if patch['_notify']
         @log.info('Đổi chế độ quét nhanh') if before_quick != @settings['quick_scan']

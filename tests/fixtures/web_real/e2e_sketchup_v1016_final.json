@@ -1,0 +1,2625 @@
+{
+  "started": "2026-11-26 11:50:04 +0700",
+  "plugin_version": "1.0.15",
+  "ruby": "2.7.2",
+  "runs": [
+    {
+      "keyword": "sofa",
+      "query_en": "sofa",
+      "seconds": 42.5,
+      "timeout": false,
+      "sites": [
+        {
+          "id": "warehouse",
+          "name": "3D Warehouse",
+          "state": "done",
+          "count": 17,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://3dwarehouse.sketchup.com/search/models?q=sofa",
+          "queries": [
+            "sofa"
+          ],
+          "raw": 9
+        },
+        {
+          "id": "3dsky",
+          "name": "3dsky",
+          "state": "done",
+          "count": 9,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://3dsky.org/3dmodels?query=sofa",
+          "queries": [
+            "sofa"
+          ],
+          "raw": 9
+        },
+        {
+          "id": "3dbox",
+          "name": "3DBox",
+          "state": "done",
+          "count": 9,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://www.google.com/search?q=site%3A3dbox.cc%2Fdetail+sofa",
+          "queries": [
+            "sofa"
+          ],
+          "raw": 9
+        },
+        {
+          "id": "sketchshaper",
+          "name": "Sketch Shaper",
+          "state": "done",
+          "count": 7,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://www.sketchshaper.com/sketchup-3d-models-3?search=sofa",
+          "queries": [
+            "sofa"
+          ],
+          "raw": 9,
+          "rejected": [
+            [
+              "https://www.sketchshaper.com/sketchup-3d-models-3/sofa-25",
+              "Free SketchUp 3d sofa models"
+            ],
+            [
+              "https://www.sketchshaper.com/sketchup-3d-models-3?page=8",
+              "Free SketchUp 3D Models (.SKP) Download"
+            ]
+          ]
+        },
+        {
+          "id": "tailieukientruc",
+          "name": "Tài liệu kiến trúc",
+          "state": "done",
+          "count": 5,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://www.google.com/search?q=site%3Atailieukientruc.net+sofa",
+          "queries": [
+            "sofa"
+          ],
+          "raw": 9,
+          "rejected": [
+            [
+              "https://tailieukientruc.net/tim-kiem/Th%C6%B0+vi%E1%BB%87n+sketchup+sofa.html",
+              "Thư viện sketchup sofa"
+            ],
+            [
+              "https://tailieukientruc.net/tailieu/search/index/keyword/sketchup+sofa/page/5.html",
+              "sketchup sofa"
+            ],
+            [
+              "http://www.tailieukientruc.net/tailieu/search/index/keyword/File+sofa+sketchup/page/3.html",
+              "File sofa sketchup"
+            ],
+            [
+              "https://tailieukientruc.net/tailieu/search/index/keyword/file+sofa+sketchup/page/2.html",
+              "file sofa sketchup"
+            ]
+          ]
+        },
+        {
+          "id": "sketchupvn",
+          "name": "SketchUp.vn",
+          "state": "done",
+          "count": 1,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://www.google.com/search?q=site%3Asketchup.vn+sofa",
+          "queries": [
+            "sofa"
+          ],
+          "raw": 10,
+          "rejected": [
+            [
+              "http://sketchup.vn/bai-viet/tID796_Model-phong-hat-Karaoke-6-Shared-by-Cao-Phuc.html",
+              "Model phòng hát Karaoke #6. Shared by Cao Phúc"
+            ],
+            [
+              "http://sketchup.vn/single-video/tID85_Free-model-3D-Phong-tho-.html",
+              "Free model 3D - Phòng thờ"
+            ],
+            [
+              "http://sketchup.vn/bai-viet/tID699_Free-model-Restaurant-Hotel-Ngoc-Thanh.html",
+              "Free model Restaurant & Hotel - Ngọc Thanh"
+            ],
+            [
+              "http://sketchup.vn/bai-viet/tID712_Khach-san-Royal-KTS-Tho-Nguyen.html",
+              "Khách sạn Royal - KTS Tho Nguyen"
+            ],
+            [
+              "http://sketchup.vn/tag/Cao+Ph%C3%BAc.html",
+              "15 bài viết về \"Cao Phúc\""
+            ],
+            [
+              "https://cuocthi.sketchup.vn/2021/09/27/10054-suedumodel_sofa-14/",
+              "10054. SUEDUMODEL_SoFa #14 - SUVN CUỘC THI"
+            ],
+            [
+              "http://sketchup.vn/chuyen-muc/p4_31Model-Sketchup-free.html",
+              "Model Sketchup free"
+            ],
+            [
+              "http://sketchup.vn/bai-viet/tID619_Model-canh-quan-san-vuon-Hai-Trieu.html",
+              "Model + cảnh quan sân vườn - Hải Triệu"
+            ],
+            [
+              "http://sketchup.vn/tag/exterior.html",
+              "8 bài viết về \"exterior\""
+            ]
+          ]
+        }
+      ],
+      "warehouse_images": {
+        "code": 200,
+        "error": "",
+        "matched": 0,
+        "added": 8
+      },
+      "thumbs_pending": 0,
+      "items": [
+        {
+          "site": "tailieukientruc",
+          "title": "Model Sketchup Sofa khung gỗ mây tre đan - Giao thoa giữa nét…",
+          "url": "https://tailieukientruc.net/390-tai-model-sketchup-bo-sofa-phong-cach-scandinavian-nhe-nhang-va-tinh-te-16952.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "tailieukientruc",
+          "title": "Tải miễn phí model sofa sketchup",
+          "url": "https://tailieukientruc.net/318-tai-mien-phi-model-sofa-sketchup-16075.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "tailieukientruc",
+          "title": "Thư viện Sketchup Sofa nỉ chữ L kèm gối tựa",
+          "url": "https://tailieukientruc.net/384-thu-vien-sketchup-sofa-bang-toi-gian-va-ghe-don-phong-cach-duong-dai-16947.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "tailieukientruc",
+          "title": "Bộ sưu tập Model SketchUp sofa bệt đa sắc màu phong cách…",
+          "url": "https://tailieukientruc.net/345-bo-suu-tap-model-sketchup-sofa-bet-da-sac-mau-phong-cach-bohemian-an-tuong-16664.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "tailieukientruc",
+          "title": "Model Sketchup bộ sofa cong phong cách Organic bọc vải boucle",
+          "url": "https://tailieukientruc.net/352-tai-mien-phi-model-sketchup-sofa-ni-tan-co-dien-chan-chi-hinh-qua-tram-diem-chi-tiet-inox-ma-vang-cao-cap-16873.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Minotti Brasilia Modern Fabric Sofa Set",
+          "url": "https://3dbox.cc/detail/1793504002649",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Poliform BRERA Modular Curved Sectional Sofa Set",
+          "url": "https://3dbox.cc/detail/1793818342337",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "French NeoClassical Living Room Sofa and…",
+          "url": "https://3dbox.cc/detail/1793203795001",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Vintage Style Leather Lazy Single Sofa with Cushion",
+          "url": "https://3dbox.cc/detail/1794015042068",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Modern L-shaped Fabric Corner Sofa Set with…",
+          "url": "https://3dbox.cc/detail/1792548405658",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Modern Luxury Dark Gray Leather L-Shaped... - Sofa set",
+          "url": "https://3dbox.cc/detail/1793894101714",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Modern Curved White Boucle Sofa",
+          "url": "https://3dbox.cc/detail/1792116053666",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Modern Black Leather Three Seater Sofa Set…",
+          "url": "https://3dbox.cc/detail/1794880700717",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Modern Italian Style Leather 4 Seater Straight Sofa",
+          "url": "https://3dbox.cc/detail/1792765646539",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Fabric Corner Sofa",
+          "url": "https://3dwarehouse.sketchup.com/model/5545c1ff-8538-4070-8935-712fd90956b3/Fabric-Corner-Sofa",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "sofa & table",
+          "url": "https://3dwarehouse.sketchup.com/model/c509ab89-0425-4f57-a5ad-ab5892a7e43e/sofa-table",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Sectional Sofa",
+          "url": "https://3dwarehouse.sketchup.com/model/73bb4a21-a362-41ec-8ed9-ed24b4f4e644/Sectional-Sofa",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "sofa",
+          "url": "https://3dwarehouse.sketchup.com/model/effe967a116f8098cc2af5791bd669b8/sofa",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "3 Seater Fabric Sofa",
+          "url": "https://3dwarehouse.sketchup.com/model/e0fce405-b46e-4542-9ca8-0086ce0f63dc/3-Seater-Fabric-Sofa",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Red Sofa",
+          "url": "https://3dwarehouse.sketchup.com/model/896d2111661e527c1410ab85f34516ce/Red-Sofa",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Small Sofa",
+          "url": "https://3dwarehouse.sketchup.com/model/u5a60a3f7-ef29-4b72-bb12-ddb1519659c8/Small-Sofa",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Sofa",
+          "url": "https://3dwarehouse.sketchup.com/model/d423683ede39dcb68aff6a5de9306ccc/Sofa",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Break Q073 Sectional Sofa Ottoman",
+          "url": "https://3dwarehouse.sketchup.com/model/bc5c4f59-400d-41bd-bd45-c534a8181629/Break-Q073-Sectional-Sofa-Ottoman",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "sketchupvn",
+          "title": "Model bàn ăn - sofa - Cao Phúc",
+          "url": "https://sketchup.vn/bai-viet/tID314_Model-ban-an-sofa-Cao-Phuc.html",
+          "thumb": false,
+          "thumb_note": "robots"
+        },
+        {
+          "site": "sketchshaper",
+          "title": "Brinae Wide Boucle Upholstered Loveseat Sofa",
+          "url": "https://www.sketchshaper.com/sketchup-3d-models-3/sofa-25/brinae-wide-boucle-upholstered-loveseat-sofa-276",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "sketchshaper",
+          "title": "Reeves Vegan Leather Sofa",
+          "url": "https://www.sketchshaper.com/sketchup-3d-models-3/sofa-25/reeves-vegan-leather-sofa-300",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "sketchshaper",
+          "title": "Futon Sofa Bed Faux Leather",
+          "url": "https://www.sketchshaper.com/sketchup-3d-models-3/sofa-25/futon-sofa-bed-faux-leather-278",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "sketchshaper",
+          "title": "Jattebo sofa skp file",
+          "url": "https://www.sketchshaper.com/sketchup-3d-models/sofa/jattebo-71",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "sketchshaper",
+          "title": "TORNSBORG sofa by Ikea",
+          "url": "https://www.sketchshaper.com/sketchup-3d-models/sofa/tornsborg-by-ikea-245",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "sketchshaper",
+          "title": "Boho double sofa",
+          "url": "https://www.sketchshaper.com/sketchup-3d-models/sofa/boho-double-sofa-275",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "sketchshaper",
+          "title": "Eatonton Bouclé Sofa Couch 3 Seater Sofa",
+          "url": "https://www.sketchshaper.com/sketchup-3d-models/sofa/eatonton-boucl-sofa-couch-3-seater-sofa-131",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Sofa Zinc French Connection",
+          "url": "https://3dsky.org/3dmodels/show/divan_zinc_french_connection_1",
+          "thumb": false,
+          "thumb_note": "img 0 timeout"
+        },
+        {
+          "site": "3dsky",
+          "title": "Minotti Ruffle Sofa",
+          "url": "https://3dsky.org/3dmodels/show/minotti-ruffle-sofa-2",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Minotti Orion Corner Modular Sofa 4",
+          "url": "https://3dsky.org/3dmodels/show/minotti-orion-corner-modular-sofa-4",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "SKdesign Jarvis Sofy Modular Corner Sofa 3",
+          "url": "https://3dsky.org/3dmodels/show/skdesign-jarvis-sofy-modular-corner-sofa-3",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "L Shape Sofa",
+          "url": "https://3dsky.org/3dmodels/show/divan_l_shape",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Tofu Sectional Sofa",
+          "url": "https://3dsky.org/3dmodels/show/tofu-sectional-sofa-10",
+          "thumb": false,
+          "thumb_note": "img 0 timeout"
+        },
+        {
+          "site": "3dsky",
+          "title": "Rico 3 Seater Sofa by Louisiana x Ferm Living",
+          "url": "https://3dsky.org/3dmodels/show/rico-3-seater-sofa-by-louisiana-x-ferm-living",
+          "thumb": false,
+          "thumb_note": "img 0 timeout"
+        },
+        {
+          "site": "3dsky",
+          "title": "Soléne Sectional Sofa by nolitaharbour",
+          "url": "https://3dsky.org/3dmodels/show/solene-sectional-sofa-by-nolitaharbour",
+          "thumb": false,
+          "thumb_note": "img 0 timeout"
+        },
+        {
+          "site": "3dsky",
+          "title": "Navillo corner sofa from Dantone Home",
+          "url": "https://3dsky.org/3dmodels/show/navilo-uglovoi-divan-ot-dantone-home",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Fabric Sofa Couch",
+          "url": "https://3dwarehouse.sketchup.com/model/c1c9ebbb-4137-44f4-b3da-79e3bdea9ee2/Fabric-Sofa-Couch",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "sectional sofa L",
+          "url": "https://3dwarehouse.sketchup.com/model/03c00f63-6e0e-490d-b957-8d86bd5a3103/sectional-sofa-L",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "SOFA ROSENBERG",
+          "url": "https://3dwarehouse.sketchup.com/model/e433ae18-df2f-433a-8894-76c6f9a334d7/SOFA-ROSENBERG",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "SIFAS YAKIMOUR Braided brown 2 seater sofa",
+          "url": "https://3dwarehouse.sketchup.com/model/163e2825-c7ed-4e31-8141-41e429d7866b/SIFAS-YAKIMOUR-Braided-brown-2-seater-sofa",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Basel Right Arm Sofa Slate Pebble Fabric By Modloft",
+          "url": "https://3dwarehouse.sketchup.com/model/3b7ffeb4-14af-4794-9636-5aa64b857ff3/Basel-Right-Arm-Sofa-Slate-Pebble-Fabric-By-Modloft",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Rolf Benz MERA large functional sofa",
+          "url": "https://3dwarehouse.sketchup.com/model/2211c591-e782-4803-9ba5-6bbda29c6e6c/Rolf-Benz-MERA-large-functional-sofa",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "sofa",
+          "url": "https://3dwarehouse.sketchup.com/model/5749024f-b4ca-485b-a130-20ea13da5a4f/sofa",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Sofa Lsc 1732 TV",
+          "url": "https://3dwarehouse.sketchup.com/model/2d282a78-2681-4956-b309-021c2306d3f0/Sofa-Lsc-1732-TV",
+          "thumb": false,
+          "thumb_note": null
+        }
+      ]
+    },
+    {
+      "keyword": "bàn thờ",
+      "query_en": "altar",
+      "seconds": 13.4,
+      "timeout": false,
+      "sites": [
+        {
+          "id": "warehouse",
+          "name": "3D Warehouse",
+          "state": "done",
+          "count": 19,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://3dwarehouse.sketchup.com/search/models?q=b%C3%A0n+th%E1%BB%9D",
+          "queries": [
+            "altar"
+          ],
+          "raw": 9
+        },
+        {
+          "id": "3dsky",
+          "name": "3dsky",
+          "state": "done",
+          "count": 3,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://3dsky.org/3dmodels?query=b%C3%A0n+th%E1%BB%9D",
+          "queries": [
+            "altar"
+          ],
+          "raw": 9,
+          "rejected": [
+            [
+              "https://3dsky.org/3dmodels/show/gamma_by_cvl_luminaires_1",
+              "Gamma By Cvl Luminaires - Wall light - 3D model"
+            ],
+            [
+              "https://3dsky.org/3dmodels/show/kofeinyi_stolik_pilar_iz_medi_i_orekha_ot_axoque_studio",
+              "Pilar Copper And Walnut Coffee Table by Axoque Studio - Table - 3D model"
+            ],
+            [
+              "https://3dsky.org/3dmodels/show/skulpturnyi-kruglyi-pristavnoi-kofeinyi-stolik-so-stoleshnitsei-iz-stekla-na-osnovanii-iz-dikogo-kamnia",
+              "Sculptural Round Side Coffee Table with a Glass Top on a Base of Natural ..."
+            ],
+            [
+              "https://3dsky.org/3dmodels/show/outdoor-lighting-aludra-by-nordlux",
+              "Outdoor lighting Aludra by Nordlux - Street lighting - 3D model"
+            ],
+            [
+              "https://3dsky.org/3dmodels/show/lambert_fils_silo_2wa_3wa_wall_lamps",
+              "Lambert & Fils Silo 2WA 3WA Wall Lamps - Wall light - 3D model"
+            ],
+            [
+              "https://3dsky.org/3dmodels/show/vintage-decorative-set-07-1",
+              "Vintage Decorative Set 07 - Decorative set - 3D model"
+            ]
+          ]
+        },
+        {
+          "id": "3dbox",
+          "name": "3DBox",
+          "state": "done",
+          "count": 3,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://www.google.com/search?q=site%3A3dbox.cc%2Fdetail+b%C3%A0n+th%E1%BB%9D",
+          "queries": [
+            "altar"
+          ],
+          "raw": 3
+        },
+        {
+          "id": "sketchshaper",
+          "name": "Sketch Shaper",
+          "state": "empty",
+          "count": 0,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://www.sketchshaper.com/sketchup-3d-models-3?search=b%C3%A0n+th%E1%BB%9D",
+          "queries": [
+            "altar"
+          ],
+          "raw": 0
+        },
+        {
+          "id": "tailieukientruc",
+          "name": "Tài liệu kiến trúc",
+          "state": "done",
+          "count": 2,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://www.google.com/search?q=site%3Atailieukientruc.net+b%C3%A0n+th%E1%BB%9D",
+          "queries": [
+            "bàn thờ"
+          ],
+          "raw": 9,
+          "rejected": [
+            [
+              "https://tailieukientruc.net/tim-kiem/b%C3%A0n+th%E1%BB%9D+sketchup.html",
+              "bàn thờ sketchup"
+            ],
+            [
+              "https://tailieukientruc.net/ban-tho.html",
+              "Bàn Thờ"
+            ],
+            [
+              "https://tailieukientruc.net/60-download-free-model-sketchup-ke-tho-treo-tuong-hien-dai-16649.html",
+              "60. Download Free Model SketchUp Kệ thờ treo tường hiện đại"
+            ],
+            [
+              "http://www.tailieukientruc.net/028-tai-ve-file-vach-cnc-phong-tho-sketchup-mien-phi-14976.html",
+              "028 Tải về file vách CNC phòng thờ sketchup miễn phí"
+            ],
+            [
+              "https://tailieukientruc.net/tailieu/search/index/keyword/altar+sketchup+model/page/2.html",
+              "altar sketchup model"
+            ],
+            [
+              "http://www.tailieukientruc.net/tailieu/search/index/keyword/sketchup+model/page/52.html",
+              "sketchup model"
+            ],
+            [
+              "https://tailieukientruc.net/66-tu-tho-dung-hien-dai-vach-may-mat-cao-file-sketchup-mien-phi-17624.html",
+              "66. Tủ thờ đứng hiện đại vách mây mắt cáo file sketchup miễn phí"
+            ]
+          ]
+        },
+        {
+          "id": "sketchupvn",
+          "name": "SketchUp.vn",
+          "state": "done",
+          "count": 1,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://www.google.com/search?q=site%3Asketchup.vn+b%C3%A0n+th%E1%BB%9D",
+          "queries": [
+            "bàn thờ"
+          ],
+          "raw": 9,
+          "rejected": [
+            [
+              "https://cuocthi.sketchup.vn/2021/10/29/90079-phong-tho-danh-nam/",
+              "90079. Phòng thờ – Danh Nam"
+            ],
+            [
+              "http://sketchup.vn/single-video/tID85_Free-model-3D-Phong-tho-.html",
+              "Free model 3D - Phòng thờ"
+            ],
+            [
+              "http://sketchup.vn/single-video/tID700_Model-phong-tho-Shared-by-Thanh-Tung.html",
+              "Model phòng thờ - Shared by Thanh Tùng"
+            ],
+            [
+              "https://sketchup.vn/bai-viet/tID838_Nha-tho-ho-KTS-Ninh-Duc-Minh.html",
+              "Nhà thờ họ -KTS Ninh Đức Minh"
+            ],
+            [
+              "http://sketchup.vn/chuyen-muc/p13_31Model-Sketchup-free.html",
+              "Model Sketchup free"
+            ],
+            [
+              "http://sketchup.vn/bai-viet/tID486_Dining-room-1-Phong-an-phong-cach-tan-co-dien-Hoai-Niem.html",
+              "Dining room #1 - Phòng ăn phong cách tân cổ điển - Hoài Niệm"
+            ],
+            [
+              "http://sketchup.vn/tag/Thanh+T%C3%B9ng.html",
+              "14 bài viết về \"Thanh Tùng\""
+            ],
+            [
+              "http://sketchup.vn/single-video/tID777_Model-phong-lam-viec-Shared-by-Dao-Tuan-Anh.html",
+              "Model phòng làm việc - Shared by Dao Tuan Anh"
+            ]
+          ]
+        }
+      ],
+      "warehouse_images": {
+        "code": 200,
+        "error": "",
+        "matched": 0,
+        "added": 10
+      },
+      "thumbs_pending": 0,
+      "items": [
+        {
+          "site": "3dsky",
+          "title": "Lee Broom Altar Wall Light",
+          "url": "https://3dsky.org/3dmodels/show/lee-broom-altar-wall-light-1",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "1535 Altar Wall Light By Lee Broom",
+          "url": "https://3dsky.org/3dmodels/show/1535-altar-wall-light-by-lee-broom",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Church interior altar",
+          "url": "https://3dsky.org/3dmodels/show/church-interior-altar",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "sketchupvn",
+          "title": "Sketchup model: bàn thờ - Thai Bao",
+          "url": "https://sketchup.vn/single-photo/tID373_Sketchup-model-ban-tho-Thai-Bao.html",
+          "thumb": false,
+          "thumb_note": "robots"
+        },
+        {
+          "site": "tailieukientruc",
+          "title": "Thư viện bàn thờ sketchup miễn phí 013",
+          "url": "https://tailieukientruc.net/thu-vien-ban-tho-sketchup-mien-phi-013-14698.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "tailieukientruc",
+          "title": "Model sketchup bàn thờ chạm khắc thủ công miễn phí",
+          "url": "https://tailieukientruc.net/106-chau-cay-monstera-trong-trong-chau-xi-mang-de-tren-don-go-ba-chan-sketchup-model-17664.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "New Chinese Style Altar Room Interior Scene",
+          "url": "https://3dbox.cc/detail/1793580175317",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Traditional Chinese Wooden Altar Display Cabinet",
+          "url": "https://3dbox.cc/detail/1793226451296",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Traditional Chinese Worship Altar Wooden Cabinet",
+          "url": "https://3dbox.cc/detail/1792581283412",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Altar w/ Altar Piece",
+          "url": "https://3dwarehouse.sketchup.com/model/4b660774d5cb9006810bb48384a3ea2/Altar-w-Altar-Piece",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "altar",
+          "url": "https://3dwarehouse.sketchup.com/model/fb0baf8c-426d-4ac4-a87b-752d962904d8/altar",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Altar Schoenstatt edwoodworker",
+          "url": "https://3dwarehouse.sketchup.com/model/5be2fa98-ad35-4cf8-be38-cf8ac147cfd5/Altar-Schoenstatt-edwoodworker",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Sacras de Altar (Altar cards)",
+          "url": "https://3dwarehouse.sketchup.com/model/5b7b7ea6-de13-470f-983d-42b5ecc791e5/Sacras-de-Altar-Altar-cards",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Roman Catholic Altar",
+          "url": "https://3dwarehouse.sketchup.com/model/b92e6b6f-e667-4027-92b4-4640d73cbc08/Roman-Catholic-Altar",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Catholic Altar",
+          "url": "https://3dwarehouse.sketchup.com/model/594e9c42-0852-482d-9a5b-d36cb20338c5/Catholic-Altar",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "ibayu altar",
+          "url": "https://3dwarehouse.sketchup.com/model/780100ad-c6a3-44a9-ae3f-4e7a45aa6ee5/ibayu-altar",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Buddhist altar",
+          "url": "https://3dwarehouse.sketchup.com/model/79b10719-efac-49cd-a64b-70cb2f958aa6/Buddhist-altar",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Baroque High Altar - Model - 3D Warehouse - SketchUp",
+          "url": "https://3dwarehouse.sketchup.com/model/u9fba2f4b-cbbf-4f0d-af22-219aad279be6/Baroque-High-Altar",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Baroque High Altar 2",
+          "url": "https://3dwarehouse.sketchup.com/model/uffd137bd-a660-4625-83fc-3068ec9486ee/Baroque-High-Altar-2",
+          "thumb": false,
+          "thumb_note": "img 404 http"
+        },
+        {
+          "site": "warehouse",
+          "title": "Catholic Altar",
+          "url": "https://3dwarehouse.sketchup.com/model/580f49bf-65a8-46f6-ac28-52e7720891c8/Catholic-Altar",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Medieval high altar",
+          "url": "https://3dwarehouse.sketchup.com/model/f7a2dc1c-5195-4f3b-938d-2937a182279a/Medieval-high-altar",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Altar",
+          "url": "https://3dwarehouse.sketchup.com/model/d961cf05-bd0a-4129-bccb-f489c7873583/Altar",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Altar 8",
+          "url": "https://3dwarehouse.sketchup.com/model/2a261ea5-f90a-4a9d-8695-b42d10aad6d0/Altar-8",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Traditional Mass Altar",
+          "url": "https://3dwarehouse.sketchup.com/model/631f30d3-b303-4632-b3e9-2e90d9cf7d2c/Traditional-Mass-Altar",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Altar",
+          "url": "https://3dwarehouse.sketchup.com/model/9e1e7df5-654b-4565-8a60-91f15b82596c/Altar",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Catholic church altar",
+          "url": "https://3dwarehouse.sketchup.com/model/3de1dcf3-5496-4cc4-95ba-6d52b3360d8d/Catholic-church-altar",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "ALTAR",
+          "url": "https://3dwarehouse.sketchup.com/model/0c89b464-e279-46de-9208-89ee21d1cda8/ALTAR",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Altar",
+          "url": "https://3dwarehouse.sketchup.com/model/f14f0330-af02-474f-9767-ef8dca46ba8c/Altar",
+          "thumb": true,
+          "thumb_note": null
+        }
+      ]
+    },
+    {
+      "keyword": "ghế ăn",
+      "query_en": "dining chair",
+      "seconds": 37.4,
+      "timeout": false,
+      "sites": [
+        {
+          "id": "warehouse",
+          "name": "3D Warehouse",
+          "state": "done",
+          "count": 18,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://3dwarehouse.sketchup.com/search/models?q=gh%E1%BA%BF+%C4%83n",
+          "queries": [
+            "dining chair"
+          ],
+          "raw": 9
+        },
+        {
+          "id": "3dsky",
+          "name": "3dsky",
+          "state": "done",
+          "count": 7,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://3dsky.org/3dmodels?query=gh%E1%BA%BF+%C4%83n",
+          "queries": [
+            "dining chair"
+          ],
+          "raw": 7
+        },
+        {
+          "id": "3dbox",
+          "name": "3DBox",
+          "state": "done",
+          "count": 9,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://www.google.com/search?q=site%3A3dbox.cc%2Fdetail+gh%E1%BA%BF+%C4%83n",
+          "queries": [
+            "dining chair"
+          ],
+          "raw": 10,
+          "rejected": [
+            [
+              "https://3dbox.cc/detail/1786543024679",
+              "Modern Interior Scene | Desk and Chair | 3D Model - 3Dbox"
+            ]
+          ]
+        },
+        {
+          "id": "sketchshaper",
+          "name": "Sketch Shaper",
+          "state": "done",
+          "count": 5,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://www.sketchshaper.com/sketchup-3d-models-3?search=gh%E1%BA%BF+%C4%83n",
+          "queries": [
+            "dining chair"
+          ],
+          "raw": 9,
+          "rejected": [
+            [
+              "https://www.sketchshaper.com/sketchup-3d-models-3/chairs-24",
+              "SketchUp Vanity Chair SKP Models | Free Download"
+            ],
+            [
+              "https://www.sketchshaper.com/sketchup-3d-models-3?page=4",
+              "Free SketchUp 3D Models (.SKP) Download"
+            ],
+            [
+              "https://www.sketchshaper.com/sketchup-3d-models-3/chairs-24/herrakra-armchair-60",
+              "Herrakra armchair .skp file"
+            ],
+            [
+              "https://www.sketchshaper.com/sketchup-3d-models/chairs/skansnas-wood-chair-with-woven-seat-445",
+              "SKANSNÄS Wood Chair 3D Model | SKP File"
+            ]
+          ]
+        },
+        {
+          "id": "tailieukientruc",
+          "name": "Tài liệu kiến trúc",
+          "state": "done",
+          "count": 3,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://www.google.com/search?q=site%3Atailieukientruc.net+gh%E1%BA%BF+%C4%83n",
+          "queries": [
+            "ghế ăn"
+          ],
+          "raw": 9,
+          "rejected": [
+            [
+              "https://www.tailieukientruc.net/tim-kiem/Th%C6%B0+vi%E1%BB%87n+b%C3%A0n+gh%E1%BA%BF+%C4%83n+sketchup.html",
+              "Thư viện bàn ghế ăn sketchup"
+            ],
+            [
+              "https://tailieukientruc.net/tim-kiem/b%C3%A0n+%C4%83n+sketchup.html",
+              "bàn ăn sketchup"
+            ],
+            [
+              "https://tailieukientruc.net/tim-kiem/chair+sketchup+model.html",
+              "chair sketchup model"
+            ],
+            [
+              "http://tailieukientruc.net/tim-kiem/Th%C6%B0+vi%E1%BB%87n+sketchup+b%C3%A0n+gh%E1%BA%BF+%C4%83n.html",
+              "Thư viện sketchup bàn ghế ăn"
+            ],
+            [
+              "https://www.tailieukientruc.net/tailieu/search/index/keyword/Sketchup/page/6.html",
+              "Sketchup"
+            ],
+            [
+              "http://www.tailieukientruc.net/ban-an-sketchup-149-14584.html",
+              "Bàn ăn sketchup 149"
+            ]
+          ]
+        },
+        {
+          "id": "sketchupvn",
+          "name": "SketchUp.vn",
+          "state": "empty",
+          "count": 0,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://www.google.com/search?q=site%3Asketchup.vn+gh%E1%BA%BF+%C4%83n",
+          "queries": [
+            "ghế ăn"
+          ],
+          "raw": 10,
+          "rejected": [
+            [
+              "http://sketchup.vn/bai-viet/tID314_Model-ban-an-sofa-Cao-Phuc.html",
+              "Model bàn ăn - sofa - Cao Phúc"
+            ],
+            [
+              "http://sketchup.vn/chuyen-muc/p13_31Model-Sketchup-free.html",
+              "Model Sketchup free"
+            ],
+            [
+              "http://sketchup.vn/bai-viet/tID86_Noi-that-phong-tam-Nguyen-Ha-Duy-.html",
+              "Nội thất phòng tắm - Nguyễn Hà Duy"
+            ],
+            [
+              "http://sketchup.vn/bai-viet/tID486_Dining-room-1-Phong-an-phong-cach-tan-co-dien-Hoai-Niem.html",
+              "Dining room #1 - Phòng ăn phong cách tân cổ điển - Hoài Niệm"
+            ],
+            [
+              "http://sketchup.vn/tag/Cao+Ph%C3%BAc.html",
+              "15 bài viết về \"Cao Phúc\""
+            ],
+            [
+              "http://sketchup.vn/blog-photos/p6_1Thu-vien-download.html",
+              "Thư viện download::Cộng đồng Sketchup Việt Nam"
+            ],
+            [
+              "http://sketchup.vn/single-photo/tID482_Model-bo-ban-ghe-dong-ky-Voi-Phuc-chat-luong-dep-nhe-cuc-hiem-Link-MF.html",
+              "Model bộ bàn ghế đồng kỵ Voi Phục chất lượng đẹp - nhẹ - cực hiếm (Link ..."
+            ],
+            [
+              "http://sketchup.vn/bai-viet/tID599_Phong-ngu-Master-Thanh-Tung.html",
+              "Phòng ngủ Master - Thanh Tùng"
+            ],
+            [
+              "http://sketchup.vn/bai-viet/tID699_Free-model-Restaurant-Hotel-Ngoc-Thanh.html",
+              "Free model Restaurant & Hotel - Ngọc Thanh"
+            ],
+            [
+              "http://sketchup.vn/chuyen-muc/xc56_Khong-gian-dep.html",
+              "Không gian đẹp"
+            ]
+          ]
+        }
+      ],
+      "warehouse_images": {
+        "code": 200,
+        "error": "",
+        "matched": 0,
+        "added": 9
+      },
+      "thumbs_pending": 0,
+      "items": [
+        {
+          "site": "tailieukientruc",
+          "title": "Model bàn ăn 8 ghế sketchup miễn phí",
+          "url": "https://tailieukientruc.net/201-model-ban-an-8-ghe-sketchup-mien-phi-15305.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "tailieukientruc",
+          "title": "Model SketchUp ghế ăn bọc nỉ hiện đại thiết kế tựa lưng cong",
+          "url": "https://tailieukientruc.net/207-model-sketchup-ghe-an-boc-ni-hien-dai-thiet-ke-tua-lung-cong-16475.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "tailieukientruc",
+          "title": "Model SketchUp ghế ăn bọc nệm chân gỗ đen sang trọng",
+          "url": "https://tailieukientruc.net/210-model-sketchup-ghe-an-boc-nem-chan-go-den-sang-trong-16490.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Modern Minimalist Wooden Dining Chair Set",
+          "url": "https://3dbox.cc/detail/1792283025750",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Poliform Grace Modern Leather Dining Chair",
+          "url": "https://3dbox.cc/detail/1792040379130",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Poliform SOPHIE LITE Modern Dining Chair Set",
+          "url": "https://3dbox.cc/detail/1793658914434",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Freeman Dining Chair and Messi Dining Table",
+          "url": "https://3dbox.cc/detail/1785828312216",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Upholstered Dining Chair with Sleek Legs",
+          "url": "https://3dbox.cc/detail/1787565219962",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Modern Rattan Dining Chair and Wooden ArmChair Set",
+          "url": "https://3dbox.cc/detail/1791687900029",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Modern Oval Dining Table and Chairs",
+          "url": "https://3dbox.cc/detail/1787401158916",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Mid Century Wooden Dining Table and Chairs Set",
+          "url": "https://3dbox.cc/detail/1793678450802",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Minotti Angie Chair and Wedge Dining Table Set",
+          "url": "https://3dbox.cc/detail/1793667711995",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "sketchshaper",
+          "title": "Curved Back Dining Chair",
+          "url": "https://www.sketchshaper.com/sketchup-3d-models-3/chairs-24/satori-upholstered-dining-chair-with-metal-legs-384",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "sketchshaper",
+          "title": "Dressy Plyfold Chair",
+          "url": "https://www.sketchshaper.com/sketchup-3d-models-3/chairs-24/replica-dressy-plyfold-upholstered-dining-chair-with-metal-legs-382",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "sketchshaper",
+          "title": "Dompa Dining Chair",
+          "url": "https://www.sketchshaper.com/sketchup-3d-models/chairs/dompa-upholstered-dining-chair-with-black-wood-legs-374",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "sketchshaper",
+          "title": "Ceremonies Green Mohair Dining Chair",
+          "url": "https://www.sketchshaper.com/sketchup-3d-models/chairs/ceremonies-green-mohair-dining-chair-198",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "sketchshaper",
+          "title": "Outdoor Rope Dining Chair",
+          "url": "https://www.sketchshaper.com/sketchup-3d-models/chairs/outdoor-rope-weave-dining-chair-441",
+          "thumb": false,
+          "thumb_note": "img 0 timeout"
+        },
+        {
+          "site": "warehouse",
+          "title": "Dining chair collection",
+          "url": "https://3dwarehouse.sketchup.com/model/66df2f61-67e9-44df-a7c5-ff61e4cb599c/Dining-chair-collection",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Wooden Dining Chair",
+          "url": "https://3dwarehouse.sketchup.com/model/cb87604cf146b4eee897810eac8c21be/Wooden-Dining-Chair",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Donna Dining Chair",
+          "url": "https://3dwarehouse.sketchup.com/model/5f3b0a08-34fd-4631-a0f9-a4a5a4ebf164/Donna-Dining-Chair",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Grace Dining Chair with Arms",
+          "url": "https://3dwarehouse.sketchup.com/model/u7ce0e61f-389a-402a-85be-13e44753eb46/Grace-Dining-Chair-with-Arms",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "TRIBÙ AMANU dining chair",
+          "url": "https://3dwarehouse.sketchup.com/model/f36a8a87-d58d-465f-871c-98c249c97f81/TRIB%C3%99-AMANU-dining-chair",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Petrie Bleached Ash Upholstered Dining Chair with Performance Fabric",
+          "url": "https://3dwarehouse.sketchup.com/model/5115548e-7426-45ec-bfed-89b840ca78e3/Petrie-Bleached-Ash-Upholstered-Dining-Chair-with-Performance-Fabric",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "The Dining Chair by Mater",
+          "url": "https://3dwarehouse.sketchup.com/model/75c618e4-7efc-4dfe-817b-4d9b36141e58/The-Dining-Chair-by-Mater",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Rattan Wood Dining Chair",
+          "url": "https://3dwarehouse.sketchup.com/model/ef21cf34-0732-4856-b9d5-a9ceb021b1b1/Rattan-Wood-Dining-Chair",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Modern Dining Chair",
+          "url": "https://3dwarehouse.sketchup.com/model/7729a6ad96985f4ed1ccbd5d84e5bc86/Modern-Dining-Chair",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Moosh Dining Chair - Chair - 3D model - 3dsky.org",
+          "url": "https://3dsky.org/3dmodels/show/moosh-dining-chair-16",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Shelbourne Dining Chair - Chair - 3D model - 3dsky.org",
+          "url": "https://3dsky.org/3dmodels/show/shelbourne-dining-chair-22",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "TITA DINING CHAIR - Chair - 3D model - 3dsky.org",
+          "url": "https://3dsky.org/3dmodels/show/tita-dining-chair",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Ceremonie Dining Chair - Chair - 3D model - 3dsky.org",
+          "url": "https://3dsky.org/3dmodels/show/ceremonie-dining-chair",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Dining chair Tropea - Chair - 3D model - 3dsky.org",
+          "url": "https://3dsky.org/3dmodels/show/obedennyi-stul-tropea-1",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Tori Dining Chair by Skdesign - Chair - 3D model - 3dsky.org",
+          "url": "https://3dsky.org/3dmodels/show/tori-dining-chair-by-skdesign",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Avery Dining Chair - Chair - 3D model - 3dsky.org",
+          "url": "https://3dsky.org/3dmodels/show/avery-dining-chair",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "rattan dining chair",
+          "url": "https://3dwarehouse.sketchup.com/model/25b3848a-3369-4dac-b77a-e00317dc0ebd/rattan-dining-chair",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "1stdibs 20th Century Linen Rattan George Dining Chair",
+          "url": "https://3dwarehouse.sketchup.com/model/05601bbe-9f4f-4514-88b5-4b7631c5eeca/1stdibs-20th-Century-Linen-Rattan-George-Dining-Chair",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "DINING CHAIR",
+          "url": "https://3dwarehouse.sketchup.com/model/16e62962-103d-4b5e-abe2-22610412ddbd/DINING-CHAIR",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Gent Dining Chair by Gubi",
+          "url": "https://3dwarehouse.sketchup.com/model/02858618-6e12-46fb-80ee-85269753d53c/Gent-Dining-Chair-by-Gubi",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "IBANEZ DINING CHAIR",
+          "url": "https://3dwarehouse.sketchup.com/model/f7828165-e7d3-421b-8495-faf22c607fb7/IBANEZ-DINING-CHAIR",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Dining Chair",
+          "url": "https://3dwarehouse.sketchup.com/model/f43cc560-c757-4428-a0a6-40b1b36fec94/Dining-Chair",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "MARC DARK BLUE DINING CHAIR CB2",
+          "url": "https://3dwarehouse.sketchup.com/model/b6d46645-5dd1-452a-8229-d747f6cdb027/MARC-DARK-BLUE-DINING-CHAIR-CB2",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Low Poly wishbone dining chair",
+          "url": "https://3dwarehouse.sketchup.com/model/4a827672-36dc-492d-9878-f8b76437b044/Low-Poly-wishbone-dining-chair",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Foley Dining chair",
+          "url": "https://3dwarehouse.sketchup.com/model/ad550e91-8a78-43fc-b1aa-520e47c45425/Foley-Dining-chair",
+          "thumb": true,
+          "thumb_note": null
+        }
+      ]
+    },
+    {
+      "keyword": "đèn thả",
+      "query_en": "pendant lamp",
+      "seconds": 33.2,
+      "timeout": false,
+      "sites": [
+        {
+          "id": "warehouse",
+          "name": "3D Warehouse",
+          "state": "done",
+          "count": 18,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://3dwarehouse.sketchup.com/search/models?q=%C4%91%C3%A8n+th%E1%BA%A3",
+          "queries": [
+            "pendant lamp"
+          ],
+          "raw": 9
+        },
+        {
+          "id": "3dsky",
+          "name": "3dsky",
+          "state": "done",
+          "count": 9,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://3dsky.org/3dmodels?query=%C4%91%C3%A8n+th%E1%BA%A3",
+          "queries": [
+            "pendant lamp"
+          ],
+          "raw": 9
+        },
+        {
+          "id": "3dbox",
+          "name": "3DBox",
+          "state": "done",
+          "count": 7,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://www.google.com/search?q=site%3A3dbox.cc%2Fdetail+%C4%91%C3%A8n+th%E1%BA%A3",
+          "queries": [
+            "pendant lamp"
+          ],
+          "raw": 9,
+          "rejected": [
+            [
+              "https://3dbox.cc/detail/1793599270396",
+              "Minimalist Star Shape Membrane Wall Lamp | 3D Model - 3Dbox"
+            ],
+            [
+              "https://3dbox.cc/detail/1794407061001",
+              "Luxury Long Crystal Ceiling Chandelier | 3D Model - 3Dbox"
+            ]
+          ]
+        },
+        {
+          "id": "sketchshaper",
+          "name": "Sketch Shaper",
+          "state": "empty",
+          "count": 0,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://www.sketchshaper.com/sketchup-3d-models-3?search=%C4%91%C3%A8n+th%E1%BA%A3",
+          "queries": [
+            "pendant lamp"
+          ],
+          "raw": 7,
+          "rejected": [
+            [
+              "https://www.sketchshaper.com/sketchup-3d-models-3?page=10",
+              "Free SketchUp 3D Models (.SKP) Download"
+            ],
+            [
+              "https://www.sketchshaper.com/sketchup-3d-models/bed/draper-floating-platform-bed-346",
+              "Draper Floating Bed 3D Model | SKP Download"
+            ],
+            [
+              "https://www.sketchshaper.com/sketchup-3d-models/bed/round-circle-back-panel-with-bed-361",
+              "Round Panel Headboard Bed 3D Model"
+            ],
+            [
+              "https://www.sketchshaper.com/sketchup-3d-models/electronics/nuova-simonelli-appia-compact-2-group-espresso-machine-418",
+              "Appia Espresso Machine 3D Model | SKP File"
+            ],
+            [
+              "https://www.sketchshaper.com/sketchup-3d-models/bed/harlow-charcoal-velvet-bed-335",
+              "Harlow Velvet Bed 3D Model | SKP Download"
+            ],
+            [
+              "https://www.sketchshaper.com/sketchup-3d-models/chairs/voxlov-cane-lounge-chair-447",
+              "Voxlöv Cane Lounge Chair 3D Model | SKP File"
+            ],
+            [
+              "https://www.sketchshaper.com/sketchup-3d-models/chairs/skansnas-wood-chair-with-woven-seat-445",
+              "SKANSNÄS Wood Chair 3D Model | SKP File"
+            ]
+          ]
+        },
+        {
+          "id": "tailieukientruc",
+          "name": "Tài liệu kiến trúc",
+          "state": "done",
+          "count": 7,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://www.google.com/search?q=site%3Atailieukientruc.net+%C4%91%C3%A8n+th%E1%BA%A3",
+          "queries": [
+            "đèn thả"
+          ],
+          "raw": 9,
+          "rejected": [
+            [
+              "https://tailieukientruc.net/den-tha.html",
+              "Đèn Thả"
+            ],
+            [
+              "https://tailieukientruc.net/thu-vien-sketchup-tong-hop-296-model-den-tran-cho-noi-that-p10-11505.html",
+              "Thư viện Sketchup Tổng hợp 296 Model Đèn Trần cho nội thất P10"
+            ]
+          ]
+        },
+        {
+          "id": "sketchupvn",
+          "name": "SketchUp.vn",
+          "state": "empty",
+          "count": 0,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://www.google.com/search?q=site%3Asketchup.vn+%C4%91%C3%A8n+th%E1%BA%A3",
+          "queries": [
+            "đèn thả"
+          ],
+          "raw": 3,
+          "rejected": [
+            [
+              "https://cuocthi.sketchup.vn/2024/12/31/68-huong-vi-tu-khong-gian-phan-hoang-long/",
+              "68.Hương vị từ không gian- Phan Hoàng Long | SUVN CUỘC THI"
+            ],
+            [
+              "http://sketchup.vn/bai-viet/tID827_VRay-36-Cho-SketchUp-Co-Gi-Moi.html",
+              "V-Ray 3.6 Cho SketchUp Có Gì Mới?"
+            ],
+            [
+              "http://sketchup.vn/bai-viet/tID265_Tao-tham-thuc-te-trong-VRay-cho-SketchUp.html",
+              "Tạo thảm thực tế trong V-Ray cho SketchUp"
+            ]
+          ]
+        }
+      ],
+      "warehouse_images": {
+        "code": 200,
+        "error": "",
+        "matched": 0,
+        "added": 9
+      },
+      "thumbs_pending": 0,
+      "items": [
+        {
+          "site": "3dbox",
+          "title": "Modern Minimalist White Ceiling Pendant Lamp",
+          "url": "https://3dbox.cc/detail/1793219421766",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Modern Minimalist Fabric Shade Ceiling Pendant Lamp",
+          "url": "https://3dbox.cc/detail/1793758441579",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Layered Fabric Shade Ceiling Pendant Lamp",
+          "url": "https://3dbox.cc/detail/1792363440493",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Modern Minimalist Circular LED Ceiling Pendant Lamp",
+          "url": "https://3dbox.cc/detail/1794137192947",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Roll & Hill Mini Endless Linear Ceiling Pendant Lamp",
+          "url": "https://3dbox.cc/detail/1793254121797",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Zen Style Chinese Pendant Lamp Set with Floral…",
+          "url": "https://3dbox.cc/detail/1790450997531",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Nordic Bauhaus Style Pendant Ceiling Lamp",
+          "url": "https://3dbox.cc/detail/1793172241571",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Boconcept Handle Me pendant lamp",
+          "url": "https://3dsky.org/3dmodels/show/boconcept_handle_me_pendant_lamp",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Rakumba Volute Pendant Lamp",
+          "url": "https://3dsky.org/3dmodels/show/rakumba-volute-pendant-lamp",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Flos Luce Cilindrica Pendant Lamp",
+          "url": "https://3dsky.org/3dmodels/show/flos-luce-cilindrica-pendant-lamp-9",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Aromas del Campo Yma Pendant Lamp",
+          "url": "https://3dsky.org/3dmodels/show/aromas-del-campo-yma-pendant-lamp-4",
+          "thumb": false,
+          "thumb_note": "img 0 timeout"
+        },
+        {
+          "site": "3dsky",
+          "title": "Westwing 3D printed pendant lamp Keani",
+          "url": "https://3dsky.org/3dmodels/show/westwing-3d-printed-pendant-lamp-keani",
+          "thumb": false,
+          "thumb_note": "img 0 timeout"
+        },
+        {
+          "site": "3dsky",
+          "title": "Panzeri Auriel Pendant Lamp",
+          "url": "https://3dsky.org/3dmodels/show/panzeri-auriel-pendant-lamp",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Memoir Black Pendant Lamp by GamFratesi for Lyf",
+          "url": "https://3dsky.org/3dmodels/show/memoir-black-pendant-lamp-by-gamfratesi-for-lyf",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Enne Lumea Pendant Lamp",
+          "url": "https://3dsky.org/3dmodels/show/enne-lumea-pendant-lamp-1",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "VIRTA PENDANT LAMP corona",
+          "url": "https://3dsky.org/3dmodels/show/virta-pendant-lamp-corona",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "tailieukientruc",
+          "title": "Đèn thả sketchup độc đáo hiện đại",
+          "url": "https://tailieukientruc.net/7-den-tha-sketchup-doc-dao-hien-dai-15914.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "tailieukientruc",
+          "title": "Sketchup model đèn thả hình cầu miễn phí",
+          "url": "https://tailieukientruc.net/45-sketchup-model-den-tha-hinh-cau-mien-phi-16382.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "tailieukientruc",
+          "title": "Tải miễn phí model sketchup đèn thả độc đáo",
+          "url": "https://tailieukientruc.net/29-model-sketchup-den-hien-dai-16359.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "tailieukientruc",
+          "title": "Model sketchup đèn thả hiện đại",
+          "url": "https://tailieukientruc.net/22-model-sketchup-den-tha-hien-dai-mien-phi-15938.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "tailieukientruc",
+          "title": "Đèn thả sketchup hiện đại",
+          "url": "https://tailieukientruc.net/19-den-chum-sang-trong-file-sketchup-mien-phi-15935.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "tailieukientruc",
+          "title": "Sketchup model đèn thả hiện đại ấn tượng",
+          "url": "https://tailieukientruc.net/42-sketchup-model-den-tha-hien-dai-an-tuong-16377.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "tailieukientruc",
+          "title": "Đèn thả hiện đại file sketchup miễn phí",
+          "url": "https://tailieukientruc.net/1-model-sketchup-den-tha-hien-dai-tai-mien-phi-15925.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Tense Pendant Lamp 3dsky",
+          "url": "https://3dwarehouse.sketchup.com/model/c323bd83-163c-472f-a773-d77c3ffdc017/Tense-Pendant-Lamp-3dsky",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Muuto Lighting | FLUID Pendant Lamp",
+          "url": "https://3dwarehouse.sketchup.com/model/2aa93b81-1194-4d62-ae50-0b9e3a60496b/Muuto-Lighting-FLUID-Pendant-Lamp",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Frosted Glass Pendant Lamp",
+          "url": "https://3dwarehouse.sketchup.com/model/4a331f10-1135-4e11-b97b-81b5e431a6c0/Frosted-Glass-Pendant-Lamp",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Color Echo Pendant 8\" – Pendant Light | Dutton Brown",
+          "url": "https://3dwarehouse.sketchup.com/model/accd2c5c-3d77-431c-9cf8-6809c5eee169/Color-Echo-Pendant-8-Dynamic-Options-by-Dutton-Brown",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Pendant Lamp Dial WestWing - Model - 3D Warehouse - SketchUp",
+          "url": "https://3dwarehouse.sketchup.com/model/961d5e63-ebf3-4dfa-8c63-8c9b7c7d503c/Pendant-Lamp-Dial-WestWing",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Modern Pendant Lamp",
+          "url": "https://3dwarehouse.sketchup.com/model/3b2ad49c-9889-4475-b9fb-9f55b57958a7/Modern-Pendant-Lamp",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Pendant Lamp Sketchup Enscape ready",
+          "url": "https://3dwarehouse.sketchup.com/model/a693a06c-4cf0-4f48-afa8-d1276ea872eb/Pendant-Lamp-Sketchup-Enscape-ready",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "BORRA B 3P triple pendant lamp UMMO Lighting",
+          "url": "https://3dwarehouse.sketchup.com/model/d41b5c91-aa19-4fd4-acf1-9f71a0d0574e/BORRA-B-3P-triple-pendant-lamp-UMMO-Lighting",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Lantern Pendant Lamp New Works DK",
+          "url": "https://3dwarehouse.sketchup.com/model/38d1ff18-0f98-44ca-8381-adab4fc6e025/Lantern-Pendant-Lamp-New-Works-DK",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Cardboard pendant lamp TAMBURO 35 SOOA DESIGN",
+          "url": "https://3dwarehouse.sketchup.com/model/334d1359-12fd-49fd-bb74-1de94645ffcb/Cardboard-pendant-lamp-TAMBURO-35-SOOA-DESIGN",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "PENDANT LIGHT 159",
+          "url": "https://3dwarehouse.sketchup.com/model/1a691671-aa1a-42dc-9bd2-bb463748589b/PENDANT-LIGHT-159",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Lucide ELYSEE Pendant light Ø 38 cm 1xE27 Opal",
+          "url": "https://3dwarehouse.sketchup.com/model/8581eee4-7d9c-4e76-8da3-76b8bc169a29/Lucide-ELYSEE-Pendant-light-%C3%98-38-cm-1xE27-Opal",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "MID CENTURY PENDANT LAMP",
+          "url": "https://3dwarehouse.sketchup.com/model/17d93e98-ba1a-48a6-8f98-29e689d399b0/MID-CENTURY-PENDANT-LAMP",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "PENDANT LIGHT 1",
+          "url": "https://3dwarehouse.sketchup.com/model/34959a75-290e-4e65-b1cb-eec866af509b/PENDANT-LIGHT-1",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Chandelier Pendant Light",
+          "url": "https://3dwarehouse.sketchup.com/model/e085f6d1-dc4e-481c-9153-9cac11e3b7ae/Chandelier-Pendant-Light",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Pendant Light",
+          "url": "https://3dwarehouse.sketchup.com/model/ff6aecf1-ca6b-410e-b1c5-e03a680e4c99/Pendant-Light",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "RANARP PENDANT LAMP 10 INCHES IKEA",
+          "url": "https://3dwarehouse.sketchup.com/model/d4cc2d13-d2f1-46a7-b2c8-026cf78d81db/RANARP-PENDANT-LAMP-10-INCHES-IKEA",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "PENDANT LIGHT 275",
+          "url": "https://3dwarehouse.sketchup.com/model/24815e4c-8ad8-44b9-a71a-77ccaccac59c/PENDANT-LIGHT-275",
+          "thumb": true,
+          "thumb_note": null
+        }
+      ]
+    },
+    {
+      "keyword": "phào chỉ",
+      "query_en": "moulding",
+      "seconds": 16.6,
+      "timeout": false,
+      "sites": [
+        {
+          "id": "warehouse",
+          "name": "3D Warehouse",
+          "state": "done",
+          "count": 18,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://3dwarehouse.sketchup.com/search/models?q=ph%C3%A0o+ch%E1%BB%89",
+          "queries": [
+            "moulding"
+          ],
+          "raw": 9
+        },
+        {
+          "id": "3dsky",
+          "name": "3dsky",
+          "state": "done",
+          "count": 9,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://3dsky.org/3dmodels?query=ph%C3%A0o+ch%E1%BB%89",
+          "queries": [
+            "moulding"
+          ],
+          "raw": 9
+        },
+        {
+          "id": "3dbox",
+          "name": "3DBox",
+          "state": "done",
+          "count": 6,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://www.google.com/search?q=site%3A3dbox.cc%2Fdetail+ph%C3%A0o+ch%E1%BB%89",
+          "queries": [
+            "moulding"
+          ],
+          "raw": 8,
+          "rejected": [
+            [
+              "https://3dbox.cc/detail/1793949762897",
+              "French Style Carved Gypsum Decorative Plaster... - 3Dbox"
+            ],
+            [
+              "https://3dbox.cc/detail/1792695607468",
+              "French Style Carved Gypsum Ceiling RoSette Set - 3Dbox"
+            ]
+          ]
+        },
+        {
+          "id": "sketchshaper",
+          "name": "Sketch Shaper",
+          "state": "empty",
+          "count": 0,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://www.sketchshaper.com/sketchup-3d-models-3?search=ph%C3%A0o+ch%E1%BB%89",
+          "queries": [
+            "moulding"
+          ],
+          "raw": 0
+        },
+        {
+          "id": "tailieukientruc",
+          "name": "Tài liệu kiến trúc",
+          "state": "done",
+          "count": 5,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://www.google.com/search?q=site%3Atailieukientruc.net+ph%C3%A0o+ch%E1%BB%89",
+          "queries": [
+            "phào chỉ"
+          ],
+          "raw": 9,
+          "rejected": [
+            [
+              "https://tailieukientruc.net/tim-kiem/file+sketchup+ph%C3%A0o+ch%E1%BB%89+th%E1%BA%A1ch+cao.html",
+              "file sketchup phào chỉ thạch cao"
+            ],
+            [
+              "https://tailieukientruc.net/tailieu/document/index/title/tong-hop-82-model-3d-chi-tiet-phao-chi-dau-cot-hoa-van-phu-dieu-file-sketchup-full/id/4501/page/113.htm",
+              "Tổng hợp 82 Model 3d chi tiết Phào, Chỉ, Đầu cột, Hoa văn, Phù điêu file ..."
+            ],
+            [
+              "https://tailieukientruc.net/tailieu/search/index/keyword/door+sketchup/page/9.html",
+              "door sketchup"
+            ],
+            [
+              "https://tailieukientruc.net/tan-co-dien.html",
+              "Tân Cổ Điển"
+            ]
+          ]
+        },
+        {
+          "id": "sketchupvn",
+          "name": "SketchUp.vn",
+          "state": "done",
+          "count": 1,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://www.google.com/search?q=site%3Asketchup.vn+ph%C3%A0o+ch%E1%BB%89",
+          "queries": [
+            "phào chỉ"
+          ],
+          "raw": 4,
+          "rejected": [
+            [
+              "https://cuocthi.sketchup.vn/2021/02/28/bo-thu-vien-phao-chi-profile-builder-23-suedu/",
+              "Bộ thư viện phào chỉ Profile builder 2+3 – SUEDU - SUVN CUỘC THI"
+            ],
+            [
+              "https://cuocthi.sketchup.vn/tag/profile-builder/",
+              "Profile builder | SUVN CUỘC THI"
+            ],
+            [
+              "https://cuocthi.sketchup.vn/category/thu-vien/model-sketchup-free/page/14/",
+              "Model SketchUp Free | SUVN CUỘC THI | Page 14"
+            ]
+          ]
+        }
+      ],
+      "warehouse_images": {
+        "code": 200,
+        "error": "",
+        "matched": 1,
+        "added": 9
+      },
+      "thumbs_pending": 0,
+      "items": [
+        {
+          "site": "3dbox",
+          "title": "French Style Decorative Plaster Cornice Moulding Set",
+          "url": "https://3dbox.cc/detail/1792378590386",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "Modern Decorative Plaster Cornice Moulding Set",
+          "url": "https://3dbox.cc/detail/1792041776055",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "NeoClassic Decorative Plaster Cornice Moulding Set",
+          "url": "https://3dbox.cc/detail/1791907057693",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "NeoClassical Decorative plaster cornice molding Set",
+          "url": "https://3dbox.cc/detail/1791591612762",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "French Style Carved Wall Molding with Framed Art Set",
+          "url": "https://3dbox.cc/detail/1793170088694",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dbox",
+          "title": "French Style Decorative Gypsum Wall Molding Set",
+          "url": "https://3dbox.cc/detail/1792169276961",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "tailieukientruc",
+          "title": "Tổng hợp 128 Model 3d chi tiết Phào, Chỉ, Đầu cột, Hoa văn, Phù điêu file…",
+          "url": "https://tailieukientruc.net/tong-hop-128-model-3d-chi-tiet-phao-chi-dau-cot-hoa-van-phu-dieu-file-sketchup-p2-2162.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "tailieukientruc",
+          "title": "085 Mô Hình SketchUp Cửa Đôi Tân Cổ Điển Với Phào Chỉ Đối Xứng &amp",
+          "url": "https://tailieukientruc.net/085-mo-hinh-sketchup-cua-doi-tan-co-dien-voi-phao-chi-doi-xung-tay-nam-doc-dao-14910.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "tailieukientruc",
+          "title": "Tổng hợp 135 Model 3d chi tiết Phào, Chỉ, Đầu cột, Hoa văn, Phù điêu file…",
+          "url": "https://tailieukientruc.net/tong-hop-135-model-3d-chi-tiet-phao-chi-dau-cot-hoa-van-phu-dieu-file-sketchup-full-2245.html",
+          "thumb": false,
+          "thumb_note": "no og:image"
+        },
+        {
+          "site": "tailieukientruc",
+          "title": "Thư viện sketchup cột, gờ, phào chỉ tân cổ điển miễn phí tải về",
+          "url": "https://tailieukientruc.net/thu-vien-sketchup-cot-go-phao-chi-tan-co-dien-mien-phi-tai-ve-5848.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "tailieukientruc",
+          "title": "Thư viện sketchup Model các chi tiết phào trần, tường thạch cao tân cổ điển",
+          "url": "https://tailieukientruc.net/thu-vien-sketchup-model-cac-chi-tiet-phao-tran-tuong-thach-cao-tan-co-dien-10849.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Wood Moulding | 3D Warehouse - SketchUp",
+          "url": "https://3dwarehouse.sketchup.com/model/7ba74e3e99d7ed7b3401db1f9405bd9e/Wood-Moulding",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Wall wooden Moulding ideas",
+          "url": "https://3dwarehouse.sketchup.com/model/c6b36168-225d-49cc-a004-ce756105ac89/Wall-wooden-Moulding-ideas",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "moulding",
+          "url": "https://3dwarehouse.sketchup.com/model/9133937a-fd0f-48d6-ad22-5ab2aeb03455/moulding",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Pendant Light Moulding - Traditional Cornice",
+          "url": "https://3dwarehouse.sketchup.com/model/3c28b5fa-90d1-4ccd-afce-ca058765e4e4/Pendant-Light-Moulding-Traditional-Cornice",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Profile Crown Moulding",
+          "url": "https://3dwarehouse.sketchup.com/model/239f3db084c5aeb5b955075957c6836/Profile-Crown-Moulding",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "moulding",
+          "url": "https://3dwarehouse.sketchup.com/model/15895fc2-010e-4464-9783-c6c76859671f/moulding",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Classical interior moulding",
+          "url": "https://3dwarehouse.sketchup.com/model/1224de96-f778-4589-923e-4938a7faf847/Classical-interior-moulding",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Primary Bedroom Crown Moulding",
+          "url": "https://3dwarehouse.sketchup.com/model/4098c709-7c4e-4e03-9470-463b05e19287/Primary-Bedroom-Crown-Moulding",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "moulding wallstyl WL6 - Door kit",
+          "url": "https://3dwarehouse.sketchup.com/model/7820c13ba9aefa6bb30a2f29dbfd6367/moulding-wallstyl-WL6-Door-kit",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Wall Moulding Panel 01",
+          "url": "https://3dsky.org/3dmodels/show/wall-moulding-panel-01-1",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Wall moulding panel neoclassical",
+          "url": "https://3dsky.org/3dmodels/show/wall-moulding-panel-neoclassical-2",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Wall Moulding Panel 03",
+          "url": "https://3dsky.org/3dmodels/show/wall-moulding-panel-03",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Wall moulding panel neoclassical",
+          "url": "https://3dsky.org/3dmodels/show/wall-moulding-panel-neoclassical-6",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Wall Moulding Panel | 2",
+          "url": "https://3dsky.org/3dmodels/show/wall-moulding-panel-stenovaia-panel-molding-2",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Wall moulding panel neoclassical",
+          "url": "https://3dsky.org/3dmodels/show/wall-moulding-panel-neoclassical-7",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Wall moulding panel neoclassical",
+          "url": "https://3dsky.org/3dmodels/show/wall-moulding-panel-neoclassical",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Classic Wall Mouldings Decor 02",
+          "url": "https://3dsky.org/3dmodels/show/classic-wall-mouldings-decor-02",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Classic Wall Mouldings Decor 42",
+          "url": "https://3dsky.org/3dmodels/show/classic-wall-mouldings-decor-42",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "sketchupvn",
+          "title": "Thư viện",
+          "url": "https://sketchup.vn/bai-viet/tID618_Thu-vien-hoa-tiet-cot-phao-chi-cua-congday-du-kich-thuoc-ve-kien-truc-chau-Au.html",
+          "thumb": false,
+          "thumb_note": "robots"
+        },
+        {
+          "site": "warehouse",
+          "title": "018080021 Egg And Dart Panel Moulding 15 x 75 x 96 Dynamic Stretchable up  to 96",
+          "url": "https://3dwarehouse.sketchup.com/model/u5b313af4-b222-476f-8e7d-8b01cf017f46/018080021-Egg-And-Dart-Panel-Moulding-15-x-75-x-96-Dynamic-Stretchable-up-to-96",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "01805002 1 Tuscan Moulding 3 x 75 x 48",
+          "url": "https://3dwarehouse.sketchup.com/model/u1660757f-d7b5-4091-b08f-f61c6f8cc457/01805002-1-Tuscan-Moulding-3-x-75-x-48",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "moulding 01",
+          "url": "https://3dwarehouse.sketchup.com/model/5913acdf-804d-475f-8cbc-96dbf10cf1a0/moulding-01",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "MOULDINGS",
+          "url": "https://3dwarehouse.sketchup.com/model/u49f2ec7a-6a8b-45b6-819c-b8f9c54d6893/MOULDINGS",
+          "thumb": false,
+          "thumb_note": "img 404 http"
+        },
+        {
+          "site": "warehouse",
+          "title": "Wood Moulding",
+          "url": "https://3dwarehouse.sketchup.com/model/32c1da56-749c-48e9-96fa-249a78b59d83/Wood-Moulding",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "WindsorONE Classical Colonial Moldings - Crown molding & Cornice Buildup",
+          "url": "https://3dwarehouse.sketchup.com/model/536d046680526beb952e3b225b4a467d/WindsorONE-Classical-Colonial-Moldings-Crown-molding-Cornice-Buildup",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Wall moulding",
+          "url": "https://3dwarehouse.sketchup.com/model/0131c5e3-67b5-47df-a472-44dc245b08c8/Wall-moulding",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "10H x 4 38P plaster crown moulding CV144",
+          "url": "https://3dwarehouse.sketchup.com/model/ad5ad546-4a49-422c-ab8a-47a054a31271/10H-x-4-38P-plaster-crown-moulding-CV144",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "13 34H x 10P plaster crown moulding CV139",
+          "url": "https://3dwarehouse.sketchup.com/model/3a21d30b-4d76-4aac-80c7-a953e3fe2fb9/13-34H-x-10P-plaster-crown-moulding-CV139",
+          "thumb": true,
+          "thumb_note": null
+        }
+      ]
+    },
+    {
+      "keyword": "vách CNC",
+      "query_en": "cnc panel",
+      "seconds": 38.8,
+      "timeout": false,
+      "sites": [
+        {
+          "id": "warehouse",
+          "name": "3D Warehouse",
+          "state": "done",
+          "count": 19,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://3dwarehouse.sketchup.com/search/models?q=v%C3%A1ch+CNC",
+          "queries": [
+            "cnc panel"
+          ],
+          "raw": 9
+        },
+        {
+          "id": "3dsky",
+          "name": "3dsky",
+          "state": "done",
+          "count": 10,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://3dsky.org/3dmodels?query=v%C3%A1ch+CNC",
+          "queries": [
+            "cnc panel"
+          ],
+          "raw": 10
+        },
+        {
+          "id": "3dbox",
+          "name": "3DBox",
+          "state": "empty",
+          "count": 0,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://www.google.com/search?q=site%3A3dbox.cc%2Fdetail+v%C3%A1ch+CNC",
+          "queries": [
+            "cnc panel"
+          ],
+          "raw": 7,
+          "rejected": [
+            [
+              "https://3dbox.cc/detail/1790841430425",
+              "Modern textured Decorative Wall panel Set with... | 3Dbox"
+            ],
+            [
+              "https://3dbox.cc/detail/1788205478987",
+              "Geometric 3D Wall Panels | 3D panel | 3D Model | 3Dbox"
+            ],
+            [
+              "https://3dbox.cc/detail/1790840262162",
+              "Modern Wood Marble Decorative Wall Panel Set | 3Dbox"
+            ],
+            [
+              "https://3dbox.cc/detail/1792579251489",
+              "New Chinese Style Partition Screen with Console... | 3Dbox"
+            ],
+            [
+              "https://3dbox.cc/detail/1790843838781",
+              "Luxury Black Marble Gold Accent Wall Panel - 3Dbox"
+            ],
+            [
+              "https://3dbox.cc/detail/1792528878558",
+              "Modern French Style Bedroom Interior Scene | Bedroom | 3Dbox"
+            ],
+            [
+              "https://3dbox.cc/detail/1793504287236",
+              "Mid Century Modern Cozy Wooden Bedroom Interior | 3Dbox"
+            ]
+          ]
+        },
+        {
+          "id": "sketchshaper",
+          "name": "Sketch Shaper",
+          "state": "empty",
+          "count": 0,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://www.sketchshaper.com/sketchup-3d-models-3?search=v%C3%A1ch+CNC",
+          "queries": [
+            "cnc panel"
+          ],
+          "raw": 0
+        },
+        {
+          "id": "tailieukientruc",
+          "name": "Tài liệu kiến trúc",
+          "state": "done",
+          "count": 5,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://www.google.com/search?q=site%3Atailieukientruc.net+v%C3%A1ch+CNC",
+          "queries": [
+            "vách CNC"
+          ],
+          "raw": 9,
+          "rejected": [
+            [
+              "http://www.tailieukientruc.net/tim-kiem/CNC+Sketchup.html",
+              "CNC Sketchup"
+            ],
+            [
+              "http://www.tailieukientruc.net/tailieu/search/index/keyword/CNC+Sketchup/page/2.html",
+              "CNC Sketchup"
+            ],
+            [
+              "https://tailieukientruc.net/tailieu/search/index/keyword/cnc+sketchup+model/page/2.html",
+              "cnc sketchup model"
+            ],
+            [
+              "https://www.tailieukientruc.net/tailieu/search/index/keyword/cnc/page/4.html",
+              "cnc"
+            ]
+          ]
+        },
+        {
+          "id": "sketchupvn",
+          "name": "SketchUp.vn",
+          "state": "done",
+          "count": 1,
+          "error": null,
+          "provider": "serper",
+          "search_url": "https://www.google.com/search?q=site%3Asketchup.vn+v%C3%A1ch+CNC",
+          "queries": [
+            "vách CNC"
+          ],
+          "raw": 3,
+          "rejected": [
+            [
+              "http://blog.sketchup.vn/2014/08/modeling-cnc-wall-very-fast.html?m=1",
+              "Modeling a CNC wall very fast - Blog Sketchup Việt Nam"
+            ],
+            [
+              "http://blog.sketchup.vn/",
+              "Blog Sketchup Việt Nam"
+            ]
+          ]
+        }
+      ],
+      "warehouse_images": {
+        "code": 200,
+        "error": "",
+        "matched": 0,
+        "added": 10
+      },
+      "thumbs_pending": 0,
+      "items": [
+        {
+          "site": "sketchupvn",
+          "title": "Wall Panel - Vách ngăn, trang trí, CNC #2",
+          "url": "https://sketchup.vn/single-photo/tID320_Free-Sketchup-model-Wall-Panel-Vach-ngan-trang-tri-CNC-2.html",
+          "thumb": false,
+          "thumb_note": "robots"
+        },
+        {
+          "site": "tailieukientruc",
+          "title": "028 Tải về file vách CNC phòng thờ sketchup miễn phí",
+          "url": "https://tailieukientruc.net/028-tai-ve-file-vach-cnc-phong-tho-sketchup-mien-phi-14976.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "tailieukientruc",
+          "title": "Thư viện 3d Sketchup về Hoa văn vách ngăn CNC MS002",
+          "url": "https://tailieukientruc.net/thu-vien-3d-sketchup-ve-hoa-van-vach-ngan-cnc-ms002-3792.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "tailieukientruc",
+          "title": "Model Sketchup vách cnc hiện đại",
+          "url": "https://tailieukientruc.net/5-model-sketchup-vach-cnc-hien-dai-tai-mien-phi-16548.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "tailieukientruc",
+          "title": "Model sketchup vách cnc hiện đại",
+          "url": "https://tailieukientruc.net/2-model-sketchup-vach-cnc-hien-dai-16497.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "tailieukientruc",
+          "title": "Model Sketchup vách cnc hiện đại tải miễn phí",
+          "url": "https://tailieukientruc.net/6-model-sketchup-vach-cnc-hien-dai-tai-mien-phi-16521.html",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "cnc panels",
+          "url": "https://3dwarehouse.sketchup.com/model/845022d06ac75ef0d614b9a1d2062a4a/cnc-panels",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "CNC PANEL",
+          "url": "https://3dwarehouse.sketchup.com/model/5a39ffbf-34e1-4cc5-bef1-a9ac3eaf50f5/CNC-PANEL",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "CNC-Panel-346 (SE)",
+          "url": "https://3dwarehouse.sketchup.com/model/aae35e75-11b0-405f-8c0f-20bfdf0eb09c/CNC-Panel-346-SE",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Separator - CNC - Panel - Mirror - Ayna",
+          "url": "https://3dwarehouse.sketchup.com/model/515f7421-113e-4c55-8c60-b1a7a74cce35/Separator-CNC-Panel-Mirror-Ayna",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "CNC PANEL",
+          "url": "https://3dwarehouse.sketchup.com/model/3ca409bf-8837-4c28-95cc-b0fa4feae3ed/CNC-PANEL",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "CNC | Perforated Panel | Building Facade Skin",
+          "url": "https://3dwarehouse.sketchup.com/model/cdff6fe5-4931-41f4-9458-58df3576dd07/CNC-Perforated-Panel-Building-Facade-Skin",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "CNC-Panel-418 (1180x2400)",
+          "url": "https://3dwarehouse.sketchup.com/model/923afc06-6397-4a6f-b25d-d24f8104fa5f/CNC-Panel-418-1180x2400",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "CNC panel-Floral pattern",
+          "url": "https://3dwarehouse.sketchup.com/model/8e56d9cf-5191-4f62-80a4-5a86af3df5ff/CNC-panel-Floral-pattern",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "cnc panels",
+          "url": "https://3dwarehouse.sketchup.com/model/851b0a55-4f4f-4535-ba9e-68958afd5eca/cnc-panels",
+          "thumb": false,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "CNC Panel - 3D panel - 3D model - 3dsky.org",
+          "url": "https://3dsky.org/3dmodels/show/cnc_panel_4",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Wall Panel CNC - 3D panel - 3D model - 3dsky.org",
+          "url": "https://3dsky.org/3dmodels/show/wall_panel_cnc",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "CNC 3D Panel | Decorative panel",
+          "url": "https://3dsky.org/3dmodels/show/cnc_3d_panel_decorative_panel",
+          "thumb": false,
+          "thumb_note": "img 0 timeout"
+        },
+        {
+          "site": "3dsky",
+          "title": "cnc panel - Other decorative objects - 3D model - 3dsky.org",
+          "url": "https://3dsky.org/3dmodels/show/cnc_panel_7",
+          "thumb": false,
+          "thumb_note": "img 0 timeout"
+        },
+        {
+          "site": "3dsky",
+          "title": "CNC panel - Other decorative objects - 3D model - 3dsky.org",
+          "url": "https://3dsky.org/3dmodels/show/cnc_panel_8",
+          "thumb": false,
+          "thumb_note": "img 0 timeout"
+        },
+        {
+          "site": "3dsky",
+          "title": "panel cnc - Other decorative objects - 3D model - 3dsky.org",
+          "url": "https://3dsky.org/3dmodels/show/panel_cnc_1",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "CNC Wall Panel - Other decorative objects - 3D model - 3dsky.org",
+          "url": "https://3dsky.org/3dmodels/show/cnc_wall_panel_3",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "CNC PARTITION 3D PANEL",
+          "url": "https://3dsky.org/3dmodels/show/cnc_partition_3d_panel",
+          "thumb": false,
+          "thumb_note": "img 0 timeout"
+        },
+        {
+          "site": "3dsky",
+          "title": "Tree CNC 3D Panel",
+          "url": "https://3dsky.org/3dmodels/show/tree_cnc_3d_panel",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "3dsky",
+          "title": "Decorative 3d CNC Pattern Panel - 3dsky.org",
+          "url": "https://3dsky.org/3dmodels/show/decorative_3d_cnc_pattern_panel",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Wooden Panel CNC Design Cutting",
+          "url": "https://3dwarehouse.sketchup.com/model/9b779b2e-b688-4a87-acde-d8ac1450deff/Wooden-Panel-CNC-Design-Cutting",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "CNC Panel 405 1200x2340",
+          "url": "https://3dwarehouse.sketchup.com/model/2037274f-44a1-4c7f-b5e4-cb382d8b3cb3/CNC-Panel-405-1200x2340",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "CNC - Laser Cut Panel Design",
+          "url": "https://3dwarehouse.sketchup.com/model/4c4547e4-937f-4324-9745-115952264389/CNC-Laser-Cut-Panel-Design",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "CNC panel",
+          "url": "https://3dwarehouse.sketchup.com/model/98e339a6-311b-42e1-a5c4-3ed9a982989e/CNC-panel",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "CNC Panel 419 1180x2400",
+          "url": "https://3dwarehouse.sketchup.com/model/0efc00d1-3e5d-4daf-87de-2218bde160dd",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "CNC PANEL",
+          "url": "https://3dwarehouse.sketchup.com/model/5f608ecb-e5ae-4752-aa21-a65d0eef283c/CNC-PANEL",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "CNC Panel 430 1180x2400",
+          "url": "https://3dwarehouse.sketchup.com/model/165d8949-55a8-4dd3-90e2-e0dfed17633a/CNC-Panel-430-1180x2400",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "Cnc sliding panel by irenderer",
+          "url": "https://3dwarehouse.sketchup.com/model/58588cb2-335e-4103-a1f4-98c9914faf20/Cnc-sliding-panel-by-irenderer",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "CNC Panel 344 SE",
+          "url": "https://3dwarehouse.sketchup.com/model/95174822-c541-4143-b3cd-a75c0e4185f3/CNC-Panel-344-SE",
+          "thumb": true,
+          "thumb_note": null
+        },
+        {
+          "site": "warehouse",
+          "title": "CNC PANEL 2",
+          "url": "https://3dwarehouse.sketchup.com/model/4229254d-14a7-439b-9cc0-8ce4e98f01b0/CNC-PANEL-2",
+          "thumb": true,
+          "thumb_note": null
+        }
+      ]
+    }
+  ],
+  "keys_available": [
+    "serper",
+    "serpapi"
+  ],
+  "finished": "2026-11-26 11:53:06 +0700"
+}

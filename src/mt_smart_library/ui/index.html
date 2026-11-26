@@ -24,7 +24,7 @@
     <nav id="cats" class="cats"></nav>
     <button id="btnAddCat" class="addcat">+ Thêm danh mục</button>
     <div id="scanMini" class="scanmini" hidden><div class="spinner"></div><span id="scanText"></span><button id="btnCancelScan" class="link">Hủy</button></div>
-    <div class="sidefoot"><button id="btnAddRoot" class="ghost2">+ Thêm thư mục thư viện</button></div>
+    <div class="sidefoot"><button id="btnAddRoot" class="ghost2">+ Thêm thư mục thư viện</button><button id="btnLibImport2" class="ghost2" title="Lưu file SKP/ZIP bạn đã tải từ website vào Thư viện máy tính">⤓ Nhập SKP đã tải</button></div>
   </aside>
 
   <main class="content" id="content">
@@ -50,11 +50,17 @@
         <button data-f="all" class="on">Tất cả <i></i></button>
         <button data-f="local">Máy tính <i></i></button>
         <button data-f="online">Online <i></i></button>
+        <button data-f="web" title="Link chi tiết model trên 3D Warehouse, 3dsky, 3DBox, Sketch Shaper, Tài liệu kiến trúc, SketchUp.vn">Website <i></i></button>
         <button data-f="insertable">Chèn được ngay <i></i></button>
         <button data-f="free">Miễn phí <i></i></button>
       </div>
       <span id="resInfo" class="resinfo"></span>
       <label class="size" title="Kích thước ảnh">▫<input id="thumbSize" type="range" min="140" max="340" step="10">▣</label>
+    </div>
+    <div id="webBar" class="webbar" hidden>
+      <span class="wl" title="Tìm qua công cụ tìm kiếm web (Tavily/Serper/SerpApi/Brave). Bấm tên website để tìm trực tiếp trên website đó.">Website:</span>
+      <span id="webSites" class="websites"></span>
+      <button id="btnLibImport" type="button" class="ghost2" title="Chọn file SKP (hoặc ZIP chứa SKP) bạn đã tải về để lưu vào Thư viện máy tính">⤓ Nhập SKP đã tải</button>
     </div>
     <div id="empty" class="empty" hidden></div>
     <div id="grid" class="grid"></div>
@@ -216,7 +222,7 @@
 <!-- File vừa tải từ trang nguồn -->
 <div id="foundBar" class="foundbar" hidden>
   <span id="foundText"></span>
-  <button id="foundIns" class="primary">CHÈN</button><button id="foundX" class="x2" title="Bỏ qua">×</button>
+  <button id="foundIns" class="primary">CHÈN</button><button id="foundSave" title="Sao chép file vào Thư viện máy tính để dùng lần sau">LƯU VÀO THƯ VIỆN</button><button id="foundX" class="x2" title="Bỏ qua">×</button>
 </div>
 
 <!-- Cài bộ AI tìm bằng ảnh (1 lần) -->

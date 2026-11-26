@@ -107,7 +107,8 @@ module MTDesign
         st = s.states[provider.id]
         items = Array(res['items'])
         oq = provider.relevance_query(s)
-        if provider.online? && !s.loose # tìm bằng ảnh: lọc bằng độ tương đồng hình ảnh thay cho lọc tên
+        apply_patch(s, res['patch']) if res['patch'].is_a?(Hash)
+        if provider.online? && !s.loose && !(provider.respond_to?(:prefiltered?) && provider.prefiltered?) # tìm bằng ảnh: lọc bằng độ tương đồng hình ảnh thay cho lọc tên
           before = items.size
           items = items.select { |it| ResultRanker.relevant_online?(it, oq, s.cat_terms) }
           s.hidden += before - items.size
@@ -118,13 +119,25 @@ module MTDesign
         st['next'] = res['next']
         st['error'] = res['error']
         st['offline'] = res['offline'] ? true : false
-        st['state'] = res['error'] ? 'error' : 'done'
+        st['state'] = if res['partial'] then 'loading'
+                      elsif res['error'] then 'error'
+                      else 'done'
+                      end
         st['total'] = res['total'] if res['total']
         emit_update
       rescue StandardError => e
         @log&.error("Xử lý kết quả #{provider.id} lỗi", e)
         st.merge!('state' => 'error', 'error' => e.message) if st
         emit_update
+      end
+
+      # Cập nhật trường của item đã có trên lưới (ví dụ ảnh đại diện website tải xong sau).
+      def apply_patch(s, patch)
+        patch.each do |key, fields|
+          it = s.store[key.to_s]
+          next unless it && fields.is_a?(Hash)
+          fields.each { |k, v| it[k.to_s] = v if %w[thumb thumb_large].include?(k.to_s) }
+        end
       end
 
       def add_online_favorites(s)

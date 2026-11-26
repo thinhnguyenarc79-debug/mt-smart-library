@@ -9,7 +9,7 @@ module MTDesign
       # Danh mục Sketchfab không phù hợp thư viện kiến trúc/nội thất (trừ khi người dùng hỏi rõ).
       EXCLUDED_CATS = %w[characters-creatures animals-pets people weapons-military].freeze
       EXCLUDED_CAT_WORDS = %w[character creature animal people weapon military].freeze
-      FILTERS = %w[all local online insertable free].freeze
+      FILTERS = %w[all local online web insertable free].freeze
 
       module_function
 
@@ -70,6 +70,7 @@ module MTDesign
         s += 5 if item['downloadable']
         s += 8 if item['format'] == 'skp'
         s += 8 if item['insertable']
+        s += 4 if item['web_model'] && item['thumb']
         if item['source'] == 'local'
           mb = item['size'].to_i / 1_048_576.0
           s += mb <= 20 ? 4 : (mb > 80 ? -4 : 0)
@@ -95,7 +96,7 @@ module MTDesign
         items.each do |it|
           k = dedupe_key(it)
           next if store.key?(k)
-          if it['source'] != 'local'
+          if it['source'] != 'local' && !it['web_model'] # website: mỗi link chi tiết là 1 model riêng (khóa theo link)
             nk = [Util.fold(it['title']), it['author'].to_s.downcase]
             next if names[nk]
             names[nk] = true
@@ -111,6 +112,7 @@ module MTDesign
         case filter
         when 'local' then items.select { |i| i['source'] == 'local' }
         when 'online' then items.reject { |i| i['source'] == 'local' }
+        when 'web' then items.select { |i| i['web_model'] }
         when 'insertable' then items.select { |i| i['insertable'] }
         when 'free' then items.select { |i| i['free'] }
         else items

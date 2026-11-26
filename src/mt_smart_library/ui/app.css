@@ -166,3 +166,15 @@ label.col{display:flex;flex-direction:column;gap:4px;margin:8px 0;font-size:12px
 .item.src .stat{display:block;font-size:12px;color:#344054;margin-top:2px}
 .item.src .prog2{display:block;font-size:12px;color:#175cd3}
 .item.src .acts{flex-wrap:wrap;justify-content:flex-end}
+/* V1.0.16 — kết quả website */
+.webbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 10px;padding:6px 10px;border:1px solid var(--line,#e4e7ec);border-radius:10px;background:#fafbfc;font-size:12px}
+.webbar .wl{color:var(--muted,#667085);font-weight:600}
+.webbar .websites{display:flex;gap:6px;flex-wrap:wrap;flex:1}
+.webbar .wsite{border:1px solid var(--line,#d0d5dd);background:#fff;border-radius:14px;padding:3px 10px;font-size:12px;cursor:pointer;color:#1d2939}
+.webbar .wsite.loading{color:var(--muted,#667085)}
+.webbar .wsite.done{border-color:#2e7d5b;color:#1f5f45}
+.webbar .wsite.empty,.webbar .wsite.error{border-style:dashed;color:#9a3412}
+.webbar .wsite .wgo{font-weight:600}
+.thumb .wsrc{position:absolute;right:7px;bottom:7px;font-size:11px;background:#1d2939d9;color:#fff;border-radius:9px;padding:1px 7px;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sidefoot .ghost2+.ghost2{margin-top:6px}
+.sidefoot .ghost2{display:block;width:100%}

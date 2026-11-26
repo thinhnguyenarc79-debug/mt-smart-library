@@ -1,5 +1,44 @@
 # Báo cáo kiểm thử — MT SMART LIBRARY PRO
 
+## V1.0.16 (26/11/2026) — TÌM MODEL TRÊN WEBSITE
+
+### Kiểm thử thực tế trên máy anh (SketchUp Pro 2022, Ruby 2.7.2, Windows)
+Chạy mã V1.0.16 (module tìm website) trong SketchUp đang mở bằng Ruby Console, dùng key Serper/SerpApi đã lưu (DPAPI, không đọc/ghi ra ngoài).
+Kết quả gốc: `tests/fixtures/web_real/e2e_sketchup_v1016_final.json` (11:50–11:53, 26/11/2026). Số = link CHI TIẾT model thật sau lọc.
+
+| Từ khóa | Tiếng Anh | 3D Warehouse | 3dsky | 3DBox | Sketch Shaper | Tài liệu KT | SketchUp.vn | Tổng | Có ảnh |
+|---|---|---|---|---|---|---|---|---|---|
+| sofa | sofa | 17 | 9 | 9 | 7 | 5 | 1 | 48 | 31 |
+| bàn thờ | altar | 19 | 3 | 3 | 0 | 2 | 1 | 28 | 17 |
+| ghế ăn | dining chair | 18 | 7 | 9 | 5 | 3 | 0 | 42 | 32 |
+| đèn thả | pendant lamp | 18 | 9 | 7 | 0 | 7 | 0 | 41 | 30 |
+| phào chỉ | moulding | 18 | 9 | 6 | 0 | 5 | 1 | 39 | 28 |
+| vách CNC | cnc panel | 19 | 10 | 0 | 0 | 5 | 1 | 35 | 21 |
+
+- Tổng 233 link model chi tiết, 159 có ảnh đại diện. Không có link trang chủ / tìm kiếm / danh mục / tag trong kết quả.
+- Sketch Shaper chỉ có ~418 model (không có bàn thờ, đèn thả, phào chỉ, vách CNC) → 0 là đúng; plugin hiện nút tìm trực tiếp.
+- SketchUp.vn: trang chủ báo lỗi 500 khi kiểm tra; Google còn chỉ mục vài bài → link có thể chưa mở được.
+- Thời gian: lưới có kết quả sau vài giây (mỗi website trả về độc lập); toàn bộ ảnh xong 13–42 s (một số ảnh CDN 3dsky quá 10 s bị bỏ qua).
+- Lỗi phát hiện khi chạy thật và đã sửa: Serper với `gl=vn` trả link `google.com/goto` (bỏ `gl`); ảnh nhị phân bị hỏng do chuyển UTF-8 (thêm `binary`);
+  Tài liệu kiến trúc toàn trang tìm kiếm (thêm `sketchup -inurl:tim-kiem`); 3D Warehouse không có og:image (dùng Serper Images, bổ sung model có ảnh).
+
+### Kiểm thử dữ liệu thật Tavily (không key)
+`tests/fixtures/web_real/tavily_2026-11-26.json`: 31 phản hồi thật của Tavily (sofa, bàn thờ, ghế ăn, một phần đèn thả, phào chỉ) ghi lại 26/11/2026.
+Tavily không key giới hạn theo giờ (`hourly_cap_reached` sau khoảng 35 lượt) — đã xử lý thành thông báo rõ và tự chuyển nhà cung cấp khác.
+
+### Tự động (sandbox)
+- `test_web_models.rb` 11 test / 660 kiểm tra: dịch Việt→Anh 6 từ khóa; chỉ giữ link chi tiết + liên quan trên dữ liệu thật; loại trùng; tên sạch;
+  1 truy vấn/website; nhận diện hết hạn mức; link tìm trực tiếp; robots.txt; og:image; data URI; luồng song song 6 website (Serper 429 → Tavily);
+  cache 30 phút không gọi lại API; Serper Images gắn/bổ sung ảnh 3D Warehouse.
+- `test_app.rb` (+1): MỞ TRANG mở đúng link, chặn link giả mạo host; theo dõi file tải; LƯU VÀO THƯ VIỆN (SKP), Nhập ZIP chứa SKP, không ghi đè, từ chối RAR, tự thêm thư mục vào thư viện.
+- Giao diện Chrome headless: 74 + 27 kiểm tra (thêm thẻ website, thanh Website, bộ lọc Website, nút Nhập SKP, LƯU VÀO THƯ VIỆN).
+- Toàn bộ test cũ đạt; cập nhật thật bằng updater của 1.0.15 → 1.0.16 và khôi phục về 1.0.15: đạt (`verify_upgrade.rb`).
+
+### Chưa kiểm thử
+- Giao diện V1.0.16 thật trong SketchUp (cần khởi động lại SketchUp sau khi cập nhật) — mới chạy module tìm website trong SketchUp, chưa bấm trên giao diện mới.
+- Tải SKP thật từ website rồi bấm LƯU VÀO THƯ VIỆN trên máy anh (đã kiểm thử tự động).
+- Brave, SearXNG, SerpApi cho tính năng này (máy anh dùng Serper trước; SerpApi chỉ chạy khi Serper lỗi).
+
 ## V1.0.15 (26/11/2026) — CẬP NHẬT ONLINE QUA GITHUB
 
 ### Nền và sao lưu

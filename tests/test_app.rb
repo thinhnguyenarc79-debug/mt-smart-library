@@ -260,8 +260,8 @@ class TestApp < Minitest::Test
     refute(d.messages('categories').last[1]['list'].any? { |x| x['custom'] })
     init_src = d.messages('init').last[1]['sources_status'].map { |x| [x['id'], x['integrated']] }.to_h
     expect = { 'local' => true, 'sketchfab' => true, 'polyhaven' => true, 'cgtips' => true, 'sketchupfree' => true, 'thuviensketchup' => true,
-               'cgtrader' => false, 'warehouse' => false, '3dsky' => false, '3dbox' => false, 'sketchshaper' => false,
-               'tailieukientruc' => false, 'sketchupvn' => false, 'catalog' => true }
+               'cgtrader' => false, 'catalog' => true, 'web_models' => true, 'warehouse' => true, '3dsky' => true, '3dbox' => true,
+               'sketchshaper' => true, 'tailieukientruc' => true, 'sketchupvn' => true }
     assert_equal(expect, init_src)
     assert_equal 12, d.messages('init').last[1]['accounts'].size
   end
@@ -349,4 +349,58 @@ class TestApp < Minitest::Test
     @app.schedule_startup_check
     assert_operator UI.timers.size, :>, before, 'tự kiểm tra cập nhật khi mở (chỉ kiểm tra, không tự cài)'
   end
+
+  # V1.0.16: mở trang model website bằng trình duyệt mặc định, theo dõi file tải về, lưu SKP/ZIP vào Thư viện máy tính.
+  def test_web_model_open_and_import_to_library
+    ENV['MT_DOWNLOADS_DIR'] = Dir.mktmpdir('downloads_')
+    @app.show
+    d = dlg
+    d.fire('ready')
+    pump { @app.instance_variable_get(:@library_loaded) }
+    it = { 'source' => 'web', 'web_model' => true, 'site' => '3dsky', 'source_label' => '3dsky', 'uid' => 'abc123',
+           'title' => 'Orion sofa 2', 'url' => 'https://3dsky.org/3dmodels/show/orion-sofa-2', 'key' => 'web:abc123' }
+    @app.search.instance_variable_set(:@session, Struct.new(:store, :sid, :online_q).new({ 'web:abc123' => it }, 1, 'sofa'))
+    d.fire('insert_item', 'web:abc123')
+    assert_equal 'https://3dsky.org/3dmodels/show/orion-sofa-2', UI.opened.last
+    assert @app.instance_variable_get(:@watcher).active?
+    # link giả mạo host khác: không mở
+    bad = it.merge('url' => 'https://evil.example/3dmodels/show/x', 'key' => 'web:bad')
+    @app.search.session.store['web:bad'] = bad
+    n = UI.opened.size
+    d.fire('insert_item', 'web:bad')
+    assert_equal n, UI.opened.size
+    # nút tìm trực tiếp trên website
+    d.fire('web_search_site', 'warehouse', 'bàn thờ')
+    assert_equal 'https://3dwarehouse.sketchup.com/search/models?q=b%C3%A0n+th%E1%BB%9D', UI.opened.last
+    # Lưu file vừa tải vào thư viện (tên theo model + website), tự thêm thư mục vào Thư viện máy tính
+    dl = Dir.mktmpdir('dl_')
+    skp = File.join(dl, 'orion_sofa_2.skp')
+    File.binwrite(skp, 'SKPDATA')
+    @app.instance_variable_set(:@found, { path: skp, title: 'Orion sofa 2', source: '3dsky', passwords: [] })
+    d.fire('found_save')
+    dir = File.join(@data, 'Thu_vien_tai_ve')
+    saved = File.join(dir, 'Orion sofa 2 (3dsky).skp')
+    assert File.file?(saved), Dir.children(dir).inspect
+    assert_equal 'SKPDATA', File.binread(saved)
+    assert File.file?(skp), 'file gốc trong Tải về giữ nguyên'
+    assert(@app.instance_variable_get(:@settings).roots.any? { |r| SL::Util.path_key(r) == SL::Util.path_key(dir) })
+    # Nhập ZIP chứa SKP bằng nút "Nhập SKP đã tải"
+    zip = File.join(dl, 'pack.zip')
+    Dir.chdir(dl) { File.binwrite('Bàn thờ gỗ.skp', 'SKP2'); system('zip', '-q', 'pack.zip', 'Bàn thờ gỗ.skp') }
+    UI.panel = zip
+    d.fire('lib_import')
+    assert File.file?(File.join(dir, 'Bàn thờ gỗ.skp')), Dir.children(dir).inspect
+    pump { d.messages('scan_done').any? }
+    # file trùng tên không ghi đè
+    @app.instance_variable_set(:@found, { path: skp, title: 'Orion sofa 2', source: '3dsky', passwords: [] })
+    d.fire('found_save')
+    assert File.file?(File.join(dir, 'Orion sofa 2 (3dsky) 2.skp'))
+    # định dạng không hỗ trợ
+    txt = File.join(dl, 'a.rar'); File.write(txt, 'x'); UI.panel = txt
+    d.fire('lib_import')
+    assert_match(/Chỉ nhận file .skp/, d.messages('status').last[1]['msg'].to_s)
+  ensure
+    ENV.delete('MT_DOWNLOADS_DIR')
+  end
+
 end

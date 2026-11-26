@@ -88,7 +88,37 @@ function items() {
   check('Tên dài được rút gọn', r.longTitle.endsWith('…') && r.longTitle.length <= 60, r.longTitle);
   check('Thẻ không hiện tên website / số mặt / định dạng / dung lượng', r.siteNames === 0 && r.faces === 0, r);
   check('Nút CHÈN / XEM đúng theo khả năng chèn', JSON.stringify(r.insLabels) === JSON.stringify(['CHÈN', 'CHÈN', 'CHÈN', 'XEM', 'CHÈN', 'CHÈN']), r.insLabels);
-  check('Số lượng trên bộ lọc', r.counts === '6,3,3,3,5', r.counts);
+  check('Số lượng trên bộ lọc', r.counts === '6,3,3,,3,5', r.counts);
+  // V1.0.16 — kết quả website: nhãn website, nút MỞ TRANG, thanh trạng thái từng website + tìm trực tiếp, nhập SKP đã tải
+  {
+    const W = { key: 'web:aaaa1111bbbb2222cccc', source: 'web', web_model: true, site: '3dsky', source_label: '3dsky', uid: 'aaaa1111bbbb2222cccc',
+      title: 'Orion sofa 2', url: 'https://3dsky.org/3dmodels/show/orion-sofa-2', thumb: PNG, insertable: false, downloadable: false, score: 80 };
+    await page.evaluate(([sid, it, w]) => {
+      MT.receive('web_sites', { sid, sites: [{ id: 'warehouse', name: '3D Warehouse', state: 'done', count: 9, provider: 'serper', search_url: 'https://3dwarehouse.sketchup.com/search/models?q=sofa' },
+        { id: 'sketchshaper', name: 'Sketch Shaper', state: 'empty', count: 0, search_url: 'https://www.sketchshaper.com/sketchup-3d-models-3?search=sofa' },
+        { id: 'tailieukientruc', name: 'Tài liệu kiến trúc', state: 'loading', count: 0 }] });
+      MT.receive('sr_update', { sid, items: it.concat([w]), counts: { all: 7, local: 3, online: 4, web: 1, insertable: 3, free: 5 }, filter: 'all', loading: false, has_more: false, sources: [], hidden: 0 });
+    }, [sid, all, W]);
+    await page.waitForTimeout(150);
+    const w = await page.evaluate(() => {
+      const c = document.querySelector('#grid .card[data-key="web:aaaa1111bbbb2222cccc"]');
+      return { ins: c && c.querySelector('.ins').textContent, label: c && c.querySelector('.wsrc') && c.querySelector('.wsrc').textContent,
+        img: c && !!c.querySelector('.thumb img'), bar: !document.getElementById('webBar').hidden,
+        chips: [...document.querySelectorAll('#webSites .wsite')].map(b => b.textContent),
+        counts: [...document.querySelectorAll('#filters i')].map(i => i.textContent).join(',') };
+    });
+    check('Thẻ website: MỞ TRANG + tên website + ảnh', w.ins === 'MỞ TRANG' && w.label === '3dsky' && w.img, w);
+    check('Thanh Website: số link từng website, nút tìm trực tiếp khi trống', w.bar && w.chips[0] === '3D Warehouse 9' && /Sketch Shaper 0 Tìm trên web/.test(w.chips[1]) && /…/.test(w.chips[2]), w.chips);
+    check('Bộ lọc Website có số lượng', w.counts === '7,3,4,1,3,5', w.counts);
+    await page.click('#webSites .wsite:nth-child(2)');
+    await page.click('#grid .card[data-key="web:aaaa1111bbbb2222cccc"] .ins');
+    await page.click('#btnLibImport2');
+    const calls = await page.evaluate(() => window.__calls.slice(-3));
+    check('Bấm website → tìm trực tiếp; MỞ TRANG → insert_item; Nhập SKP → lib_import',
+      calls[0][0] === 'web_search_site' && calls[0][1][0] === 'sketchshaper' && calls[1][0] === 'insert_item' && calls[1][1][0] === 'web:aaaa1111bbbb2222cccc' && calls[2][0] === 'lib_import', calls);
+    await page.evaluate(([sid, it]) => MT.receive('sr_update', { sid, items: it, counts: { all: 6, local: 3, online: 3, insertable: 3, free: 5 }, filter: 'all', loading: false, has_more: false,
+      sources: [{ id: 'local', label: 'Máy tính', state: 'done', count: 3 }, { id: 'sketchfab', label: 'Sketchfab', state: 'done', count: 3 }], hidden: 4 }), [sid, all]);
+  }
   check('Thông tin mở rộng từ khóa', /couch/.test(r.info), r.info);
   await page.screenshot({ path: OUT + '/v102_grid.png' });
 
@@ -252,6 +282,8 @@ function items() {
   check('Nhận file vừa tải: hiện thanh CHÈN', await page.locator('#foundBar').isVisible());
   await page.evaluate(() => { window.__calls.length = 0; document.querySelector('#foundIns').click(); });
   check('Bấm CHÈN gửi insert_found', await page.evaluate(() => window.__calls.some(c => c[0] === 'insert_found')) && !(await page.locator('#foundBar').isVisible()));
+  await page.evaluate(() => { MT.receive('dl_found', { name: 'orion.skp', title: 'Orion sofa 2', source: '3dsky' }); window.__calls.length = 0; document.querySelector('#foundSave').click(); });
+  check('LƯU VÀO THƯ VIỆN gửi found_save', await page.evaluate(() => window.__calls.some(c => c[0] === 'found_save')) && !(await page.locator('#foundBar').isVisible()));
   // Tìm bằng ảnh: bấm nút → chọn ảnh (Ruby), dán ảnh → gửi vs_start, cài bộ AI 1 lần, cắt vùng → vs_crop
   await page.evaluate(() => { window.__calls.length = 0; document.querySelector('#btnAi').click(); });
   check('TÌM BẰNG ẢNH mở chọn ảnh (không mở Cài đặt OpenAI)', await page.evaluate(() => window.__calls.some(c => c[0] === 'vs_pick')) &&

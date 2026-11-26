@@ -1,5 +1,23 @@
 # CHANGELOG — MT SMART LIBRARY PRO
 
+## V1.0.16 — 26/11/2026 (TÌM MODEL TRÊN CÁC WEBSITE THƯ VIỆN 3D)
+- `online/web_models.rb` (mới): 6 website — 3D Warehouse, 3dsky, 3DBox (3dbox.cc), Sketch Shaper, Tài liệu kiến trúc, SketchUp.vn.
+  Tìm qua công cụ tìm kiếm web đã có trong plugin: Serper / SerpApi / Brave / SearXNG dùng toán tử `site:` (vd. `site:3dwarehouse.sketchup.com/model sofa`),
+  Tavily dùng `include_domains` (không cần key). Có key Google thì ưu tiên Google, lỗi/hết hạn mức tự chuyển nhà cung cấp kế tiếp.
+  1 truy vấn / website / lần tìm, cache 30 phút (tiết kiệm hạn mức). Không gọi API nội bộ, không đăng nhập thay, không vượt bảo vệ website.
+- Nhận diện link CHI TIẾT model theo mẫu URL thật của từng website (3D Warehouse `/model/<id>`, 3dsky `/3dmodels/show/`, 3DBox `/detail/<số>`,
+  Sketch Shaper `/sketchup-3d-models…/<loại>/<tên-số>`, Tài liệu kiến trúc `<tên>-<mã>.html`, SketchUp.vn `/bai-viet|single-photo/tID…`);
+  loại trang chủ, tìm kiếm, danh mục, tag, blog; loại trùng (chuẩn hóa link, mã bài); lọc liên quan theo tên + đường dẫn (Việt và Anh).
+- Từ điển: bàn thờ → altar, phào chỉ → moulding/cornice, vách CNC → cnc panel, đèn thả → pendant lamp, phòng thờ, len chân tường…
+- `search/providers/web_models_provider.rb` (mới): các website chạy song song (HttpClient luồng nền), kết quả đổ dần lên lưới; chờ 0,8 s sau khi gõ;
+  ảnh đại diện: ảnh từ nhà cung cấp tìm kiếm hoặc `og:image` công khai của trang chi tiết (đọc robots.txt trước), chuyển data URI, tối đa 6 luồng.
+  Báo cáo lần tìm gần nhất: `%LOCALAPPDATA%\MT_Smart_Library\web_last.json` (không chứa key).
+- Giao diện: thẻ model có nhãn website + nút MỞ TRANG (trình duyệt mặc định); bộ lọc “Website”; thanh “Website:” trạng thái từng website,
+  bấm để tìm trực tiếp trên website đó (website không có tham số tìm kiếm công khai → Google `site:`).
+- Nhập vào thư viện: thanh “Đã nhận file vừa tải” thêm nút LƯU VÀO THƯ VIỆN; nút “⤓ Nhập SKP đã tải” (SKP hoặc ZIP chứa SKP) →
+  `%LOCALAPPDATA%\MT_Smart_Library\Thu_vien_tai_ve`, tên “<model> (<website>).skp”, không ghi đè, tự thêm thư mục vào Thư viện máy tính và quét.
+- Cài đặt › Nguồn: 6 website chuyển từ “Chưa xác minh” sang “Tìm qua công cụ tìm kiếm web”, bật/tắt từng website.
+
 ## V1.0.15 — 26/11/2026 (CẬP NHẬT ONLINE QUA GITHUB — CÀI MỘT LẦN, BẤM CẬP NHẬT)
 Nền: mã V1.0.14 TEAM EDITION đang cài trên máy (đã sao lưu, đối chiếu với V1.0.13 — chỉ khác team_config, cập nhật LAN, xuất/nhập cấu hình công ty; giữ nguyên toàn bộ).
 - `updater/update_channel.rb` (mới, nạp nóng được): kênh chính thức `thinhnguyenarc79-debug/mt-smart-library`.

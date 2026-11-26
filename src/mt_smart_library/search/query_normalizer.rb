@@ -43,7 +43,7 @@ module MTDesign
                         planter pot curtain blind drape carpet rug mirror painting picture vase pillow cushion clock frame toilet wc
                         basin sink washbasin bathtub tub shower faucet tap kitchen stove cooktop fridge refrigerator oven microwave hood
                         door window stair stairs staircase railing fence gate pergola pool tv television piano bench counter bar
-                        nightstand bedside headboard mattress partition column fan speaker computer car].freeze
+                        nightstand bedside headboard mattress partition column fan speaker computer car altar moulding molding cornice panel screen skirting baseboard].freeze
 
       Query = Struct.new(:raw, :folded, :groups, :parts, :primary_en, :expansions, :object_index) do
         def empty?

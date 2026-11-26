@@ -21,6 +21,7 @@ module MTDesign
         'index' => 'Chỉ mục máy tìm kiếm (Tavily / Serper / SerpApi / Brave / SearXNG)',
         'manual' => 'Lưu bài đang xem (đăng nhập thủ công)',
         'direct_link' => 'Link tải trực tiếp (nhập link)', 'open_only' => 'Mở nguồn + nhập link thủ công',
+        'web_search' => 'Công cụ tìm kiếm web → link chi tiết model (người dùng tự tải)',
         'unverified' => 'Chưa xác minh'
       }.freeze
       NOTES = {

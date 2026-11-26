@@ -13,6 +13,7 @@ module MTDesign
         'no_login' => 'Không cần đăng nhập',
         'expired' => 'Phiên đăng nhập hết hạn',
         'need_api' => 'Cần cấp quyền API',
+        'web_search' => 'Tìm qua công cụ tìm kiếm web — tự đăng nhập/tải trên trang',
         'unverified' => 'Chưa xác minh phương thức tích hợp'
       }.freeze
 
@@ -35,20 +36,21 @@ module MTDesign
           'note' => 'Có API chính thức (GET /v1/models, tải file) nhưng cần OAuth client ID/secret do CGTrader cấp. ' \
                     'Đăng nhập CGTrader và gửi yêu cầu cấp API tại trang Developers.' },
         { 'id' => 'warehouse', 'name' => '3D Warehouse', 'method' => 'web', 'site' => 'https://3dwarehouse.sketchup.com',
-          'note' => 'Trimble không có API công khai. Dùng Window › 3D Warehouse trong SketchUp để tải SKP.' },
+          'note' => 'Tìm qua công cụ tìm kiếm web (site:3dwarehouse.sketchup.com/model) — không dùng API nội bộ. Bấm MỞ TRANG, tự đăng nhập/tải SKP.' },
         { 'id' => '3dsky', 'name' => '3dsky', 'method' => 'web', 'site' => 'https://3dsky.org',
-          'note' => 'Chưa có API công khai đã xác minh. Model chủ yếu 3ds Max.' },
+          'note' => 'Tìm qua công cụ tìm kiếm web, ảnh đại diện từ og:image công khai. Model chủ yếu 3ds Max; tự đăng nhập/tải trên trang.' },
         { 'id' => '3dbox', 'name' => '3dbox', 'method' => 'web', 'site' => 'https://3dbox.cc',
-          'note' => 'Có SKP miễn phí/trả phí bằng credit; robots.txt cấm truy cập /api/ — cần 3dbox cấp phép tích hợp.' },
+          'note' => 'Tìm qua công cụ tìm kiếm web (link /detail/), không gọi /api/. SKP miễn phí/trả phí bằng credit — tự đăng nhập/tải trên trang.' },
         { 'id' => 'sketchshaper', 'name' => 'Sketch Shaper', 'method' => 'web', 'site' => 'https://www.sketchshaper.com',
-          'note' => 'SKP tải không cần đăng nhập nhưng robots.txt cấm /api/ và không có API công khai — cần xin phép tích hợp.' },
+          'note' => 'Tìm qua công cụ tìm kiếm web (link model chi tiết), không gọi /api/. Tải SKP trên trang.' },
         { 'id' => 'tailieukientruc', 'name' => 'Tài liệu kiến trúc', 'method' => 'web', 'site' => 'https://tailieukientruc.net',
-          'note' => 'Tải bằng điểm, cần tài khoản; không có API công khai.' },
+          'note' => 'Tìm qua công cụ tìm kiếm web (tiếng Việt + Anh). Tải bằng điểm, cần tài khoản — tự đăng nhập/tải trên trang.' },
         { 'id' => 'sketchupvn', 'name' => 'sketchup.vn', 'method' => 'web', 'site' => 'https://sketchup.vn',
-          'note' => 'Trang không phản hồi khi kiểm tra (25/11/2026) — chưa xác minh.' }
+          'note' => 'Tìm qua chỉ mục của công cụ tìm kiếm web. Trang báo lỗi 500 khi kiểm tra 26/11/2026 — link có thể chưa mở được.' }
       ].freeze
 
-      INTEGRATED = %w[sketchfab polyhaven cgtips sketchupfree thuviensketchup].freeze
+      INTEGRATED = %w[sketchfab polyhaven cgtips sketchupfree thuviensketchup warehouse 3dsky 3dbox sketchshaper tailieukientruc sketchupvn].freeze
+      WEB_SEARCH = %w[warehouse 3dsky 3dbox sketchshaper tailieukientruc sketchupvn].freeze
 
       module_function
 
@@ -67,6 +69,7 @@ module MTDesign
                  end
                when 'polyhaven', 'cgtips', 'sketchupfree' then 'no_login'
                when 'thuviensketchup' then 'no_login'
+               when *WEB_SEARCH then 'web_search'
                when 'cgtrader' then 'need_api'
                else 'unverified'
                end

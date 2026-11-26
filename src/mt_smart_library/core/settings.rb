@@ -20,7 +20,9 @@ module MTDesign
                   'thumb_size' => 200, 'filter' => 'all', 'category' => 'all' },
         'categories_custom' => [],
         'online_favorites' => [],
-        'sources' => { 'sketchfab' => true, 'polyhaven' => true, 'cgtips' => true, 'sketchupfree' => true, 'thuviensketchup' => true },
+        'sources' => { 'sketchfab' => true, 'polyhaven' => true, 'cgtips' => true, 'sketchupfree' => true, 'thuviensketchup' => true,
+                       'web_models' => true, 'warehouse' => true, '3dsky' => true, '3dbox' => true, 'sketchshaper' => true,
+                       'tailieukientruc' => true, 'sketchupvn' => true },
         'auto_save_downloads' => true,
         'converter' => { 'blender_path' => '', 'blender_version' => '', 'blender_ok' => false, 'blender_reason' => '',
                          'timeout' => 600, 'gltf_engine' => 'auto' },
@@ -137,7 +139,7 @@ module MTDesign
       end
 
       ONLINE_FAV_KEYS = %w[key source source_label uid title thumb thumb_large author author_url license url downloadable free
-                           format formats faces likes].freeze
+                           format formats faces likes web_model site].freeze
       ONLINE_FAV_MAX = 500
 
       # Yêu thích kết quả online: lưu ảnh chụp thông tin (không có bí mật) để xem lại khi offline.
@@ -209,7 +211,8 @@ module MTDesign
         out['online_favorites'] = sanitize_online_favs(raw['online_favorites'])
         src = raw['sources'].is_a?(Hash) ? raw['sources'] : {}
         out['sources']['sketchfab'] = bool(src['sketchfab'], true)
-        %w[polyhaven cgtips sketchupfree thuviensketchup].each { |k| out['sources'][k] = bool(src[k], true) }
+        %w[polyhaven cgtips sketchupfree thuviensketchup web_models warehouse 3dsky 3dbox sketchshaper tailieukientruc sketchupvn]
+          .each { |k| out['sources'][k] = bool(src[k], true) }
         out['auto_save_downloads'] = bool(raw['auto_save_downloads'], true)
         cv = raw['converter'].is_a?(Hash) ? raw['converter'] : {}
         bp = Util.utf8(cv['blender_path']).strip
@@ -271,7 +274,14 @@ module MTDesign
         Array(list).select { |f| f.is_a?(Hash) && f['key'].to_s =~ /\A[a-z]+:[A-Za-z0-9_\-]{4,64}\z/ }.map do |f|
           h = f.select { |k, _| ONLINE_FAV_KEYS.include?(k) }
           %w[thumb thumb_large].each { |k| h[k] = nil unless h[k].to_s.start_with?('https://media.sketchfab.com/') }
-          %w[url author_url].each { |k| h[k] = nil unless h[k].to_s =~ %r{\Ahttps://(www\.)?sketchfab\.com/} }
+          web = h['web_model'] == true && defined?(WebModels) && WebModels.site(h['site'])
+          %w[url author_url].each do |k|
+            ok = h[k].to_s =~ %r{\Ahttps://(www\.)?sketchfab\.com/} ||
+                 (web && k == 'url' && WebModels.site(h['site'])['hosts'].include?((URI.parse(h[k].to_s).host rescue '').to_s)) # rubocop:disable Style/RescueModifier
+            h[k] = nil unless ok
+          end
+          h.delete('web_model') unless web
+          h.delete('site') unless web
           %w[title author license source_label].each { |k| h[k] = Util.utf8(h[k]).strip[0, 200] if h[k] }
           h
         end.uniq { |f| f['key'] }.first(ONLINE_FAV_MAX)

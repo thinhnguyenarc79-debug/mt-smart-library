@@ -38,7 +38,7 @@ module MTDesign
         @mutex.synchronize { @jobs.values.map { |j| j[:thread] }.compact }
       end
 
-      # opts: method, url, headers, body, timeout, open_timeout, dest (file path), max_body,
+      # opts: method, url, headers, body, timeout, open_timeout, dest (file path), max_body, binary (giữ nguyên byte),
       #       progress (Hash dùng chung để đọc tiến độ), allow_sketchup_fallback
       def request(opts, &callback)
         id = @mutex.synchronize { @seq += 1 }
@@ -181,7 +181,7 @@ module MTDesign
           buf << chunk
           return Result.new(false, code, nil, headers, :too_large, 'body too large', nil, opts[:url]) if buf.bytesize > max
         end
-        body = Util.utf8(buf.force_encoding(Encoding::UTF_8))
+        body = opts[:binary] ? buf.force_encoding(Encoding::BINARY) : Util.utf8(buf.force_encoding(Encoding::UTF_8)) # ảnh: giữ nguyên byte
         Result.new(ok, code, body, headers, ok ? nil : :http, ok ? nil : "HTTP #{code}", nil, opts[:url])
       end
 

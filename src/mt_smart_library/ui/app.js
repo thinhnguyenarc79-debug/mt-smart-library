@@ -1,4 +1,4 @@
-/* MT SMART LIBRARY PRO V1.0.2 — giao diện tìm kiếm tổng hợp.
+/* MT SMART LIBRARY PRO V1.0.16 — giao diện tìm kiếm tổng hợp.
    Không tải JS ngoài; mọi dữ liệu hiển thị qua textContent; ảnh chỉ nhận data: hoặc ảnh https từ host nguồn đã tích hợp (IMG_HOSTS). */
 (function () {
   'use strict';
@@ -38,7 +38,23 @@
     if (S.vs.on) return; // đang xem kết quả tìm bằng ảnh: không tự làm mới bằng từ khóa
     S.kwSeq = (S.kwSeq || 0) + 1; S.sid = S.kwSeq; S.moreAsked = false; S.loading = true; S.lastQuery = $('q').value.trim(); S.beginInfo = '';
     $('loading').hidden = false;
+    S.webSid = null; $('webBar').hidden = true;
     callJ('sr_start', { sid: S.sid, q: S.lastQuery, category: S.category, filter: S.filter, any_of: S.anyOf || [] });
+  }
+  // V1.0.16 — trạng thái từng website + nút tìm trực tiếp trên website (khi không có link chi tiết).
+  function onWebSites(d) {
+    if (d.sid !== S.sid) return;
+    var box = $('webSites'); box.replaceChildren();
+    (d.sites || []).forEach(function (w) {
+      var txt = w.name + (w.state === 'loading' ? ' …' : w.state === 'done' ? ' ' + w.count : w.state === 'error' ? ' ⚠' : ' 0');
+      var b = btn(txt, function () { call('web_search_site', w.id, S.lastQuery); }, 'wsite ' + w.state,
+        (w.state === 'done' ? w.count + ' link model chi tiết' + (w.provider ? ' (qua ' + w.provider + ')' : '') :
+          w.state === 'loading' ? 'Đang tìm…' : w.state === 'error' ? 'Lỗi: ' + (w.error || '') : 'Không tìm thấy link model chi tiết') +
+        ' — bấm để tìm trực tiếp trên ' + w.name + ' ↗');
+      if (w.state === 'empty' || w.state === 'error') b.appendChild(el('span', ' Tìm trên web ↗', 'wgo'));
+      box.appendChild(b);
+    });
+    $('webBar').hidden = false;
   }
   function searchSoon() { clearTimeout(S.debounce); S.debounce = setTimeout(kwSearch, 350); }
   function kwSearch() { if (S.vs.on) vsClear(); startSearch(); } // người dùng tìm bằng từ khóa: bỏ ảnh mẫu
@@ -108,7 +124,8 @@
     paintThumb(th, it);
     var heart = btn('♡', function () { call('fav_item', it.key); }, 'heart', 'Yêu thích');
     th.appendChild(heart);
-    var sb = el('span', it.source === 'local' ? '💻' : '☁', 'src'); sb.title = 'Nguồn: ' + (it.source_label || ''); th.appendChild(sb);
+    var sb = el('span', it.source === 'local' ? '💻' : (it.web_model ? '🌐' : '☁'), 'src'); sb.title = 'Nguồn: ' + (it.source_label || ''); th.appendChild(sb);
+    if (it.web_model) th.appendChild(el('span', it.source_label, 'wsrc'));
     if (it.vscore !== undefined) { var vb = el('span', pct(it.vscore), 'vsc'); vb.title = vsTip(it); th.appendChild(vb); }
     var bar = el('div', null, 'cardbar');
     var t = el('div', shortName(it.title), 'title'); t.title = it.title;
@@ -121,6 +138,7 @@
   }
   function updateCard(c, it) {
     var h = c.querySelector('.heart'); h.textContent = it.fav ? '♥' : '♡'; h.classList.toggle('on', !!it.fav);
+    if (it.web_model && it.thumb && c.dataset.thumb !== '1') { paintThumb(c.querySelector('.thumb'), it); c.dataset.thumb = '1'; }
     var st = it.uid && S.dl.get(it.uid); var th = c.querySelector('.thumb'); var pr = th.querySelector('.prog');
     if (st && (st.state === 'downloading' || st.state === 'requesting')) {
       if (!pr) { pr = el('div', null, 'prog'); pr.appendChild(el('i')); th.appendChild(pr); }
@@ -136,10 +154,11 @@
   }
   function shortName(s) { s = String(s || ''); return s.length > 60 ? s.slice(0, 57) + '…' : s; }
   function canInsertish(it) { return it.source === 'local' || it.downloadable; }
-  function insLabel(it) { return canInsertish(it) ? 'CHÈN' : 'XEM'; }
+  function insLabel(it) { return canInsertish(it) ? 'CHÈN' : (it.web_model ? 'MỞ TRANG' : 'XEM'); }
   function insTitle(it) {
     if (it.source === 'local') return 'Chèn ngay vào công trình';
     if (it.web_only) return it.download_note || 'Mở trang tải chính thức';
+    if (it.web_model) return 'Mở trang model trên ' + it.source_label + ' bằng trình duyệt mặc định — tự đăng nhập và tải SKP';
     if (it.downloadable) return 'Tải và chèn (nếu định dạng tương thích)';
     return 'Tác giả không cho phép tải — mở trang nguồn';
   }
@@ -190,10 +209,15 @@
       row('Nguồn', 'Thư viện trên máy tính'); row('Thư mục', it.folder); row('Dung lượng', fmtSize(it.size)); row('Ngày sửa', fmtDate(it.mtime));
       row('Định dạng', 'SketchUp (.skp) — chèn trực tiếp'); row('Đường dẫn', it.path);
     } else {
+      if (it.web_model) {
+        row('Website', it.source_label); row('Link model', it.url); row('Mô tả', it.snippet);
+        row('Tải về', 'Mở trang, tự đăng nhập và tải SKP. Tải xong: CHÈN hoặc LƯU VÀO THƯ VIỆN (hoặc ⤓ Nhập SKP đã tải).');
+      } else {
       row('Nguồn', it.source_label); row('Tác giả', it.author); row('Giấy phép', it.license || 'Không rõ');
       row('Tải về', it.web_only ? it.download_note : (it.downloadable ? 'Được phép' : 'Tác giả không cho phép tải'));
       row('Định dạng', (it.formats || []).map(function (f) { return f.type.toUpperCase() + (f.size ? ' ' + fmtSize(f.size) : ''); }).join(', '));
       if (it.faces) row('Số mặt', Number(it.faces).toLocaleString('vi-VN'));
+      }
     }
     if (it.vscore !== undefined) {
       var vp = it.vparts || {};
@@ -209,7 +233,7 @@
       attr.hidden = false;
       $('dAttrText').textContent = '“' + it.title + '” của ' + (it.author || '?') + ' — ' + (it.license || 'giấy phép chưa rõ') + ' — nguồn ' + it.source_label + (it.url ? ' (' + it.url + ')' : '') + '.';
     } else attr.hidden = true;
-    $('dInsert').textContent = it.source === 'local' ? 'CHÈN MODEL' : (it.downloadable ? 'TẢI & CHÈN MODEL' : (it.web_only ? 'MỞ TRANG TẢI' : 'XEM TRÊN TRANG NGUỒN'));
+    $('dInsert').textContent = it.source === 'local' ? 'CHÈN MODEL' : (it.downloadable ? 'TẢI & CHÈN MODEL' : (it.web_only ? 'MỞ TRANG TẢI' : (it.web_model ? 'MỞ TRANG MODEL' : 'XEM TRÊN TRANG NGUỒN')));
     $('dFav').textContent = it.fav ? '♥ Đã yêu thích' : '♡ Yêu thích';
     $('dOpen').textContent = it.source === 'local' ? 'Mở thư mục' : 'Xem trang nguồn';
     $('dNote').textContent = '';
@@ -659,7 +683,8 @@
       $('vsIndex').textContent = t;
     },
     accounts: function (l) { renderAccounts(l); },
-    dl_found: function (d) { $('foundText').textContent = 'Đã nhận file vừa tải “' + d.name + '” (' + d.source + '). Chèn vào SketchUp?'; $('foundBar').hidden = false; },
+    web_sites: function (d) { onWebSites(d); },
+    dl_found: function (d) { $('foundText').textContent = 'Đã nhận file vừa tải “' + d.name + '” (' + d.source + '). Chèn vào SketchUp hoặc lưu vào thư viện?'; $('foundBar').hidden = false; },
     open_support: function () { hide('settingsModal'); show('supportModal'); },
     convert_state: function (d) { var on = d.state === 'running'; $('convCancel').hidden = !on; $('convSpin').hidden = !on; },
     need_token: function (d) { S.tokenKey = d && d.key; $('tkInput').value = ''; show('tokenModal'); $('tkInput').focus(); },
@@ -747,6 +772,8 @@
     document.querySelectorAll('#stabs [data-s]').forEach(function (b) { b.addEventListener('click', function () { if (b.dataset.s === 'src') { call('cat_stats'); call('src_stats'); } }); });
     $('foundIns').onclick = function () { $('foundBar').hidden = true; call('insert_found'); };
     $('foundX').onclick = function () { $('foundBar').hidden = true; call('found_dismiss'); };
+    $('foundSave').onclick = function () { $('foundBar').hidden = true; call('found_save'); };
+    $('btnLibImport').onclick = $('btnLibImport2').onclick = function () { call('lib_import'); };
     $('bDetect').onclick = $('bmDetect').onclick = function () { call('blender_detect'); };
     $('bPick').onclick = $('bmPick').onclick = function () { call('blender_pick'); };
     $('bGet').onclick = $('bmGet').onclick = function () { call('open_url', 'https://www.blender.org/download/'); };

@@ -2,16 +2,18 @@
   "schema": 1,
   "plugin_id": "mtdesign.smart_library_pro",
   "name": "MT SMART LIBRARY PRO",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "released_at": "2026-11-26",
   "min_sketchup": 22,
   "min_ruby": "2.7.0",
   "changelog": [
-    "CẬP NHẬT ONLINE MỘT NÚT BẤM: tích hợp sẵn kênh chính thức GitHub (thinhnguyenarc79-debug/mt-smart-library). Máy mới cài RBZ tự dùng kênh này, tự kiểm tra khi mở plugin; không cần URL, token hay tài khoản GitHub; không tự cài khi chưa đồng ý.",
-    "Nguồn cập nhật riêng hợp lệ (URL khác, repo khác, thư mục LAN) được giữ nguyên; cấu hình cũ trỏ về repo chính thức tự chuyển sang kênh chính thức.",
-    "Cửa sổ cập nhật: phiên bản đang dùng/mới nhất, ngày phát hành, nội dung, dung lượng, loại cập nhật, trạng thái kết nối; nút Kiểm tra cập nhật, Cập nhật ngay, Khôi phục phiên bản trước; tiến trình Tải → Kiểm tra file → Sao lưu → Cài đặt → Áp dụng.",
-    "An toàn: chỉ https trên mọi bước chuyển hướng, kênh chính thức chỉ nhận host GitHub, bắt buộc SHA256 + dung lượng, xóa gói tải dở, plugin cũ vẫn chạy khi mất mạng; tự khôi phục khi cài lỗi.",
-    "Giữ nguyên toàn bộ chức năng V1.0.14 TEAM EDITION (xuất/nhập cấu hình công ty, cập nhật LAN), tìm bằng ảnh, Smart Source Extractor, Facebook, dữ liệu và API Key."
+    "TÌM MODEL TRÊN WEBSITE: gõ từ khóa trong thư viện → plugin tự tìm song song trên 3D Warehouse, 3dsky, 3DBox, Sketch Shaper, Tài liệu kiến trúc, SketchUp.vn qua công cụ tìm kiếm web (Serper/SerpApi/Brave nếu có key, Tavily không cần key).",
+    "Kết quả hiện ngay trên lưới: ảnh đại diện (nếu có), tên model, tên website, link trang chi tiết; nút MỞ TRANG mở bằng trình duyệt mặc định. Bộ lọc mới “Website”.",
+    "Tự dịch tiếng Việt → tiếng Anh (bàn thờ → altar, phào chỉ → moulding, vách CNC → cnc panel, đèn thả → pendant lamp…); website Việt tìm bằng tiếng Việt.",
+    "Chỉ giữ link chi tiết model thật; loại trùng, trang chủ, trang tìm kiếm/danh mục/tag và kết quả không liên quan. Website không có kết quả: nút tìm trực tiếp trên website đó.",
+    "Không gọi API nội bộ, không đăng nhập thay, không vượt bảo vệ; ảnh đại diện lấy từ og:image công khai, tôn trọng robots.txt.",
+    "Tải SKP xong: CHÈN hoặc LƯU VÀO THƯ VIỆN; nút “⤓ Nhập SKP đã tải” (SKP hoặc ZIP chứa SKP) → thư mục Thu_vien_tai_ve, tự thêm vào Thư viện máy tính.",
+    "Giữ nguyên toàn bộ chức năng V1.0.15, kho model, dữ liệu AI, cấu hình, API Key và hệ thống cập nhật."
   ],
   "restart_required": true
 }

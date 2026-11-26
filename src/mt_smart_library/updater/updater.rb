@@ -18,7 +18,7 @@ module MTDesign
       CODE = Paths::CODE_DIR_NAME
       LOADER = Paths::LOADER_NAME
       REQUIRED = [LOADER, "#{CODE}/main.rb", "#{CODE}/updater/version.rb", "#{CODE}/updater/update_manifest.json"].freeze
-      STEPS = ['Kiểm tra gói', 'Sao lưu bản hiện tại', 'Giải nén', 'Cài đặt', 'Kiểm tra sau cài', 'Hoàn tất'].freeze
+      STEPS = ['Tải gói', 'Kiểm tra file', 'Sao lưu bản hiện tại', 'Giải nén', 'Cài đặt', 'Kiểm tra sau cài', 'Áp dụng phiên bản mới'].freeze
       MAX_DOWNLOAD = 100 * 1024 * 1024
 
       attr_reader :backups
@@ -37,15 +37,16 @@ module MTDesign
         @thread = nil
         @progress = nil
         @last_manifest = nil
+        @team_results = Queue.new
         FileUtils.mkdir_p(@updates_dir)
       end
 
       def busy?
-        (@thread && @thread.alive?) || @downloading ? true : false
+        (@thread && @thread.alive?) || @downloading || @team_pending ? true : false
       end
 
       def thread
-        @thread
+        @team_thread&.alive? ? @team_thread : @thread
       end
 
       def events
@@ -145,7 +146,7 @@ module MTDesign
       # source: {'kind'=>'file','file'=>...} hoặc {'kind'=>'backup','backup_id'=>...}
       def start_install(info, reason)
         return false if busy?
-        set_progress(0, 'running', 'Bắt đầu…')
+        set_progress(1, 'running', 'Đang kiểm tra file…')
         @thread = Thread.new do
           Thread.current.report_on_exception = false
           run_install(info, reason)
@@ -160,7 +161,7 @@ module MTDesign
         t0 = Time.now
         log_update("=== #{reason}: #{VERSION} -> #{info['version']} (#{info['kind']}) ===")
         raise "Gói không tương thích: #{info['compat_message']}" unless info['compatible']
-        set_progress(0, 'running', 'Đang kiểm tra lại gói…')
+        set_progress(1, 'running', 'Đang kiểm tra file (mã định danh, phiên bản, cấu trúc, SHA256)…')
         source_dir = if info['kind'] == 'backup'
                        info['path']
                      else
@@ -168,19 +169,19 @@ module MTDesign
                        raise 'Gói đã bị thay đổi kể từ lúc kiểm tra.' unless recheck['sha256'] == info['sha256']
                        nil
                      end
-        set_progress(1, 'running', 'Đang sao lưu phiên bản hiện tại…')
+        set_progress(2, 'running', 'Đang sao lưu phiên bản hiện tại…')
         backup = @backups.create(VERSION, "Trước khi #{reason} lên #{info['version']}")
         log_update("Sao lưu: #{backup}")
-        set_progress(2, 'running', 'Đang giải nén gói…')
+        set_progress(3, 'running', 'Đang giải nén gói…')
         if source_dir.nil?
           staging = File.join(@updates_dir, "staging_#{Time.now.strftime('%Y%m%d%H%M%S')}_#{rand(10_000)}")
           extract(info['file'], staging)
           source_dir = staging
         end
-        set_progress(3, 'running', 'Đang cài đè phiên bản mới…')
+        set_progress(4, 'running', 'Đang cài đặt phiên bản mới…')
         apply_tree(source_dir)
         installed = true
-        set_progress(4, 'running', 'Đang kiểm tra file sau cài…')
+        set_progress(5, 'running', 'Đang kiểm tra file sau cài…')
         verify_tree!(source_dir)
         up = info['update'] || { 'type' => 'system' }
         hot = up['type'] == 'hot'
@@ -189,7 +190,8 @@ module MTDesign
         end
         add_history('ok', hot ? "#{reason} (cập nhật nhanh)" : reason, info['version'], backup, nil)
         log_update("Thành công sau #{(Time.now - t0).round(1)}s — loại: #{hot ? 'cập nhật nhanh' : 'hệ thống'} (#{up['changed'].to_a.size} file đổi)")
-        set_progress(5, 'done', hot ? "Đã cài #{info['version']} — đang áp dụng ngay." : "Đã cài #{info['version']}. Khởi động lại SketchUp để áp dụng.")
+        set_progress(6, 'done', hot ? "Cập nhật thành công: #{info['version']} — đang áp dụng ngay, không cần khởi động lại." :
+                                     "Cập nhật thành công: đã cài #{info['version']}. Lưu bản vẽ rồi khởi động lại SketchUp để áp dụng.")
         push(:install_done, { 'version' => info['version'], 'backup' => File.basename(backup.to_s), 'reason' => reason,
                               'hot' => hot, 'changed' => up['changed'].to_a, 'update_reason' => up['reason'] })
       rescue Exception => e # rubocop:disable Lint/RescueException
@@ -209,7 +211,7 @@ module MTDesign
           end
         end
         add_history('failed', reason, info && info['version'], backup, msg)
-        set_progress(@progress ? @progress['step'] : 0, 'failed', msg)
+        set_progress(@progress ? @progress['step'] : 1, 'failed', "Cập nhật thất bại: #{msg}")
         push(:install_failed, { 'error' => msg, 'rollback' => rollback_msg })
       ensure
         FileUtils.rm_rf(staging) if staging
@@ -304,8 +306,13 @@ module MTDesign
       # ---------------------------------------------------------------- Online
       # Kiểm tra phiên bản mới (chỉ kiểm tra, KHÔNG tự cài). callback(:ok, info) / (:error, msg)
       def check_online(cfg, su_major, &cb)
+        raise 'Đang có tác vụ cập nhật khác.' if busy?
+        @last_manifest = nil
+        return check_lan(cfg['lan_folder'], su_major, &cb) if cfg['source'] == 'lan'
         raise 'Chưa có HTTP client.' unless @http
         case cfg['source']
+        when 'official'
+          fetch_official(UpdateChannel::MANIFEST_URLS.dup, su_major, [], &cb)
         when 'manifest'
           url = cfg['manifest_url'].to_s
           return cb.call(:error, 'Chưa cấu hình URL manifest (https://…/update_manifest.json).') unless url =~ %r{\Ahttps://\S+\z}
@@ -331,17 +338,40 @@ module MTDesign
             end
           end
         else
-          cb.call(:error, 'Chưa cấu hình nguồn cập nhật online. Chọn "GitHub Releases" hoặc "URL manifest JSON" ở mục 2 ngay trong cửa sổ này rồi bấm "Lưu nguồn". Hiện vẫn có thể cập nhật từ file ở mục 1.')
+          cb.call(:error, 'Chưa cấu hình nguồn cập nhật online (đang chọn “Không dùng”). Chọn “Kênh chính thức MT (GitHub — tự động)” ở mục 2 rồi bấm “Lưu nguồn”. Hiện vẫn có thể cập nhật từ file ở mục 1.')
         end
       end
 
-      def fetch_manifest(url, su_major, &cb)
-        @http.request(url: url, headers: { 'Accept' => 'application/json' }, timeout: 20, max_body: 1_000_000) do |res|
+      # Kênh chính thức: thử lần lượt các URL manifest; URL lỗi mạng/404 → URL dự phòng. Không cần token GitHub.
+      def fetch_official(urls, su_major, errors, &cb)
+        url = urls.shift
+        unless url
+          return cb.call(:error, "Không kết nối được kênh cập nhật chính thức (GitHub). #{errors.join(' · ')} " \
+                                 'Plugin hiện tại vẫn hoạt động bình thường; thử lại khi có Internet.')
+        end
+        fetch_manifest(url, su_major, official: true) do |kind, data|
+          if kind == :ok
+            cb.call(:ok, data.merge('channel' => UpdateChannel::LABEL, 'manifest_url' => url))
+          else
+            errors << data
+            fetch_official(urls, su_major, errors, &cb)
+          end
+        end
+      end
+
+      def fetch_manifest(url, su_major, official: false, &cb)
+        @http.request(url: url, headers: { 'Accept' => 'application/json' }, timeout: 20, max_body: 1_000_000,
+                      https_only: true) do |res|
           if !res.ok
             cb.call(:error, "Không tải được manifest: #{HttpClient.friendly(res)}")
           else
             begin
               m = parse_manifest_json(res.body, embedded: false)
+              if official
+                raise 'download_url không thuộc kho phát hành chính thức.' unless UpdateChannel.official_url?(m['download_url'])
+                raise 'Manifest thiếu dung lượng gói (size).' unless m['size'].to_i.between?(1, MAX_DOWNLOAD)
+                m['official'] = true
+              end
               ok, why = compatible?(m['min_sketchup'], m['max_sketchup'], m['min_ruby'], su_major)
               cmp = VersionUtil.compare(m['version'], VERSION)
               info = m.merge('current' => VERSION, 'compare' => cmp, 'compatible' => ok, 'compat_message' => why,
@@ -360,22 +390,28 @@ module MTDesign
         raise 'Đang có tác vụ cập nhật khác.' if busy?
         m = @last_manifest
         raise 'Hãy kiểm tra cập nhật online trước.' unless m && m['version'] == manifest['version'] && m['sha256'] == manifest['sha256']
+        return download_lan(m, &cb) if m['lan_path']
         dest = File.join(@updates_dir, 'downloads', "#{PLUGIN_ID}_#{m['version']}.rbz")
         prog = { 'bytes' => 0, 'total' => m['size'].to_i }
         @dl_progress = prog
         @downloading = true
         set_progress(0, 'running', 'Đang tải gói cập nhật…')
-        @http.request(url: m['download_url'], dest: dest, timeout: 60, progress: prog) do |res|
+        FileUtils.rm_f(dest) # không dùng lại gói cũ cùng tên
+        hosts = m['official'] ? UpdateChannel::DOWNLOAD_HOSTS : nil
+        @http.request(url: m['download_url'], dest: dest, timeout: 60, progress: prog, https_only: true, allowed_hosts: hosts) do |res|
           @downloading = false
           @dl_progress = nil
           if !res.ok
-            cb.call(:error, "Tải gói thất bại: #{HttpClient.friendly(res)}")
+            File.delete(dest) if File.exist?(dest) # không giữ gói tải dở; bản đang chạy không bị động tới
+            log_update("Tải gói thất bại: #{HttpClient.friendly(res)}")
+            cb.call(:error, "Tải gói thất bại: #{HttpClient.friendly(res)}. Plugin hiện tại vẫn hoạt động bình thường.")
           else
             begin
               sha = Digest::SHA256.file(dest).hexdigest
               raise "SHA256 không khớp (gói hỏng hoặc bị thay đổi). Mong đợi #{m['sha256'][0, 12]}…, nhận #{sha[0, 12]}…" unless sha == m['sha256']
               raise "Kích thước không khớp (#{File.size(dest)} ≠ #{m['size']})." if m['size'].to_i > 0 && File.size(dest) != m['size'].to_i
               raise 'Gói vượt quá 100 MB.' if File.size(dest) > MAX_DOWNLOAD
+              set_progress(1, 'running', 'Đã tải và khớp SHA256 — đang kiểm tra file…')
               cb.call(:ok, dest)
             rescue StandardError => e
               File.delete(dest) if File.exist?(dest)
@@ -383,6 +419,102 @@ module MTDesign
               cb.call(:error, e.message)
             end
           end
+        end
+      end
+
+      # Nguồn nội bộ: manifest và RBZ ở thư mục do quản trị viên kiểm soát.
+      # Công việc mạng/đĩa chạy nền; callback được gọi từ timer SketchUp.
+      def team_async(cb, &work)
+        @team_pending = true
+        @team_thread = Thread.new do
+          begin
+            @team_results << [cb, :ok, work.call]
+          rescue StandardError => e
+            @team_results << [cb, :error, e.message]
+          end
+        end
+      end
+
+      def poll_team
+        loop do
+          cb, kind, value = @team_results.pop(true)
+          @team_pending = false
+          cb.call(kind, value)
+        end
+      rescue ThreadError
+        nil
+      end
+
+      def check_lan(folder, su_major, &cb)
+        return cb.call(:error, 'Chưa nhập thư mục cập nhật công ty.') if folder.to_s.empty?
+        team_async(->(kind, data) { @last_manifest = data if kind == :ok; cb.call(kind, data) }) do
+          file = File.join(folder, 'update_manifest.json')
+          raise 'Manifest nội bộ quá lớn.' if File.size(file) > 1_000_000
+          raw = JSON.parse(File.binread(file))
+          m = parse_manifest_json(JSON.generate(raw), embedded: true)
+          name = raw['package'].to_s
+          raise 'Tên RBZ nội bộ không hợp lệ.' unless name =~ /\A[A-Za-z0-9_.-]+\.rbz\z/i && !name.start_with?('.')
+          sha = raw['sha256'].to_s.downcase
+          size = raw['size'].to_i
+          raise 'Manifest thiếu SHA256 hoặc dung lượng hợp lệ.' unless sha =~ /\A[0-9a-f]{64}\z/ && size.between?(1, MAX_DOWNLOAD)
+          path = File.join(folder, name)
+          raise 'Gói nội bộ chưa có hoặc sai kích thước.' unless File.file?(path) && File.size(path) == size
+          ok, why = compatible?(m['min_sketchup'], m['max_sketchup'], m['min_ruby'], su_major)
+          cmp = VersionUtil.compare(m['version'], VERSION)
+          m.merge('lan_path' => path, 'sha256' => sha, 'size' => size, 'current' => VERSION, 'compare' => cmp,
+                  'compatible' => ok, 'compat_message' => why, 'relation' => cmp > 0 ? 'newer' : (cmp.zero? ? 'same' : 'older'))
+        end
+      end
+
+      def download_lan(m, &cb)
+        team_async(cb) do
+          dest = File.join(@updates_dir, 'downloads', "#{PLUGIN_ID}_#{m['version']}.rbz")
+          FileUtils.mkdir_p(File.dirname(dest))
+          tmp = "#{dest}.team-#{Process.pid}.tmp"
+          begin
+            File.open(m['lan_path'], 'rb') do |src|
+              File.open(tmp, 'wb') do |out|
+                count = 0
+                while (chunk = src.read(1024 * 1024))
+                  count += chunk.bytesize
+                  raise 'Gói vượt dung lượng khai báo.' if count > m['size']
+                  out.write(chunk)
+                end
+              end
+            end
+            raise 'SHA256 hoặc kích thước không khớp.' unless File.size(tmp) == m['size'] && Digest::SHA256.file(tmp).hexdigest == m['sha256']
+            FileUtils.mv(tmp, dest, force: true)
+            dest
+          ensure
+            FileUtils.rm_f(tmp)
+          end
+        end
+      end
+
+      # Phát hành gói đã kiểm thử: copy RBZ trước, manifest cuối cùng.
+      def publish_lan(package, folder, su_major)
+        info = inspect_package(package, su_major: su_major)
+        raise info['compat_message'] unless info['compatible']
+        raise 'Gói quá lớn.' if File.size(package) > MAX_DOWNLOAD
+        raise 'Thư mục phát hành không tồn tại.' unless File.directory?(folder)
+        name = "MT_SMART_LIBRARY_PRO_v#{info['version']}_#{info['sha256'][0, 12]}.rbz"
+        dest = File.join(folder, name)
+        tmp = "#{dest}.#{Process.pid}.tmp"
+        begin
+          FileUtils.cp(package, tmp)
+          raise 'Gói thay đổi trong lúc sao chép.' unless Digest::SHA256.file(tmp).hexdigest == info['sha256']
+          if File.exist?(dest)
+            raise 'Tên gói trùng nhưng nội dung khác.' unless Digest::SHA256.file(dest).hexdigest == info['sha256']
+          else
+            File.rename(tmp, dest)
+          end
+          manifest = { 'schema' => 1, 'plugin_id' => PLUGIN_ID, 'name' => PRODUCT_NAME, 'version' => info['version'],
+                       'package' => name, 'sha256' => info['sha256'], 'size' => File.size(dest), 'released_at' => info['released_at'],
+                       'min_sketchup' => info['min_sketchup'], 'min_ruby' => info['min_ruby'], 'changelog' => info['changelog'] }
+          Util.atomic_write(File.join(folder, 'update_manifest.json'), JSON.pretty_generate(manifest))
+          manifest
+        ensure
+          FileUtils.rm_f(tmp)
         end
       end
 
@@ -418,6 +550,7 @@ module MTDesign
           out['sha256'] = sha
           out['size'] = m['size'].to_i
         end
+        out['restart_required'] = m['restart_required'] if [true, false].include?(m['restart_required'])
         out
       rescue JSON::ParserError => e
         raise "manifest JSON lỗi cú pháp: #{e.message[0, 120]}"

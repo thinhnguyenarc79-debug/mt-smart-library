@@ -108,6 +108,14 @@ module MTDesign
       def perform(opts, job, redirects = 0)
         uri = URI.parse(opts[:url].to_s)
         return Result.new(false, 0, nil, {}, :internal, 'URL không hợp lệ', nil, opts[:url]) unless uri.is_a?(URI::HTTP) && uri.host
+        # Tải gói cập nhật: chỉ https trên MỌI bước chuyển hướng; kênh chính thức: chỉ host được phép.
+        test_local = ENV['MT_TEST_ALLOW_HTTP'] == '1' && %w[127.0.0.1 localhost].include?(uri.host) # chỉ kiểm thử tự động
+        if opts[:https_only] && uri.scheme != 'https' && !test_local
+          return Result.new(false, 0, nil, {}, :internal, "Từ chối liên kết không phải https: #{uri.host}", nil, opts[:url])
+        end
+        if opts[:allowed_hosts] && !opts[:allowed_hosts].include?(uri.host.to_s.downcase)
+          return Result.new(false, 0, nil, {}, :internal, "Từ chối máy chủ ngoài kênh chính thức: #{uri.host}", nil, opts[:url])
+        end
         timeout = (opts[:timeout] || 30).to_f
         http = Net::HTTP.new(uri.host, uri.port)
         http.use_ssl = (uri.scheme == 'https')

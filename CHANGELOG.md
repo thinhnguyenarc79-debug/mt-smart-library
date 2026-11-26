@@ -1,5 +1,23 @@
 # CHANGELOG — MT SMART LIBRARY PRO
 
+## V1.0.15 — 26/11/2026 (CẬP NHẬT ONLINE QUA GITHUB — CÀI MỘT LẦN, BẤM CẬP NHẬT)
+Nền: mã V1.0.14 TEAM EDITION đang cài trên máy (đã sao lưu, đối chiếu với V1.0.13 — chỉ khác team_config, cập nhật LAN, xuất/nhập cấu hình công ty; giữ nguyên toàn bộ).
+- `updater/update_channel.rb` (mới, nạp nóng được): kênh chính thức `thinhnguyenarc79-debug/mt-smart-library`.
+  Thử `github.com/<repo>/releases/latest/download/update_manifest.json` (không giới hạn API) → dự phòng `raw.githubusercontent.com/<repo>/main/releases/update_manifest.json`.
+- Cài đặt: nguồn cập nhật mặc định `official`, tự kiểm tra khi mở (chỉ kiểm tra, không tự cài). Chuyển đổi một lần: chưa cấu hình → chính thức;
+  URL/repo trỏ về repo chính thức (kể cả URL ghim commit cũ) → chính thức; nguồn riêng hợp lệ (URL khác, repo khác, LAN) giữ nguyên; người dùng tắt sau đó thì giữ.
+- Updater: kênh chính thức bắt buộc `download_url` thuộc repo chính thức + `size`; tải gói chỉ https trên mọi bước chuyển hướng và chỉ host GitHub
+  (github.com, objects/release-assets.githubusercontent.com, raw.githubusercontent.com); xóa gói tải dở/sai SHA256; plugin cũ vẫn chạy khi mất mạng.
+  Bước tiến trình: Tải gói → Kiểm tra file → Sao lưu → Giải nén → Cài đặt → Kiểm tra sau cài → Áp dụng phiên bản mới; báo “Cập nhật thành công/thất bại: nguyên nhân”.
+  Manifest thêm `restart_required` (tùy chọn, bản cũ bỏ qua) để báo trước khi cài.
+- Cửa sổ cập nhật: lựa chọn “Kênh chính thức MT (GitHub — tự động)”, phiên bản đang dùng/mới nhất, ngày, nội dung, dung lượng, loại cập nhật, trạng thái kết nối;
+  nút Kiểm tra cập nhật, Cập nhật ngay, Khôi phục phiên bản trước (bản sao lưu gần nhất).
+- Phát hành: GitHub Release `v1.0.15` (RBZ + update_manifest.json) và manifest trên nhánh main (cho máy đang chạy V1.0.14 trỏ raw main).
+
+## V1.0.14 — 25/11/2026 (TEAM EDITION — do ChatGPT phát triển, ghi lại khi đối chiếu)
+- `core/team_config.rb`: xuất/nhập cấu hình công ty (cài đặt tìm kiếm/cập nhật, danh mục, nguồn https) — không mang API Key, DPAPI, lịch sử, đường dẫn cá nhân; AI luôn CPU.
+- Nguồn cập nhật “Thư mục công ty (LAN)”: manifest + RBZ trong thư mục quản trị, kiểm tra SHA256/dung lượng; “Phát hành RBZ vào thư mục công ty”.
+
 ## V1.0.13 — 25/11/2026 (TÌM BẰNG ẢNH CHÍNH XÁC + NGUỒN FACEBOOK / NHIỀU CÔNG CỤ TÌM KIẾM)
 - `ai_runtime/visual_match.py` (mới): Category Hard Filter — zero-shot CLIP trên CHÍNH ảnh preview của từng ứng viên + danh mục trong tên model
   (khớp cụm dài nhất: “sofa bed” → sofa, “bàn sofa” → bàn trà). Chế độ: Chính xác (cùng danh mục; sofa ↔ sofa góc), Tương tự (cùng họ), Mở rộng (không lọc).

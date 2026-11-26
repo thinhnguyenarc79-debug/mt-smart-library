@@ -725,6 +725,8 @@
       srcResetForm();
     };
     $('srcCancelEdit').onclick = srcResetForm;
+    $('teamExport').onclick = function () { call('team_export'); };
+    $('teamImport').onclick = function () { call('team_import'); };
     $('srcExport').onclick = function () { call('src_export'); };
     ['Google'].forEach(function (k) {
       var kind = k.toLowerCase();

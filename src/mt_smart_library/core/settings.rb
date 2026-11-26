@@ -34,7 +34,8 @@ module MTDesign
                       'enabled' => { 'tavily' => true, 'serper' => true, 'serpapi' => true, 'brave' => true, 'searxng' => false },
                       'searxng_url' => '' },
         'net' => { 'timeout' => 30 },
-        'update' => { 'source' => 'none', 'manifest_url' => '', 'github_repo' => '', 'check_on_start' => false }
+        'update' => { 'source' => 'official', 'manifest_url' => '', 'github_repo' => '', 'lan_folder' => '', 'check_on_start' => true,
+                      'auto_check_set' => false }
       }.freeze
       HISTORY_MAX = 300
       FAVORITES_MAX = 20_000
@@ -241,12 +242,16 @@ module MTDesign
         t = net['timeout'].to_i
         out['net']['timeout'] = t.between?(5, 180) ? t : 30
         up = raw['update'].is_a?(Hash) ? raw['update'] : {}
-        out['update']['source'] = %w[none manifest github].include?(up['source']) ? up['source'] : 'none'
+        out['update']['source'] = %w[official none manifest github lan].include?(up['source']) ? up['source'] : 'none'
         mu = up['manifest_url'].to_s.strip
         out['update']['manifest_url'] = mu =~ %r{\Ahttps://\S+\z} ? mu : ''
         gr = up['github_repo'].to_s.strip
         out['update']['github_repo'] = gr =~ %r{\A[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+\z} ? gr : ''
+        lf = Util.norm_path(up['lan_folder'].to_s.strip)
+        out['update']['lan_folder'] = lf =~ %r{\A(?:[A-Za-z]:/|//[^/]+/[^/]+)} && !lf.match?(/[\x00-\x1f]/) ? lf : ''
         out['update']['check_on_start'] = bool(up['check_on_start'], false)
+        out['update']['auto_check_set'] = bool(up['auto_check_set'], false)
+        out['update'] = UpdateChannel.migrate(out['update']) # kênh GitHub chính thức mặc định; giữ nguồn riêng hợp lệ
         out
       end
 

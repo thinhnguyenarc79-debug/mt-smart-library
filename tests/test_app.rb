@@ -189,7 +189,8 @@ class TestApp < Minitest::Test
     u.fire('up_ready')
     init = u.messages('init').last[1]
     assert_equal SL::VERSION, init['version']
-    assert_equal 'none', init['source']['source']
+    assert_equal 'official', init['source']['source'], 'V1.0.15: kênh GitHub chính thức mặc định'
+    assert_equal SL::UpdateChannel::REPO, init['official']['repo']
     # Gói cùng phiên bản -> yêu cầu xác nhận cài lại, không cài ngay
     pkg = File.join(Dir.mktmpdir, 'same.rbz')
     Open3.capture2e('zip', '-r', '-X', '-q', pkg, 'mt_smart_library.rb', 'mt_smart_library', chdir: SRC)
@@ -201,7 +202,9 @@ class TestApp < Minitest::Test
     u.fire('up_install', false)
     assert u.messages('up_confirm_downgrade').any?
     refute @app.updater.busy?
-    # Kiểm tra online khi chưa cấu hình nguồn -> báo lỗi rõ ràng, không gọi mạng
+    # Người dùng chủ động chọn “Không dùng cập nhật online” -> báo rõ, không gọi mạng, lựa chọn được giữ
+    u.fire('up_save_source', JSON.generate('source' => 'none', 'check_on_start' => false))
+    assert_equal 'none', @app.settings['update']['source']
     u.fire('up_check_online')
     assert_match(/Chưa cấu hình/, u.messages('up_online_state').last[1]['msg'])
     u.fire('up_save_source', JSON.generate('source' => 'github', 'github_repo' => 'mt-design/mt-smart-library', 'check_on_start' => true))
@@ -336,5 +339,14 @@ class TestApp < Minitest::Test
     assert win.scripts.any? { |js| js.include?('Đã lưu 1 bài') }, 'báo kết quả ngay trong cửa sổ Facebook'
     win.close
     assert UI.timers.values.none? { |x| x[:repeat] && x[:sec] == 2.0 }, 'đóng cửa sổ → dừng timer, không để lại timer thừa'
+  end
+
+  def test_fresh_install_schedules_update_check_on_official_channel
+    up = @app.instance_variable_get(:@settings)['update']
+    assert_equal 'official', up['source']
+    assert up['check_on_start']
+    before = UI.timers.size
+    @app.schedule_startup_check
+    assert_operator UI.timers.size, :>, before, 'tự kiểm tra cập nhật khi mở (chỉ kiểm tra, không tự cài)'
   end
 end

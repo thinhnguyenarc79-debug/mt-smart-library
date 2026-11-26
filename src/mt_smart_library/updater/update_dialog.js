@@ -49,14 +49,15 @@
       tr.appendChild(r); tb.appendChild(tr);
     });
   }
-  function srcUi() { var s = $('src').value; $('srcUrl').hidden = s !== 'manifest'; $('srcRepo').hidden = s !== 'github'; }
+  function srcUi() { var s = $('src').value; $('srcUrl').hidden = s !== 'manifest'; $('srcRepo').hidden = s !== 'github'; $('srcLan').hidden = s !== 'lan'; $('srcOfficial').hidden = s !== 'official'; }
 
   var H = {
     init: function (d) {
       U.cur = d.version; $('curVer').textContent = 'V' + d.version;
       $('envInfo').textContent = 'SketchUp ' + d.su + ' · Ruby ' + d.ruby;
       $('plugRoot').textContent = d.plugins_root; $('dataRoot').textContent = d.data_root;
-      $('src').value = d.source.source; $('srcUrl').value = d.source.manifest_url; $('srcRepo').value = d.source.github_repo; $('srcAuto').checked = !!d.source.check_on_start; srcUi();
+      $('src').value = d.source.source; $('srcUrl').value = d.source.manifest_url; $('srcRepo').value = d.source.github_repo; $('srcLan').value = d.source.lan_folder || ''; $('srcAuto').checked = !!d.source.check_on_start; srcUi();
+      if (d.official) { U.official = d.official; $('srcOfficial').textContent = 'Tự động từ ' + d.official.repo + ' — không cần nhập URL, token hay tài khoản GitHub.'; }
       renderBackups(d.backups); renderHistory(d.history);
       if (d.pending_restart) { var b = $('banner'); b.hidden = false; b.textContent = 'Đã cài phiên bản ' + d.pending_restart + '. Hãy LƯU bản vẽ rồi khởi động lại SketchUp để áp dụng. SketchUp hiện vẫn chạy bản ' + d.version + '.'; }
       else if (d.startup) { var b2 = $('banner'); b2.hidden = false; b2.className = 'result ok'; b2.textContent = d.startup; }
@@ -81,7 +82,7 @@
     up_confirm_downgrade: function (p) {
       confirmBox('Cài phiên bản không mới hơn', 'Gói là phiên bản ' + p.version + ' trong khi đang dùng ' + U.cur + '. Bản hiện tại vẫn được sao lưu để có thể khôi phục. Tiếp tục cài?', function () { call('up_install', true); });
     },
-    up_started: function (d) { setBusy(true); $('progressPanel').hidden = false; $('result').hidden = true; renderSteps({ steps: ['Kiểm tra gói', 'Sao lưu bản hiện tại', 'Giải nén', 'Cài đặt', 'Kiểm tra sau cài', 'Hoàn tất'], step: 0, status: 'running' }); },
+    up_started: function (d) { setBusy(true); $('progressPanel').hidden = false; $('result').hidden = true; renderSteps({ steps: ['Tải gói', 'Kiểm tra file', 'Sao lưu bản hiện tại', 'Giải nén', 'Cài đặt', 'Kiểm tra sau cài', 'Áp dụng phiên bản mới'], step: 1, status: 'running' }); },
     up_progress: function (d) {
       if (d.progress) renderSteps(d.progress);
       if (d.download) { $('dlBar').hidden = false; var pct = d.download.total ? Math.round(d.download.bytes * 100 / d.download.total) : 0; $('dlFill').style.width = pct + '%'; $('dlText').textContent = 'Đã tải ' + size(d.download.bytes) + (d.download.total ? ' / ' + size(d.download.total) + ' (' + pct + '%)' : ''); }
@@ -109,16 +110,19 @@
       renderHistory(d.history);
     },
     up_error: function (m) { setBusy(false); $('progressPanel').hidden = false; result('err', ['✗ ' + m]); },
-    up_online_state: function (d) { $('onState').textContent = d.state === 'checking' ? 'Đang kiểm tra…' : '✗ ' + d.msg; $('onState').style.color = d.state === 'error' ? 'var(--err)' : ''; },
+    up_online_state: function (d) { $('onState').textContent = d.state === 'checking' ? 'Đang kiểm tra…' : (d.state === 'ok' ? '✓ ' : '✗ ') + d.msg; $('onState').style.color = d.state === 'error' ? 'var(--err)' : ''; if (d.state !== 'ok') $('online').hidden = true; },
     up_online: function (m) {
+      U.lastOnline = m;
       $('onState').style.color = '';
       $('onState').textContent = m.relation === 'newer' ? '✓ Có phiên bản mới ' + m.version : 'Bạn đang dùng phiên bản mới nhất (' + m.current + ').';
-      $('online').hidden = false; $('oVer').textContent = m.version; $('oDate').textContent = m.released_at || '—';
+      $('online').hidden = false; $('oVer').textContent = m.version; $('oDate').textContent = m.released_at || '—'; $('oCur').textContent = m.current || U.cur;
+      $('oType').textContent = m.restart_required === false ? '⚡ Cập nhật nhanh — áp dụng ngay' : (m.restart_required ? '🔁 Cập nhật hệ thống — cần khởi động lại SketchUp sau khi cài (plugin không tự đóng SketchUp)' : 'Xác định khi tải gói');
+      $('oConn').textContent = '✓ Đã kết nối ' + (m.channel || 'nguồn cập nhật') + (m.manifest_url ? ' (' + m.manifest_url.replace(/^https:\/\//, '').split('/')[0] + ')' : '');
       $('oCompat').textContent = (m.compatible ? '✓ ' : '✗ ') + m.compat_message; $('oSize').textContent = m.size ? size(m.size) : '—';
       list($('oLog'), m.changelog);
       $('installOnline').disabled = !(m.relation === 'newer' && m.compatible) || U.busy;
     },
-    up_source_saved: function (s) { if (s) { $('src').value = s.source; $('srcUrl').value = s.manifest_url; $('srcRepo').value = s.github_repo; $('srcAuto').checked = !!s.check_on_start; srcUi(); } $('onState').style.color = ''; $('onState').textContent = (s && s.source === 'none') ? 'Đã lưu: chưa có nguồn hợp lệ (URL phải là https, repo dạng chu-so-huu/ten-repo).' : 'Đã lưu nguồn cập nhật.'; }
+    up_source_saved: function (s) { if (s) { $('src').value = s.source; $('srcUrl').value = s.manifest_url; $('srcRepo').value = s.github_repo; $('srcLan').value = s.lan_folder || ''; $('srcAuto').checked = !!s.check_on_start; srcUi(); } $('onState').style.color = ''; $('onState').textContent = (s && s.source === 'none') ? 'Đã lưu: chưa có nguồn hợp lệ (URL phải là https, repo dạng chu-so-huu/ten-repo).' : 'Đã lưu nguồn cập nhật.'; }
   };
   window.UP = { receive: function (t, p) { var h = H[t]; if (!h) return; try { h(p); } catch (e) { result('err', ['Lỗi giao diện: ' + e.message]); } } };
 
@@ -126,9 +130,11 @@
     $('pick').onclick = function () { call('up_pick_file'); };
     $('install').onclick = function () { confirmBox('Cài đặt bản cập nhật', 'Plugin sẽ sao lưu phiên bản ' + U.cur + ', cài đè phiên bản mới và kiểm tra lại. Nếu có lỗi sẽ tự khôi phục. Dữ liệu người dùng giữ nguyên. Tiếp tục?', function () { call('up_install', false); }); };
     $('check').onclick = function () { call('up_check_online'); };
-    $('installOnline').onclick = function () { confirmBox('Cập nhật online', 'Tải gói từ nguồn đã cấu hình, kiểm tra SHA256, sao lưu bản hiện tại rồi cài đặt. Tiếp tục?', function () { call('up_install_online'); }); };
+    $('installOnline').onclick = function () { var m = U.lastOnline || {}; confirmBox('Cập nhật lên ' + (m.version || 'phiên bản mới'), 'Plugin sẽ tải gói, kiểm tra SHA256 và dung lượng, sao lưu phiên bản ' + U.cur + ' rồi cài đặt. Dữ liệu cá nhân, API Key, bộ AI giữ nguyên.' + (m.restart_required ? ' Bản này CẦN khởi động lại SketchUp sau khi cài — hãy lưu bản vẽ; plugin không tự đóng SketchUp.' : '') + ' Tiếp tục?', function () { call('up_install_online'); }); };
+    $('restoreLast').onclick = function () { confirmBox('Khôi phục phiên bản trước', 'Khôi phục bản sao lưu gần nhất (tạo trước lần cập nhật gần nhất). Bản hiện tại cũng được sao lưu. Dữ liệu cá nhân giữ nguyên. Tiếp tục?', function () { call('up_restore_last'); }); };
     $('src').onchange = srcUi;
-    $('saveSrc').onclick = function () { call('up_save_source', JSON.stringify({ source: $('src').value, manifest_url: $('srcUrl').value.trim(), github_repo: $('srcRepo').value.trim(), check_on_start: $('srcAuto').checked })); };
+    $('publishLan').onclick = function () { call('up_publish_lan'); };
+    $('saveSrc').onclick = function () { call('up_save_source', JSON.stringify({ source: $('src').value, manifest_url: $('srcUrl').value.trim(), github_repo: $('srcRepo').value.trim(), lan_folder: $('srcLan').value.trim(), check_on_start: $('srcAuto').checked })); };
     $('openBackups').onclick = function () { call('up_open_backups'); };
     $('openLog').onclick = function () { call('up_open_log'); };
     $('cYes').onclick = function () { $('confirmModal').hidden = true; var f = U.confirmFn; U.confirmFn = null; if (f) f(); };

@@ -20,7 +20,8 @@ module MTDesign
         'sources/link_import.rb' => %i[LinkImport],
         'search/query_normalizer.rb' => %i[QueryNormalizer],
         'search/categories.rb' => %i[Categories],
-        'core/synonyms.rb' => %i[Synonyms]
+        'core/synonyms.rb' => %i[Synonyms],
+        'updater/update_channel.rb' => %i[UpdateChannel]
       }.freeze
       HOT_EXT = /\.(html|css|js|json|png|svg|py|txt|md)\z/i.freeze
 

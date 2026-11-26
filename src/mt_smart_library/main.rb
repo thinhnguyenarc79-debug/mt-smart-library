@@ -7,9 +7,9 @@ module MTDesign
     CODE_DIR = File.dirname(__FILE__).dup.force_encoding('UTF-8') unless const_defined?(:CODE_DIR)
 
     %w[
-      updater/version
+      updater/version updater/update_channel
       core/util core/paths core/logger core/settings core/synonyms core/search_index core/indexer
-      core/thumbs core/inserter core/secret_store
+      core/thumbs core/inserter core/secret_store core/team_config
       net/http_client online/link_sources online/sketchfab online/polyhaven online/wp_sources sources/source_registry sources/site_probe sources/link_import sources/fb_capture accounts/account_manager core/download_watcher ai/vision
       search/query_normalizer search/categories search/result_cache search/result_ranker
       search/providers/base_provider search/providers/local_provider search/providers/sketchfab_provider search/providers/polyhaven_provider search/providers/wp_provider search/providers/catalog_provider

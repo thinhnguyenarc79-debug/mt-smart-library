@@ -105,8 +105,8 @@ module MTDesign
   end
 end
 %w[
-  updater/version core/util core/paths core/logger core/settings core/synonyms core/search_index core/indexer
-  core/thumbs core/inserter core/secret_store net/http_client online/link_sources online/sketchfab online/polyhaven online/wp_sources sources/source_registry sources/site_probe sources/link_import sources/fb_capture accounts/account_manager core/download_watcher ai/vision
+  updater/version updater/update_channel core/util core/paths core/logger core/settings core/synonyms core/search_index core/indexer
+  core/thumbs core/inserter core/secret_store core/team_config net/http_client online/link_sources online/sketchfab online/polyhaven online/wp_sources sources/source_registry sources/site_probe sources/link_import sources/fb_capture accounts/account_manager core/download_watcher ai/vision
   search/query_normalizer search/categories search/result_cache search/result_ranker
   search/providers/base_provider search/providers/local_provider search/providers/sketchfab_provider search/providers/polyhaven_provider search/providers/wp_provider search/providers/catalog_provider search/search_manager
   importers/gltf_importer convert/blender_runner convert/blender_detector convert/model_cache convert/converter_manager convert/import_manager ai_runtime/worker_lane ai_runtime/runtime_manager visual_search/visual_search_manager
@@ -143,8 +143,9 @@ class MockHTTP
     resp = resp.to_s.b
     c.write("HTTP/1.1 #{code} X\r\n")
     hdrs.each { |k, v| c.write("#{k}: #{v}\r\n") }
+    cut = hdrs.delete('X-Truncate') # mô phỏng mất mạng giữa chừng: khai báo đủ dung lượng nhưng chỉ gửi một phần
     c.write("Content-Length: #{resp.bytesize}\r\nConnection: close\r\n\r\n")
-    c.write(resp)
+    c.write(cut ? resp[0, cut.to_i] : resp)
   rescue StandardError
     nil
   ensure

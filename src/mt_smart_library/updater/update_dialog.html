@@ -54,23 +54,30 @@ th{color:var(--muted);font-weight:600}
   <div class="panel">
     <h3>2. Cập nhật online</h3>
     <div class="row">
-      <label>Nguồn <select id="src"><option value="none">Chưa cấu hình</option><option value="manifest">URL manifest JSON</option><option value="github">GitHub Releases</option></select></label>
+      <label>Nguồn <select id="src"><option value="official">Kênh chính thức MT (GitHub — tự động)</option><option value="none">Không dùng cập nhật online</option><option value="manifest">URL manifest JSON</option><option value="github">GitHub Releases</option><option value="lan">Thư mục công ty (LAN)</option></select></label>
+      <span id="srcOfficial" class="grow small muted">Tự động — không cần nhập URL, token hay tài khoản GitHub.</span>
       <input id="srcUrl" class="grow" placeholder="https://…/update_manifest.json" spellcheck="false">
+      <input id="srcLan" class="grow" placeholder="\\server\share\updates" spellcheck="false">
       <input id="srcRepo" class="grow" placeholder="chu-so-huu/ten-repo" spellcheck="false">
       <label class="check"><input id="srcAuto" type="checkbox"> Tự kiểm tra khi mở SketchUp (không tự cài)</label>
       <button id="saveSrc">Lưu nguồn</button>
     </div>
-    <div class="row"><button id="check">Kiểm tra cập nhật online</button><span id="onState" class="small"></span></div>
+    <div class="row"><button id="check">Kiểm tra cập nhật</button><button id="restoreLast">Khôi phục phiên bản trước</button><span id="onState" class="small"></span></div>
     <div id="online" hidden>
       <div class="kv">
+        <span>Phiên bản đang dùng</span><span id="oCur"></span>
         <span>Phiên bản mới nhất</span><b id="oVer"></b>
         <span>Ngày phát hành</span><span id="oDate"></span>
         <span>Tương thích</span><span id="oCompat"></span>
-        <span>Dung lượng</span><span id="oSize"></span>
+        <span>Dung lượng tải xuống</span><span id="oSize"></span>
+        <span>Loại cập nhật</span><span id="oType"></span>
+        <span>Trạng thái kết nối</span><span id="oConn"></span>
       </div>
       <div><b>Nội dung thay đổi:</b><ul class="cl" id="oLog"></ul></div>
-      <div class="row"><button id="installOnline" class="primary">Tải, kiểm tra SHA256 & cài đặt</button></div>
+      <div class="row"><button id="installOnline" class="primary">Cập nhật ngay</button></div>
     </div>
+    <div class="row"><button id="publishLan">Phát hành RBZ vào thư mục công ty</button></div>
+    <p class="muted small">LAN: chỉ quản trị viên được ghi thư mục phát hành; nhân viên chỉ đọc. SHA256 kiểm tra toàn vẹn, không thay cho phân quyền.</p>
     <p class="muted small">Manifest JSON gồm: plugin_id, version, download_url (https), sha256, size, min_sketchup, min_ruby, changelog. Gói tải về luôn được kiểm tra SHA256 trước khi cài. Không bao giờ tự cài khi chưa có sự đồng ý của bạn.</p>
   </div>
 

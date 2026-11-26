@@ -152,6 +152,8 @@ module MTDesign
         cb(d, 'src_log') { |id| src_log(id.to_s) }
         cb(d, 'src_stats') { |*| src_stats }
         cb(d, 'src_open') { |id| src_open(id.to_s) }
+        cb(d, 'team_export') { |*| team_export }
+        cb(d, 'team_import') { |*| team_import }
         cb(d, 'src_export') { |*| src_export }
         cb(d, 'src_import') { |*| src_import }
         cb(d, 'link_import') { |url| link_import(url.to_s) }
@@ -788,6 +790,34 @@ module MTDesign
         UI.openURL(s['url'])
         @watcher.start(source: s['name'], title: s['name'], passwords: []) && ensure_timer
         status("Đã mở #{s['name']}. Tải file trên trang — plugin sẽ tự nhận file vừa tải để chèn.", 'info')
+      end
+
+      # Chỉ chuyển các thiết lập được phép; không sao chép DPAPI, lịch sử, cookie, token.
+      def team_export
+        path = UI.savepanel('Xuất cấu hình công ty', '', 'MT_TEAM_CONFIG.json')
+        return unless path
+        data = TeamConfig.export(@settings, @sources)
+        Util.atomic_write(path, JSON.pretty_generate(data))
+        status('Đã xuất cấu hình công ty (không chứa API Key).', 'ok')
+      rescue StandardError => e
+        status("Không xuất được cấu hình: #{e.message}", 'error')
+      end
+
+      def team_import
+        path = UI.openpanel('Nhập cấu hình công ty đáng tin cậy', '', 'JSON|*.json||')
+        return unless path
+        raise 'File quá lớn.' if File.size(path) > 2 * 1024 * 1024
+        return unless UI.messagebox('Nhập cấu hình và nguồn từ file này? Nguồn hiện tại được giữ; cài đặt tìm kiếm/cập nhật có thể thay đổi. Chỉ dùng file của quản trị viên.', MB_YESNO) == IDYES
+        n = TeamConfig.import(JSON.parse(File.read(path, encoding: 'UTF-8')), @settings, @sources)
+        @runtime.device_pref = @settings['ai']['device']
+        @index.bump
+        add_custom_providers
+        emit('settings', @settings.public_hash)
+        emit('categories', { 'list' => Categories.all(@settings['categories_custom']) })
+        emit_sources
+        status("Đã nhập cấu hình; thêm #{n} nguồn. API Key riêng không bị thay đổi.", 'ok')
+      rescue StandardError => e
+        status("Không nhập được cấu hình: #{e.message}", 'error')
       end
 
       def src_export
@@ -1724,7 +1754,9 @@ module MTDesign
         cb(d, 'up_check_online') { |*| up_check_online(true) }
         cb(d, 'up_install_online') { |*| up_install_online }
         cb(d, 'up_restore') { |id| up_restore(id.to_s) }
+        cb(d, 'up_restore_last') { |*| up_restore_last }
         cb(d, 'up_save_source') { |json| save_settings('update' => parse(json)); up_emit('up_source_saved', @settings['update']) }
+        cb(d, 'up_publish_lan') { |*| up_publish_lan }
         cb(d, 'up_open_log') { |*| UI.openURL(Util.file_url(File.dirname(@updater.log_path))) }
         cb(d, 'up_open_backups') { |*| UI.openURL(Util.file_url(@updater.backups.dir)) }
         d.set_on_closed do
@@ -1749,7 +1781,8 @@ module MTDesign
                   'plugins_root' => Paths.plugins_root, 'data_root' => Paths.data_root, 'source' => @settings['update'],
                   'backups' => @updater.backups.list.map { |b| b.reject { |k, _| k == 'path' } },
                   'history' => @updater.history, 'pending_restart' => @updater.pending_restart_version,
-                  'busy' => @updater.busy?, 'online' => @online_info, 'startup' => @startup_msg
+                  'busy' => @updater.busy?, 'online' => @online_info, 'startup' => @startup_msg,
+                  'official' => { 'label' => UpdateChannel::LABEL, 'repo' => UpdateChannel::REPO, 'page' => UpdateChannel.release_page }
                 })
       end
 
@@ -1777,6 +1810,13 @@ module MTDesign
         begin_install(info, reason)
       end
 
+      # “Khôi phục phiên bản trước”: bản sao lưu mới nhất (tạo trước lần cập nhật gần nhất).
+      def up_restore_last
+        last = @updater.backups.list.first
+        return up_emit('up_error', 'Chưa có bản sao lưu nào để khôi phục.') unless last
+        up_restore(last['id'].to_s)
+      end
+
       def up_restore(id)
         info = @updater.inspect_backup(id, su_major: su_major)
         return up_emit('up_error', info['compat_message']) unless info['compatible']
@@ -1795,13 +1835,31 @@ module MTDesign
         ensure_timer
       end
 
+      def up_publish_lan
+        return up_emit('up_error', 'Đang có tác vụ cập nhật khác.') if @updater.busy?
+        package = UI.openpanel('Chọn RBZ đã kiểm thử', '', 'RBZ|*.rbz||')
+        return unless package
+        folder = UI.select_directory(title: 'Chọn thư mục phát hành công ty')
+        return unless folder
+        return unless UI.messagebox('Phát hành gói này cho nhân viên? Chỉ chọn thư mục do quản trị viên có quyền ghi.', MB_YESNO) == IDYES
+        su_major_value = su_major
+        @updater.team_async(->(kind, data) { up_emit('up_online_state', { 'state' => kind == :ok ? 'ok' : 'error', 'msg' => kind == :ok ? "Đã phát hành #{data['version']}" : data }) }) do
+          @updater.publish_lan(package, folder, su_major_value)
+        end
+        ensure_timer
+      rescue StandardError => e
+        up_emit('up_error', e.message)
+      end
+
       def up_check_online(manual)
         cfg = @settings['update']
+        @online_info = nil
         up_emit('up_online_state', { 'state' => 'checking' }) if manual
         @updater.check_online(cfg, su_major) do |kind, data|
           if kind == :ok
             @online_info = data
             @update_available = data['relation'] == 'newer' && data['compatible'] ? data['version'] : nil
+            up_emit('up_online_state', { 'state' => 'ok', 'msg' => "Đã kết nối #{data['channel'] || 'nguồn cập nhật'}." }) if manual
             up_emit('up_online', data)
             emit('update_available', @update_available) if @update_available
           else
@@ -1840,6 +1898,7 @@ module MTDesign
       end
 
       def poll_updater
+        @updater.poll_team
         if (@updater.busy? || @updater.download_progress) && Time.now.to_f - (@last_up_emit || 0) > 0.3
           @last_up_emit = Time.now.to_f
           pr = @updater.progress

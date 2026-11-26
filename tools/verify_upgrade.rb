@@ -25,8 +25,8 @@ user_files.each { |rel, c| f = File.join(data, rel); FileUtils.mkdir_p(File.dirn
 
 module MTDesign; module SmartLibrary; end; end
 code = File.join(plugins, 'mt_smart_library')
-%w[updater/version core/util core/paths core/logger net/http_client updater/zip_reader updater/backup_manager updater/hot_reload updater/updater].each do |f|
-  next if f == 'updater/hot_reload' && !File.file?(File.join(code, f + '.rb')) # bản cũ chưa có hot reload
+%w[updater/version updater/update_channel core/util core/paths core/logger net/http_client updater/zip_reader updater/backup_manager updater/hot_reload updater/updater].each do |f|
+  next if %w[updater/hot_reload updater/update_channel].include?(f) && !File.file?(File.join(code, f + '.rb')) # bản cũ chưa có
   require File.join(code, f) # nạp MÃ CỦA BẢN CŨ
 end
 SLV = MTDesign::SmartLibrary

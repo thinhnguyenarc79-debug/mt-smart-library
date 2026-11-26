@@ -56,7 +56,7 @@ die("zip: #{out}") unless st.success?
 
 # Tự kiểm tra gói bằng chính bộ kiểm tra của updater
 module MTDesign; module SmartLibrary; end; end
-%w[updater/version core/util core/paths core/logger net/http_client updater/zip_reader updater/backup_manager updater/hot_reload updater/updater].each do |f|
+%w[updater/version updater/update_channel core/util core/paths core/logger net/http_client updater/zip_reader updater/backup_manager updater/hot_reload updater/updater].each do |f|
   require File.join(CODE, f)
 end
 SLB = MTDesign::SmartLibrary

@@ -2,20 +2,19 @@
   "schema": 1,
   "plugin_id": "mtdesign.smart_library_pro",
   "name": "MT SMART LIBRARY PRO",
-  "version": "1.0.13",
-  "released_at": "2026-11-25",
+  "version": "1.0.15",
+  "released_at": "2026-11-26",
   "min_sketchup": 22,
   "min_ruby": "2.7.0",
   "changelog": [
-    "TÌM BẰNG ẢNH: bộ lọc danh mục cứng theo danh mục AI nhận diện, áp dụng ở cả bước lấy ứng viên (online, thư viện máy tính, kho dữ liệu) và bước trả kết quả. Ảnh sofa không còn trả ghế ăn/bàn ăn.",
-    "Chế độ Chính xác (mặc định) / Tương tự / Mở rộng; nhớ lựa chọn.",
-    "Điểm tương đồng tính thật trên ảnh preview: 35% cấu trúc (ảnh bỏ màu) + 35% phong cách + 15% hình dáng (viền/bóng/tỉ lệ) + 15% màu sắc; hiện trên thẻ và trong chi tiết.",
-    "Kho dữ liệu cũ được chấm lại theo bộ lọc mới (không dùng điểm cũ).",
-    "SMART SOURCE EXTRACTOR: nhiều công cụ tìm kiếm (Tavily không cần key, Serper, SerpApi, Brave, SearXNG), tự chuyển khi một công cụ lỗi; kiểm tra kết nối + hướng dẫn lấy key trong Cài đặt.",
-    "Facebook: Đăng nhập & lưu bài (bạn tự đăng nhập trong cửa sổ plugin, bấm lưu bài đang hiển thị: nội dung, ảnh, link bài, link tải, mật khẩu); tên thật của nhóm.",
-    "Đồng bộ tất cả nguồn: chạy lần lượt, nguồn lỗi không chặn nguồn khác, báo số model theo từng nguồn."
+    "CẬP NHẬT ONLINE MỘT NÚT BẤM: tích hợp sẵn kênh chính thức GitHub (thinhnguyenarc79-debug/mt-smart-library). Máy mới cài RBZ tự dùng kênh này, tự kiểm tra khi mở plugin; không cần URL, token hay tài khoản GitHub; không tự cài khi chưa đồng ý.",
+    "Nguồn cập nhật riêng hợp lệ (URL khác, repo khác, thư mục LAN) được giữ nguyên; cấu hình cũ trỏ về repo chính thức tự chuyển sang kênh chính thức.",
+    "Cửa sổ cập nhật: phiên bản đang dùng/mới nhất, ngày phát hành, nội dung, dung lượng, loại cập nhật, trạng thái kết nối; nút Kiểm tra cập nhật, Cập nhật ngay, Khôi phục phiên bản trước; tiến trình Tải → Kiểm tra file → Sao lưu → Cài đặt → Áp dụng.",
+    "An toàn: chỉ https trên mọi bước chuyển hướng, kênh chính thức chỉ nhận host GitHub, bắt buộc SHA256 + dung lượng, xóa gói tải dở, plugin cũ vẫn chạy khi mất mạng; tự khôi phục khi cài lỗi.",
+    "Giữ nguyên toàn bộ chức năng V1.0.14 TEAM EDITION (xuất/nhập cấu hình công ty, cập nhật LAN), tìm bằng ảnh, Smart Source Extractor, Facebook, dữ liệu và API Key."
   ],
-  "download_url": "https://raw.githubusercontent.com/thinhnguyenarc79-debug/mt-smart-library/c1d1569a3ce337882d4a801e8f207dd1c0113355/releases/MT_SMART_LIBRARY_PRO_v1.0.13.rbz",
-  "sha256": "a74d5f34964cbc619574c6c35e8f282565387bb409b0cc92561324521cc180c7",
-  "size": 236452
+  "restart_required": true,
+  "download_url": "https://raw.githubusercontent.com/thinhnguyenarc79-debug/mt-smart-library/69d820dfecf80df84015d37d3886d03cb91b4a0f/releases/MT_SMART_LIBRARY_PRO_v1.0.15.rbz",
+  "sha256": "20da20c89801ae41fff6ef213d0146223dd2faae2a09d80f022361b09d6eb7b7",
+  "size": 243160
 }
